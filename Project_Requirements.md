@@ -1,123 +1,67 @@
-# SIH26099 — Project Requirements
+# MIRA --- Project Requirements
 
-## 1. Project
+## 1. SIH Problem
+**SIH26099 --- AI-Driven Standardization and Harmonization of Material Codes Across CPSEs**
 
-**AI-Driven Standardization and Harmonization of Material Codes Across CPSEs**
+MIRA addresses heterogeneous material masters by identifying common, duplicate, near-duplicate and potentially equivalent materials while preserving each CPSE's original identity.
 
-The system standardizes and harmonizes material records from different CPSEs while preserving each organization's original material code and source information.
+## 2. Requirement-to-Implementation Mapping
 
-### Direct PS Alignment
+| SIH Requirement | MIRA Implementation | Status |
+|---|---|---|
+| AI-based description/specification matching | MiniLM semantic similarity + text similarity + specification-aware hybrid scoring | Core implemented |
+| Duplicate identification | Blocking + pairwise matching | Core implemented |
+| Near-duplicate identification | Normalization + text/semantic similarity + specification comparison | Core implemented |
+| Equivalent material identification | Hybrid score + critical gates + human review | Core implemented |
+| Automated standardization | Normalization, abbreviation handling, unit normalization, parsed attributes, canonical representation | Core implemented / expanding |
+| Intelligent classification | Category rules + embedding/category similarity + optional supervised classifier | In progress |
+| Common National Material Code | Common Material Record + NMC generation/recommendation | Planned |
+| CPSE code mapping | CPSE material → common material/NMC mapping | Planned |
+| Legacy rationalization/migration | Mapping and export workflow preserving original codes | Planned |
+| User validation/approval | Match Review UI + approval/rejection API workflow | UI implemented / backend pending |
+| Dashboard analytics | React analytics dashboard + backend aggregation | UI implemented / backend pending |
+| Audit trail | Governance UI + persistent audit events | UI implemented / backend pending |
+| SAP/ERP integration | REST/CSV interfaces + adapter architecture | Integration-ready |
+| Traceability | Source CPSE/material code preserved in common material and mappings | Architectural requirement |
 
-The SIH26099 problem statement explicitly expects:
-- AI-based matching of material descriptions and specifications;
-- identification of duplicate, near-duplicate and functionally equivalent materials;
-- automated standardization of descriptions and technical attributes;
-- classification/categorization;
-- recommendation/generation of a Common National Material Code;
-- mapping of existing CPSE material codes to the common national code;
-- legacy-code rationalization/migration support;
-- user validation and approval;
-- dashboard/analytics;
-- audit trail/governance;
-- SAP/ERP integration capability.
+## 3. AI Requirements
 
-The **concept of a Common National Material Code is therefore a PS requirement**. Its exact identifier format is a project design decision and is not prescribed by the PS.
+### 3.1 Semantic Matching
+Current model:
+`sentence-transformers/all-MiniLM-L6-v2`
 
-The MVP must:
-- ingest material records from different organizations;
-- normalize inconsistent descriptions and attributes;
-- extract technical attributes;
-- generate likely candidate equivalents/duplicates;
-- compare candidates using hybrid evidence;
-- prevent unsafe matches through critical-attribute gates;
-- route uncertain cases to human review;
-- group approved equivalent records into common-material records;
-- preserve CPSE-specific source-code mappings;
-- provide measurable evaluation results.
+Requirements:
+- local inference
+- no cloud embedding dependency
+- semantic similarity is one matcher component
+- model output cannot directly determine technical equivalence
 
-## 2. Primary Users
+### 3.2 AI-Assisted Attribute Extraction
+Core extraction:
+- normalization
+- regex
+- technical dictionaries
+- abbreviation mappings
+- unit normalization
+- category-specific parsing
 
-- Material/master-data teams
-- Procurement teams
-- Inventory/material-management teams
-- Engineers/technical reviewers
-- Data-governance teams
-- Cross-CPSE standardization teams
-- ERP/SAP administrators
+Optional LLM enhancement:
+- difficult/irregular descriptions
+- structured attribute extraction
+- explicit uncertainty
+- UNKNOWN for unresolved critical attributes
+- no direct equivalence approval
 
-## 3. Core Input
+### 3.3 Intelligent Classification
+Classification should use:
+- deterministic category rules
+- normalized description features
+- parsed technical attributes
+- semantic/category similarity
 
-CSV records containing, where available:
-- source organization / CPSE;
-- source material code;
-- material description;
-- category;
-- material;
-- dimensions;
-- grade;
-- rating / pressure / voltage;
-- unit;
-- other attributes.
+A supervised classifier may be added when sufficient reliable labels exist.
 
-Missing fields are allowed.
-
-The ingestion layer must not assume that all CPSEs use the same schema.
-
-## 4. Core Processing
-
-### Normalization
-
-Normalize:
-- casing;
-- whitespace;
-- punctuation;
-- common abbreviations;
-- unit representations;
-- formatting variations;
-- equivalent textual representations.
-
-Normalization must not destroy the original record.
-
-### Attribute Extraction
-
-For the MVP, extraction is **parser/rule based**, using:
-- regex;
-- technical dictionaries;
-- abbreviation mappings;
-- unit normalization/conversion;
-- category-specific parsing rules.
-
-Example:
-
-```text
-SS304 GATE VALVE 2" 150# FLG
-        ↓
-material = SS304
-type = gate valve
-size = 2 in
-pressure_rating = 150
-connection = flanged
-```
-
-LLM-based extraction is optional enhancement only. The core MVP must work without an LLM.
-
-### Blocking / Candidate Generation
-
-Use category and available identifying attributes to reduce unnecessary pairwise comparisons before expensive matching.
-
-Blocking is a candidate-generation optimization, not an equivalence decision.
-
-### Matching
-
-Use:
-- lexical/text similarity;
-- local semantic similarity;
-- structured specification comparison;
-- material/grade comparison;
-- other attribute comparison.
-
-Frozen MVP formula:
-
+## 4. Matching Requirements
 ```text
 final_score =
     0.20 × text_similarity
@@ -127,212 +71,236 @@ final_score =
   + 0.10 × other_attributes_similarity
 ```
 
-The formula shape is frozen. Only numeric weights may be tuned on the development set.
+Only numeric weights may be tuned using DEV. Formula shape is frozen.
 
-**Similarity score alone must never establish material equivalence.**
+Critical rules:
+- score before gates
+- applicable UNKNOWN → REVIEW
+- CONFLICT → REVIEW
+- text/semantic similarity alone cannot safely approve
+- no fixed 0.92 auto-accept
+- HIGH_CONFIDENCE requires strong similarity and passing applicable gates
 
-### Critical Gates
+## 5. Critical Specifications
+### FASTENER
+- material grade
+- dimensions
 
-Minimum MVP mapping:
+### VALVE
+- pressure rating
+- dimensions
 
-| Category | Critical fields |
-|---|---|
-| Fasteners (bolts, nuts) | grade, dimensions |
-| Valves/pipes | pressure rating, dimensions |
-| Electrical connectors | voltage class, dimensions |
+### PIPE
+- pressure rating
+- dimensions
 
-Rules:
-- applicable + matching → continue;
-- applicable + conflicting → REVIEW;
-- applicable + missing → UNKNOWN → REVIEW;
-- not applicable → ignore;
-- gates never prevent score calculation; they affect classification afterward.
+### ELECTRICAL CONNECTOR
+- voltage class
+- dimensions
 
-There is **no fixed 0.92 auto-accept rule**.
+## 6. Standardization
+Standardization transforms heterogeneous descriptions into normalized structured representations without destroying source information.
 
-### Classification
+Source descriptions remain preserved.
 
-Every pair receives:
-- `HIGH_CONFIDENCE`
-- `REVIEW`
-- `DIFFERENT`
+## 7. Common Material Record
+Contains:
+- common/canonical description
+- category
+- canonical technical attributes
+- source CPSE
+- original material code
+- provenance
+- approval status
 
-`HIGH_CONFIDENCE` requires strong evidence **and no applicable critical-field conflict or UNKNOWN**.
+Canonical values must not be invented. Critical UNKNOWN prevents APPROVED.
 
-### Human Review
+## 8. Common National Material Code
+MIRA must generate or recommend a Common National Material Code for approved common representations.
 
-Review should show:
-- source material codes;
-- descriptions;
-- category;
-- final score;
-- component scores;
-- critical-attribute comparison;
-- gate status;
-- conflicting/missing fields;
-- approve/reject action;
-- audit information.
+Exact syntax is a project design decision.
 
-Human review is a safety mechanism, not an exception to the architecture.
+Requirements:
+- unique in MIRA's common-material namespace
+- traceable
+- mapped to CPSE material codes
+- does not replace original codes
 
-### Common Material / Common National Material Code
-
-Approved equivalent relationships can form clusters.
-
-A Common Material Record contains:
-- common material ID;
-- canonical fields;
-- source CPSE;
-- original source material code;
-- mapping relationship;
-- status.
-
-The exact Common National Material Code format is **not frozen yet**.
-
-Canonical safety:
-- disagreement → UNKNOWN;
-- missing from all sources → UNKNOWN;
-- never infer, average, or majority-vote a critical specification;
-- critical UNKNOWN prevents APPROVED status.
-
-### Mapping
-
-Example:
-
+## 9. CPSE Mapping
 ```text
-COMMON-00421
-├── CPSE-A → MAT-00182
-├── CPSE-B → M-7742
-└── CPSE-C → 4500-BLT-16
+CPSE
+Original Material Code
+        ↓
+Common Material
+        ↓
+Common National Material Code
 ```
 
-Original source codes are never overwritten.
+## 10. Legacy Rationalization and Migration
+Support:
+- redundant-code identification
+- legacy-to-common mapping
+- migration/export
+- historical traceability
 
-### Classification Standards
+No destructive overwrite/deletion.
 
-UNSPSC may be evaluated as a supporting classification/blocking aid.
+## 11. Human Review
+Reviewers inspect descriptions, specifications, similarity components, critical checks and AI recommendation.
 
-It is **not an architectural dependency** and is not a prerequisite for the MVP. The project should remain functional if UNSPSC is unavailable or only partially mapped.
+Actions:
+- approve
+- reject
+- override where permitted
 
-### Integration
+Decisions must be auditable.
 
-The architecture should expose integration-ready APIs/data exports for SAP/ERP mapping and migration. A live SAP installation is not required for the MVP.
+## 12. Classification
+Classification supports:
+- category assignment
+- category-aware specifications
+- analytics
+- blocking
+- matching improvement
 
-## 5. Evaluation
+Uncertainty remains visible.
 
-### Dataset A
+## 13. Audit and Governance
+Record:
+- material import/creation
+- match generation
+- review
+- approval/rejection
+- common material creation
+- mapping
+- migration/export
 
-Dataset A contains:
-- development set;
-- blind held-out set;
-- hard-negative set.
+## 14. Dashboard and Analytics
+Required:
+- material counts by CPSE
+- category distribution
+- duplicate/match counts
+- decision distribution
+- confidence distribution
+- review backlog
+- harmonization progress
+- mapping progress
+- blocking reduction
 
-The matcher is tuned only on development data.
+## 15. SAP / ERP Integration
+Provide:
+- REST APIs
+- CSV import/export
+- ERP adapter boundaries
 
-### Dataset B
+Do not claim a live SAP connection unless actually implemented and demonstrated.
 
-Dataset B is a separate real-world public-data sanity check:
-- outside Dataset A's three-way split;
-- blind from matcher developers until Day 17.
+## 16. Data Ingestion
+Possible inputs:
+- CSV
+- Excel
+- JSON
+- structured APIs
+- extracted tender/BOQ material records
 
-Dataset B is not the official CPSE dataset.
+Typical fields:
+```text
+cpse
+material_code
+description
+category
+unit
+manufacturer
+manufacturer_part_number
+material_grade
+dimensions
+specifications
+other_attributes
+```
 
-### B1 Evidence
+## 17. Tender / BOQ Data Rules
+- retain item/material descriptions
+- retain technical specifications
+- strip rates/prices
+- avoid unnecessary vendor-identifying information
+- preserve provenance where appropriate
+- respect access and redistribution restrictions
 
-A B1 pair requires positive evidence:
-- matching manufacturer part number;
-- matching industry/standard designation; or
-- matching full structured specification set with no conflicting critical field.
+## 18. Evaluation
+Dataset A:
+- DEV
+- blind HELD-OUT
+- blind HARD-NEGATIVES
 
-Description similarity alone is insufficient.
+Dataset B is separate.
 
-At the end of Day 4, Person 2 makes the B1/B2 decision. If fewer than 50 qualifying, independently agreed B1 pairs exist, use B2. The 50 is a quality threshold, not a fill target.
+B1 genuine overlap requires:
+- matching manufacturer part number, OR
+- matching industry/standard designation, OR
+- matching complete structured specifications without critical conflict
 
-### Metrics
+If fewer than 50 qualifying agreed B1 pairs exist by Day 4, switch to B2.
 
 Report:
-- precision;
-- recall;
-- F1;
-- automation rate;
-- aggregate false-positive rate;
-- hard-negative false-HIGH_CONFIDENCE rate.
+- Precision
+- Recall
+- F1
+- Automation rate
+- Aggregate false-positive rate
+- Hard-negative false-HIGH_CONFIDENCE rate
+- Candidate reduction ratio
 
-Day 18 is the genuine blind held-out result. Day 19 corrections may use its findings; Day 20 results are post-correction, not a new independent blind test.
+REVIEW is an abstention state and is excluded from committed-decision FP/FN.
 
-## 6. Data Availability
+## 19. Security / Sovereignty
+Core pipeline should run on-premises:
+- normalization
+- parsing
+- embedding
+- matching
+- critical gating
+- review
 
-The SIH main-page PS lists:
+External LLM use is optional and must be governed.
 
-> **CPSE Material Master Data / Sample Material Master Dataset — To be provided by participating CPSEs**
+## 20. Current Implementation
+Implemented:
+- React/Vite/TypeScript frontend
+- primary screens
+- FastAPI foundation
+- normalization
+- rule-based parsing
+- local MiniLM
+- blocking
+- hybrid scoring
+- category-aware specification similarity
+- critical gates
+- classifier
+- `POST /api/matching/compare`
+- regression tests
 
-Therefore, the official CPSE dataset is **not assumed to be available to the team yet**.
+**28 backend tests passing.**
 
-Development must proceed with:
-- synthetic controlled Dataset A;
-- permitted public-data Dataset B;
-- an ingestion layer that can adapt when the official CPSE dataset is provided.
+## 21. Remaining Implementation
+1. Inspect actual tender/BOQ samples.
+2. Finalize ingestion schema.
+3. Implement PostgreSQL Material persistence.
+4. Implement material ingestion APIs.
+5. Connect Materials frontend.
+6. Implement dataset-level candidate generation.
+7. Persist match results.
+8. Implement review APIs.
+9. Implement Common Material Records.
+10. Implement NMC generation.
+11. Implement CPSE-to-NMC mapping.
+12. Implement legacy migration/export.
+13. Implement clustering/conflict detection.
+14. Implement audit backend.
+15. Implement analytics APIs.
+16. Implement ERP adapter boundaries.
+17. Add optional LLM-assisted extraction/classification where justified.
+18. Run DEV tuning and blind evaluation.
+19. Prepare final demo and presentation.
 
-Synthetic data must never be presented as real CPSE data.
-
-## 7. Data Sources
-
-Investigate:
-1. CPPP;
-2. relevant PSU procurement portals;
-3. manufacturer/OEM catalogues;
-4. GeM as supplementary source;
-5. permitted B2B sources if needed.
-
-Public accessibility does not automatically grant scraping or redistribution rights.
-
-## 8. Public-Data Handling
-
-- collect only permitted/publicly viewable content;
-- never bypass access controls;
-- do not assume bulk scraping is permitted;
-- strip BOQ rates/prices;
-- remove non-redistributable seller-identifying information;
-- do not publish proprietary full catalogue text;
-- paraphrase uncertain non-redistributable descriptions;
-- credit source categories appropriately.
-
-## 9. Scope
-
-### Floor — Must Ship
-- CSV upload;
-- normalization;
-- parser-based attribute extraction;
-- exact matching;
-- fuzzy matching;
-- basic candidate generation/blocking;
-- critical gates;
-- review table;
-- source-code mapping;
-- basic metrics.
-
-### Target
-Floor +:
-- local semantic embeddings;
-- frozen hybrid scoring;
-- clustering;
-- common-material records;
-- analytics.
-
-### Stretch
-Only after Target is stable:
-- advanced analytics;
-- advanced conflict visualization;
-- additional categories;
-- optional LLM extraction;
-- deeper SAP/ERP integration adapters.
-
-## 10. Non-Functional Requirements
-
-- local-first embeddings;
-- explainable match decisions;
-- source traceability;
-- reproducible evaluation;
-- candidate blocking for scale;
-- safe abstention through REVIEW;
-- no production-scale claims from MVP.
+## 22. Acceptance Principle
+> **Similarity finds the candidate. Specifications decide whether it is safe. Humans control the final mapping.**

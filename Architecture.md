@@ -1,271 +1,407 @@
-# SIH26099 — Architecture
+# MIRA --- System Architecture
 
-## 1. System Flow
+## 1. Purpose
+MIRA is an AI-driven cross-CPSE material harmonization platform for SIH26099. It analyzes heterogeneous material masters, identifies duplicate/near-duplicate/equivalent materials, standardizes material information, recommends common material representations and Common National Material Codes, preserves original CPSE codes, and provides human-controlled approval, mapping, governance and integration workflows.
 
+MIRA is a harmonization layer, not an ERP/SAP replacement.
+
+## 2. Design Principles
+1. Preserve source truth.
+2. Separate similarity from technical safety.
+3. Use AI where semantic ambiguity exists.
+4. Use deterministic rules where exact technical correctness is required.
+5. Never let an LLM directly approve equivalence.
+6. Humans control uncertain/technically ambiguous cases.
+7. Preserve source traceability.
+8. Keep model providers replaceable.
+9. Keep frontend independent of backend language.
+10. Evaluate against held-out ground truth.
+
+## 3. High-Level Architecture
 ```text
-CSV / CPSE Material Master
-          ↓
-       Ingestion
-          ↓
-Normalization + Unit Standardization
-          ↓
-Parser / Attribute Extraction
-          ↓
-Category / Blocking
-          ↓
-Candidate Pair Generation
-          ↓
-Hybrid Similarity Scoring
-          ↓
-Critical Specification Gates
-          ↓
-HIGH_CONFIDENCE / REVIEW / DIFFERENT
-          ↓
-Human Review
-          ↓
-Approved Relationships
-          ↓
-Clustering + Conflict Detection
-          ↓
-Common Material Record
-          ↓
-Common National Material Code / Common ID
-          ↓
-CPSE Code → Common-Code Mapping
-          ↓
-Audit Trail + Export/API
+CPSE MATERIAL SOURCES
+        |
+     INGESTION
+        |
+NORMALIZATION / UNITS
+        |
+ATTRIBUTE EXTRACTION
+   /              RULES          OPTIONAL LLM
+   \              /
+        |
+CLASSIFICATION
+        |
+BLOCKING
+        |
+CANDIDATE GENERATION
+        |
++-------+----------------+
+|                        |
+TEXT SIMILARITY     SEMANTIC SIMILARITY
+|                   MiniLM Embeddings
++----------+-------------+
+           |
+SPECIFICATION COMPARISON
+           |
+HYBRID SCORE ENGINE
+           |
+CRITICAL GATES
+     /      |        HIGH     REVIEW   DIFFERENT
+CONF.       |
+     HUMAN VALIDATION
+           |
+APPROVED RELATIONSHIPS
+           |
+CLUSTERING / CONFLICT CHECK
+           |
+COMMON MATERIAL RECORD
+           |
+COMMON NATIONAL MATERIAL CODE
+           |
+CPSE CODE → NMC MAPPING
+           |
+     +-----+-----+------+
+     |           |      |
+   AUDIT     ANALYTICS EXPORT/API
+                        |
+                      ERP/SAP
 ```
 
-The gate does not skip scoring. `final_score` is always calculated first; the gate then controls classification.
-
-Similarity proposes candidates; specifications and gates protect the final decision; humans control uncertain mappings.
-
-## 2. Tech Stack
-
+## 4. Technology Stack
 ### Frontend
 - React
 - Vite
 - TypeScript
+- REST API
+- Recharts
 
 ### Backend
 - Python
 - FastAPI
 - Pydantic
-
-### Database
+- SQLAlchemy
 - PostgreSQL
 - pgvector
 
-### Matching
-- Python
-- RapidFuzz
-- sentence-transformers
-- NumPy
-- pandas
+### AI / ML
+- `sentence-transformers`
+- `all-MiniLM-L6-v2`
+- Optional LLM provider for difficult attribute extraction
+- Optional embedding/category classification enhancement
 
-### Parsing / Normalization
-- Python regex/rules
+## 5. AI Architecture
+
+### 5.1 Semantic Similarity
+The core semantic model is `sentence-transformers/all-MiniLM-L6-v2`.
+
+It converts descriptions into embeddings for semantic comparison. Inference runs locally.
+
+### 5.2 Deterministic Attribute Extraction
+The first extraction layer uses:
+- text normalization
+- abbreviation mappings
+- unit normalization
+- regex
 - technical dictionaries
-- unit normalization/conversion
+- category-specific patterns
 
-### Development
-- Git
-- GitHub
-- Docker optional
+Examples:
+```text
+SS-304 / SS304 / STAINLESS STEEL 304 → SS304
+150# / 150 POUND → 150 LB
+```
 
-Embeddings are local for the MVP. No cloud embedding API is required.
+### 5.3 Optional LLM Attribute Extraction
+An LLM may convert difficult descriptions into structured attributes.
 
-## 3. Directory Structure
+Example:
+```text
+"SS GATE V/V 50NB CL150 RF ENDS"
+```
+
+Possible structured result:
+```json
+{
+  "type": "GATE VALVE",
+  "material": "SS",
+  "size": "50 MM",
+  "pressure_class": "150",
+  "connection": "RF"
+}
+```
+
+The LLM is an extraction assistant, not the final equivalence judge.
+
+Rules:
+- output must be structured
+- uncertainty remains UNKNOWN
+- critical conflicts remain conflicts
+- LLM output cannot create HIGH_CONFIDENCE directly
+- core matching works without a cloud LLM
+- provider is replaceable
+
+Potential boundary:
+```text
+LLMProvider
+  ├── GeminiProvider
+  ├── LocalLLMProvider
+  └── OtherProvider
+```
+
+## 6. Intelligent Classification
+Classification can combine:
+- deterministic category rules
+- normalized attributes
+- parsed specifications
+- embedding/category similarity
+
+If sufficient reliable labels exist, a supervised classifier can be introduced.
+
+Classification supports category-specific critical fields and does not override critical gates.
+
+## 7. Normalization
+Normalize safe variations in:
+- case
+- punctuation
+- separators
+- abbreviations
+- units
+- technical aliases
+
+Never erase technically meaningful distinctions.
+
+## 8. Specification Parsing
+Extract:
+- material grade
+- pressure rating
+- dimensions
+- voltage class
+- category-specific attributes
+
+Parser output is separate from the original description.
+
+## 9. Critical Fields
+### FASTENER
+- material_grade
+- dimensions
+
+### VALVE
+- pressure_rating
+- dimensions
+
+### PIPE
+- pressure_rating
+- dimensions
+
+### ELECTRICAL CONNECTOR
+- voltage_class
+- dimensions
+
+## 10. Blocking
+Candidate keys may include:
+- manufacturer part number
+- category
+- category + grade
+- material type anchors
+
+Blocking is candidate generation, not equivalence proof. Measure both reduction and candidate recall.
+
+## 11. Hybrid Matching
+```text
+final_score =
+    0.20 × text_similarity
+  + 0.20 × semantic_similarity
+  + 0.35 × specification_similarity
+  + 0.15 × material_grade_similarity
+  + 0.10 × other_attributes_similarity
+```
+
+Formula structure is frozen. Only numeric weights may be tuned on DEV.
+
+## 12. Critical Gates
+Possible states:
+- PASS
+- UNKNOWN
+- CONFLICT
+
+Rules:
+```text
+Critical UNKNOWN  → cannot be HIGH_CONFIDENCE
+Critical CONFLICT → cannot be HIGH_CONFIDENCE
+Strong score + all applicable fields PASS → HIGH_CONFIDENCE
+```
+
+## 13. Match Classification
+Returns:
+- HIGH_CONFIDENCE
+- REVIEW
+- DIFFERENT
+
+No fixed 0.92 auto-accept rule is used.
+
+## 14. Human Review
+Reviewers see:
+- source/target materials
+- original/normalized descriptions
+- extracted specifications
+- similarity scores
+- critical checks
+- AI recommendation
+- reasons for uncertainty/conflict
+
+Actions:
+- Approve
+- Reject
+- Override where governance permits
+
+Every decision is auditable.
+
+## 15. Common Material Record
+Contains:
+- canonical description
+- canonical category
+- canonical technical attributes
+- source CPSE materials
+- original CPSE material codes
+- approval state
+- provenance
+
+If sources disagree or a critical field is unavailable:
+`canonical field = UNKNOWN`
+
+Never average, majority-vote or invent critical technical values.
+
+## 16. Common National Material Code
+The SIH problem statement requires recommendation/generation of a Common National Material Code.
+
+Exact syntax is a MIRA design decision.
+
+The code must:
+- uniquely identify the common representation
+- remain traceable to source records
+- not replace original CPSE codes
+- support mapping and migration/export
+
+## 17. Clustering
+High-confidence relationships form candidate clusters. Internal conflicts trigger review or cluster splitting rather than blind merging.
+
+## 18. Database
+PostgreSQL stores:
+- source materials
+- normalized descriptions
+- parsed attributes
+- embeddings where appropriate
+- match results
+- review decisions
+- common materials
+- mappings
+- integration records
+- audit events
+
+pgvector supports vector search.
+
+## 19. API Boundary
+Current:
+```text
+GET  /health
+POST /api/matching/compare
+```
+
+Planned:
+```text
+POST /api/materials
+GET  /api/materials
+GET  /api/materials/{id}
+GET  /api/matches/review
+GET  /api/matches/{id}
+POST /api/matches/{id}/decision
+GET  /api/common-materials
+POST /api/common-materials
+GET  /api/mappings
+POST /api/mappings
+GET  /api/analytics
+GET  /api/audit
+GET  /api/integrations
+POST /api/integrations/{id}/sync
+```
+
+## 20. ERP / SAP Integration
+MIRA exposes integration-ready boundaries rather than claiming a live SAP connection.
 
 ```text
-sih26099/
-├── README.md
-├── Project_Requirements.md
-├── Architecture.md
-├── rules.md
-├── Phases.md
-├── memory.md
-├── backend/
-│   ├── app/
-│   │   ├── main.py
-│   │   ├── config.py
-│   │   ├── api/
-│   │   │   ├── upload.py
-│   │   │   ├── materials.py
-│   │   │   ├── matches.py
-│   │   │   ├── review.py
-│   │   │   └── analytics.py
-│   │   ├── models/
-│   │   │   ├── material.py
-│   │   │   ├── match_result.py
-│   │   │   └── common_material.py
-│   │   ├── services/
-│   │   │   ├── ingestion.py
-│   │   │   ├── normalization.py
-│   │   │   ├── parser.py
-│   │   │   ├── blocking.py
-│   │   │   ├── matcher.py
-│   │   │   ├── gates.py
-│   │   │   ├── clustering.py
-│   │   │   └── evaluation.py
-│   │   └── schemas/
-│   │       ├── material.py
-│   │       ├── match.py
-│   │       └── common_material.py
-│   └── tests/
-├── frontend/
-│   └── src/
-│       ├── components/
-│       ├── pages/
-│       ├── services/
-│       ├── types/
-│       └── App.tsx
-├── data/
-│   ├── sample/
-│   ├── dev/
-│   └── evaluation/
-├── scripts/
-│   ├── generate_synthetic.py
-│   ├── prepare_real_data.py
-│   └── run_evaluation.py
-└── docs/
-    ├── evaluation.md
-    ├── data_sources.md
-    └── demo.md
+MIRA API
+   |
+ERP Integration Adapter
+   ├── Mock ERP
+   ├── SAP Adapter
+   └── Future ERP adapters
 ```
 
-## 4. Frozen Integration Schemas
+## 21. Governance
+Audit events should cover:
+- MATCH_CREATED
+- MATCH_REVIEWED
+- MATCH_APPROVED
+- MATCH_REJECTED
+- COMMON_MATERIAL_CREATED
+- MAPPING_CREATED
+- EXPORT_GENERATED
+- MATERIAL_UPDATED
 
-### Material Record
+## 22. Analytics
+Metrics include:
+- materials by CPSE
+- materials by category
+- match decisions
+- review backlog
+- harmonization progress
+- duplicate/near-duplicate counts
+- confidence distribution
+- blocking reduction
+- mapping progress
 
-```json
-{
-  "source_org": "CPSE_A",
-  "source_material_code": "MAT-00182",
-  "description": "HEX BOLT M16 X 60 SS304",
-  "category": "fastener",
-  "attributes": {
-    "material": "SS304",
-    "grade": "A2-70",
-    "diameter": "M16",
-    "length": "60 mm",
-    "pressure_rating": null,
-    "voltage_class": null
-  }
-}
-```
+## 23. Evaluation
+Dataset A:
+- DEV
+- HELD-OUT
+- HARD-NEGATIVES
 
-### Pairwise Match Result
+Dataset B is separate and follows its own collection/evidence rules.
 
-```json
-{
-  "left_material_code": "MAT-00182",
-  "right_material_code": "M-7742",
-  "scores": {
-    "text_similarity": 0.94,
-    "semantic_similarity": 0.91,
-    "specification_similarity": 1.00,
-    "material_grade_similarity": 1.00,
-    "other_attributes_similarity": 1.00,
-    "final_score": 0.94
-  },
-  "critical_gates": {
-    "grade": "MATCH",
-    "dimensions": "MATCH"
-  },
-  "classification": "HIGH_CONFIDENCE"
-}
-```
-
-The five component fields map one-to-one to the five frozen weighted components.
-
-### Common Material Record
-
-```json
-{
-  "common_material_id": "COMMON-00421",
-  "common_national_material_code": null,
-  "canonical": {
-    "category": "fastener",
-    "material": "SS304",
-    "grade": "A2-70",
-    "diameter": "M16",
-    "length": "60 mm"
-  },
-  "mappings": [
-    {
-      "source_org": "CPSE_A",
-      "source_material_code": "MAT-00182"
-    },
-    {
-      "source_org": "CPSE_B",
-      "source_material_code": "M-7742"
-    }
-  ],
-  "status": "REVIEW"
-}
-```
-
-The exact Common National Material Code format is not frozen.
-
-Any UNKNOWN critical canonical field blocks APPROVED status.
-
-## 5. Matching Pipeline
-
-1. Normalize while retaining raw values.
-2. Parse technical attributes using rules, regex, dictionaries and unit mappings.
-3. Block by category and available identifying attributes.
-4. Calculate lexical similarity.
-5. Calculate local semantic similarity.
-6. Compare structured specifications.
-7. Calculate material/grade similarity.
-8. Calculate other-attribute similarity.
-9. Calculate the frozen weighted score.
-10. Apply category-dependent critical gates.
-11. Classify.
-12. Send REVIEW cases to human review.
-13. Record review decisions as audit events.
-14. Build connected components from approved/high-confidence relationships.
-15. Detect incompatible specifications or rejected internal relationships.
-16. Create traceable Common Material Records.
-17. Assign/recommend the common identifier/code according to the selected design.
-18. Expose mappings through API/export for downstream ERP/SAP integration.
-
-## 6. UNSPSC Position
-
-UNSPSC can be used as a supporting classification or blocking feature if useful.
-
-It is not required for the core matcher and must not become an architectural dependency. The system must remain operational when UNSPSC coverage is incomplete.
-
-## 7. Scale Strategy
-
-Track:
-
+## 24. Scale
 ```text
-reduction_ratio = 1 - (candidate_pairs / all_possible_pairs)
+reduction_ratio =
+1 - candidate_pairs / all_possible_pairs
 ```
 
-Model behavior at:
-- 15,000 records;
-- 150,000 records;
-- 1.5 million records.
+A single-server PostgreSQL prototype is not proof of production-scale performance for millions of records.
 
-The MVP does not claim execution at these scales. At larger scale, category-first partitioning, index optimization, sharding, and distributed candidate generation may be required.
+## 25. Current Implementation
+Implemented:
+- frontend screens
+- FastAPI foundation
+- normalization
+- rule-based parser
+- local MiniLM semantic similarity
+- blocking
+- hybrid scoring
+- category-aware specification comparison
+- critical gates
+- match classifier
+- matching API
+- regression tests
 
-## 8. SAP / ERP Integration
+**28 tests passing.**
 
-The MVP provides integration-ready:
-- REST APIs;
-- structured mapping outputs;
-- CSV/export formats suitable for downstream migration workflows.
-
-A live SAP/ERP connection is not required for the MVP. The system must preserve the source CPSE code so mappings remain traceable during any later migration.
-
-## 9. Security
-
-- local embeddings;
-- no cloud embedding requirement;
-- no external LLM processing of source material data in the MVP;
-- private evaluation labels;
-- Dataset B restricted until evaluation;
-- no secrets in Git.
+Next:
+1. Inspect tender/BOQ samples.
+2. Material persistence.
+3. Material ingestion.
+4. Connect Materials frontend.
+5. Dataset-level matching.
+6. Review persistence.
+7. Common materials/NMC/mapping.
+8. Clustering/conflict detection.
+9. Audit/analytics backend.
+10. Optional LLM extraction/classification if justified.
+11. Blind evaluation.

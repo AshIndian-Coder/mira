@@ -1,25 +1,24 @@
-# SIH26099 — Rules
+# MIRA --- Engineering Rules and Frozen Decisions
 
-## 1. Non-Negotiable
+## 1. Source-of-Truth Rule
+The SIH26099 problem statement is the source of truth for required capabilities.
 
-1. Preserve every original CPSE material code.
-2. Never overwrite source records with a common code.
-3. Every match must be explainable.
-4. REVIEW is a valid and intentional outcome.
-5. Missing critical information is not equivalent to matching information.
-6. Inapplicable critical fields do not trigger REVIEW.
-7. Conflicting critical fields force REVIEW.
-8. Calculate `final_score` before applying gates.
-9. Formula shape is frozen for the MVP.
-10. Only numeric weights may be tuned on the development set.
-11. Similarity score alone must never establish material equivalence.
-12. There is no fixed `0.92 → auto-accept` rule.
-13. The core MVP must not depend on an LLM for attribute extraction.
-14. The exact Common National Material Code format is not yet frozen.
-15. UNSPSC is optional/supporting classification, not an architectural dependency.
+Distinguish:
+1. SIH requirement
+2. verified external fact
+3. project design decision
+4. implemented feature
+5. future/optional feature
 
-## 2. Frozen Matching Formula
+Do not present a project design choice as an SIH-mandated specification.
 
+## 2. Source Material Identity
+- Preserve every original CPSE material code.
+- Never overwrite source records with a common code.
+- Every common-material relationship retains CPSE and source material-code traceability.
+- Legacy migration is a mapping, not destructive replacement.
+
+## 3. Matching Formula
 ```text
 final_score =
     0.20 × text_similarity
@@ -29,117 +28,191 @@ final_score =
   + 0.10 × other_attributes_similarity
 ```
 
-Only the numeric weights may be tuned on development data. The weighted-linear structure is frozen unless a formally recorded project decision changes it.
+- Formula structure is frozen.
+- Only numeric weights may be tuned on DEV.
+- Never tune using held-out/demo data.
+- Score is calculated before critical gates.
 
-## 3. Attribute Extraction
-
-MVP extraction uses:
-- regex;
-- technical dictionaries;
-- abbreviation mappings;
-- unit normalization/conversion;
-- category-specific rules/parsers.
-
-LLM extraction is a stretch enhancement only.
-
-## 4. Critical Gates
-
-| Category | Critical fields |
-|---|---|
-| Fasteners | grade, dimensions |
-| Valves/pipes | pressure rating, dimensions |
-| Electrical connectors | voltage class, dimensions |
-
-- applicable + equal → continue;
-- applicable + conflict → REVIEW;
-- applicable + missing → UNKNOWN → REVIEW;
-- not applicable → ignore.
-
-A gate never skips score calculation. It controls classification after scoring.
-
-## 5. Classification
-
-### HIGH_CONFIDENCE
-Allowed only when:
-- the score is sufficiently strong under the configured development-set threshold; and
-- no applicable critical field is UNKNOWN; and
-- no applicable critical field conflicts.
-
-### REVIEW
-Use when:
-- critical information is missing;
-- critical information conflicts;
-- evidence is ambiguous;
-- the candidate may be equivalent but cannot be safely auto-resolved.
-
-### DIFFERENT
-Use when evidence indicates that the materials are different and no safety gate requires REVIEW.
-
-The system should prefer REVIEW over an unsafe automatic match.
-
-## 6. Canonical Data
-
-- disagreement → UNKNOWN;
-- absent from all sources → UNKNOWN;
-- never invent specifications;
-- never average specifications;
-- never majority-vote critical specifications;
-- APPROVED is prohibited if a critical canonical field is UNKNOWN.
-
-## 7. Common National Material Code
-
-The PS explicitly expects recommendation/generation of a Common National Material Code and mapping of CPSE codes to it.
+## 4. Decision States
+- HIGH_CONFIDENCE
+- REVIEW
+- DIFFERENT
 
 Rules:
-- preserve every source CPSE code;
-- map source codes to a common record;
-- do not overwrite source codes;
-- exact code syntax is a design decision and is not frozen yet.
+- HIGH_CONFIDENCE requires strong score and passing applicable critical gates.
+- Critical UNKNOWN prevents HIGH_CONFIDENCE.
+- Critical CONFLICT prevents HIGH_CONFIDENCE.
+- REVIEW is a valid safety/abstention state.
+- No fixed 0.92 auto-accept rule.
 
-## 8. UNSPSC
+## 5. Similarity Safety
+- Text similarity is not technical equivalence.
+- Semantic similarity is not technical equivalence.
+- High similarity cannot override critical conflicts.
+- Missing critical specifications cannot be treated as matching.
+- Prefer REVIEW over unsafe approval.
 
-UNSPSC may support:
-- classification;
-- blocking;
-- analytics.
+## 6. AI Rules
 
-Do not make the matcher, database model, or end-to-end pipeline dependent on complete UNSPSC coverage.
+### Core AI
+- `all-MiniLM-L6-v2` is the current semantic model.
+- Embeddings run locally/on-premises.
+- Core matching must not require cloud inference.
 
-## 9. Dataset Rules
+### LLM Usage
+An LLM may assist with:
+- difficult attribute extraction
+- messy description interpretation
+- classification assistance
+- reviewer explanation assistance
 
-Dataset A = development + blind held-out + hard negatives.
+An LLM must not:
+- directly approve equivalence
+- override critical gates
+- invent missing technical specifications
+- convert uncertainty into certainty
+- silently modify source data
 
-Dataset B = separate fourth dataset and not part of Dataset A's three-way split.
+LLM output must be structured before entering matching.
 
-Person 1 and Person 3 do not see Dataset B content or labels before Day 17. A label-free format-check sample may be shared earlier.
+If a critical attribute cannot be reliably determined:
+```text
+UNKNOWN
+```
 
-The official CPSE dataset is not assumed to be available yet; synthetic and permitted public data are used until it is provided.
+### Provider Abstraction
+If an LLM is introduced, isolate it behind a provider interface. Possible providers include Gemini, a local LLM or another compatible provider.
 
-## 10. Ground Truth
+## 7. Deterministic Parsing
+Use deterministic methods first where reliable:
+- regex
+- dictionaries
+- abbreviation mappings
+- unit normalization
+- category-specific rules
 
-For hard negatives and B1 pairs:
-- use independent second-annotator checks on a sample;
-- measure agreement;
-- investigate disagreements;
-- do not silently force uncertain items into a class.
+Do not globally expand technical abbreviations without verifying safety.
 
-## 11. Dataset B
+## 8. Critical Fields
+### FASTENER
+- material_grade
+- dimensions
 
-B1 requires positive evidence:
-- matching part number;
-- matching standard designation; or
-- matching full structured specifications with no critical conflict.
+### VALVE
+- pressure_rating
+- dimensions
 
-Text similarity alone is insufficient.
+### PIPE
+- pressure_rating
+- dimensions
 
-Person 2 makes the B1/B2 decision at end of Day 4, no exceptions.
+### ELECTRICAL CONNECTOR
+- voltage_class
+- dimensions
 
-Fewer than 50 qualifying agreed-genuine B1 pairs → switch to B2.
+Only applicable fields are evaluated. Inapplicable fields must not create false conflicts.
 
-The 50 is a quality threshold, not a target.
+## 9. Canonical Material Safety
+- Preserve source values.
+- Do not invent missing values.
+- Do not average technical specifications.
+- Do not majority-vote conflicts.
+- Conflicting source values become UNKNOWN unless explicitly resolved through governed review.
+- Critical UNKNOWN blocks APPROVED.
 
-## 12. Evaluation
+## 10. Category Classification
+Classification may use:
+- deterministic rules
+- embeddings
+- category prototypes
+- supervised models if sufficient labels exist
 
+Uncertainty remains visible. Classification determines applicable critical fields.
+
+## 11. Blocking
+Blocking is candidate generation, not proof of equivalence.
+
+Evaluate:
+- candidate-pair reduction
+- candidate recall
+
+A blocking strategy that misses genuine matches is unacceptable.
+
+## 12. Clustering
+Use high-confidence relationships to form candidate clusters. Conflicting internal relationships trigger review or cluster splitting.
+
+## 13. Human Review
+Review must expose:
+- source/target descriptions
+- normalized descriptions
+- extracted specifications
+- similarity components
+- final score
+- critical gate results
+- reasons for UNKNOWN/CONFLICT
+
+Reviewer decisions must be persisted and audited.
+
+## 14. Common National Material Code
+NMC is an explicit SIH capability. Exact syntax is a project design decision.
+
+NMC must:
+- identify a common material representation
+- remain traceable to source CPSE materials
+- not replace original CPSE codes
+- support mapping and migration/export
+
+## 15. Standardization
+- normalize text
+- normalize units
+- normalize common abbreviations
+- preserve original descriptions
+- preserve technical meaning
+- expose uncertainty
+
+Never normalize away a technically meaningful distinction.
+
+## 16. Tender / BOQ Data
+- retain material/item descriptions
+- retain technical specifications
+- strip rates/prices
+- preserve relevant provenance
+- avoid unnecessary personal/vendor information
+- respect access and redistribution restrictions
+- never bypass access controls
+
+Public availability does not automatically imply redistribution permission.
+
+## 17. Dataset B
+B1 genuine positive evidence requires:
+- matching manufacturer part number, OR
+- matching industry/standard designation, OR
+- matching complete structured specification set with no conflicting critical field
+
+Text similarity alone never qualifies as ground truth.
+
+If fewer than 50 qualifying agreed B1 pairs exist by Day 4, switch to B2.
+
+B2 description:
+> Real-world description sanity check — synthetically paired.
+
+## 18. Evaluation Integrity
+Dataset A:
+- DEV
+- HELD-OUT
+- HARD-NEGATIVES
+
+Rules:
+- tune only on DEV
+- held-out labels remain blind until evaluation
+- hard-negative labels remain blind until evaluation
+- avoid synthetic-label leakage
+- separate generator/ground-truth ownership from matcher development where possible
+
+Day 17 = genuine blind result.  
+Day 18 = post-correction rerun, not independent blind testing.
+
+## 19. Metrics
 Report:
 - Precision
 - Recall
@@ -147,123 +220,86 @@ Report:
 - Automation rate
 - Aggregate false-positive rate
 - Hard-negative false-HIGH_CONFIDENCE rate
+- Candidate reduction ratio
 
-Ground-truth table:
+REVIEW is excluded from committed-decision Precision/Recall/F1 and counted through automation rate.
 
-| Truth | Output | Result |
-|---|---|---|
-| duplicate | HIGH_CONFIDENCE | TP |
-| duplicate | REVIEW | missed automation opportunity |
-| duplicate | DIFFERENT | FN |
-| different | HIGH_CONFIDENCE | FP |
-| different | REVIEW | safe abstention |
-| different | DIFFERENT | TN |
+## 20. On-Premises / Sovereignty
+Core functionality should work without sending material-master data to external services.
 
-REVIEW is excluded from committed-decision Precision/Recall/F1 and counted in automation-rate analysis.
+Core local pipeline:
+```text
+Normalization → Parsing → Embedding → Matching → Critical Gates → Review
+```
 
-Day 18 held-out numbers are the genuine blind result. Day 20 post-correction numbers must not be described as an independent blind test.
+External LLM use is optional and explicitly governed.
 
-## 13. Hard Negatives
+## 21. ERP / SAP Claims
+- SAP/ERP integration capability is required by SIH.
+- MIRA provides integration-ready interfaces/adapters.
+- Never claim live SAP integration without an actual demonstrated connection.
+- MIRA is a cross-CPSE harmonization layer, not an SAP MDG replacement.
 
-Include:
-- same bolt, different grade;
-- same valve, different pressure rating;
-- same connector, different voltage class;
-- similar dimensions with a critical technical difference;
-- one record missing a critical field while the other provides it.
+## 22. Public Claims
+Avoid unsupported claims such as:
+- “first”
+- “industry-wide”
+- “all CPSEs use SAP”
+- guaranteed procurement savings
+- guaranteed inventory reduction
+- guaranteed production-scale performance
 
-Report hard-negative false-HIGH_CONFIDENCE rate separately.
+Distinguish measured results from expected impact.
 
-## 14. Data Sources and Access
+## 23. Testing
+Every meaningful parser/matcher rule change should add/update regression tests.
 
-Investigation order:
-1. CPPP;
-2. relevant PSU portals;
-3. manufacturer/OEM catalogues;
-4. GeM supplementary;
-5. permitted B2B sources.
+Current baseline: **28 tests passing.**
 
-Rules:
-- public access does not imply redistribution permission;
-- no bypassing access controls;
-- no assumption that bulk scraping is permitted;
-- use permitted/manual collection by default.
+Before changing frozen matching logic:
+1. run tests
+2. inspect controlled examples
+3. update DEV evaluation
+4. never tune using held-out data
 
-For government portals, collect only publicly viewable content. Do not register as a vendor or bypass controls to reach gated documents.
+## 24. Verified Matcher Behaviors
+Positive:
+```text
+SS304 GATE VALVE 2 IN 150 LB
+STAINLESS STEEL 304 GATE VALVE 2 IN 150 POUND
+→ HIGH_CONFIDENCE
+```
 
-BOQ-derived data must have rate/price columns stripped before storage for the public project dataset.
+Critical conflict:
+```text
+150 LB vs 300 LB
+→ REVIEW
+```
 
-## 15. Redistribution
+Critical unknown:
+```text
+missing target pressure rating
+→ REVIEW
+```
 
-Before public repo/demo:
-- remove prices/rates;
-- remove non-redistributable seller-identifying data;
-- do not publish proprietary full catalogue text;
-- do not publish restricted documents;
-- paraphrase uncertain descriptions;
-- credit source categories.
+## 25. Implementation Priority
+1. Inspect real dataset.
+2. Persist materials.
+3. Build material APIs.
+4. Connect frontend Materials.
+5. Dataset-level candidates.
+6. Persist match results.
+7. Review workflow.
+8. Common Material Record.
+9. NMC.
+10. Mapping/migration.
+11. Clustering/conflict detection.
+12. Audit backend.
+13. Analytics backend.
+14. ERP adapter.
+15. Optional AI extraction/classification.
+16. Blind evaluation.
+17. Demo/presentation.
 
-## 16. Security
-
-- local sentence-transformer embeddings;
-- no cloud embeddings in MVP;
-- no external LLM processing of source material data in MVP;
-- no secrets in Git;
-- private evaluation labels.
-
-## 17. Scope Discipline
-
-### Floor first
-If Target is delayed, ship:
-- exact;
-- fuzzy;
-- CSV;
-- parser-based extraction;
-- gates;
-- review;
-- mapping;
-- basic metrics.
-
-Do not sacrifice the Floor for advanced features.
-
-### Target
-Add local semantic embeddings, hybrid scoring, clustering, common-material records, analytics.
-
-### Stretch
-Only after Target is stable:
-- advanced analytics;
-- advanced conflict visualization;
-- optional LLM extraction;
-- extra categories;
-- deeper SAP/ERP adapters.
-
-## 18. Do Not
-
-- claim production readiness;
-- claim CPSE integration without an actual integration;
-- claim real savings without evidence;
-- present synthetic data as real CPSE data;
-- call B2 genuine duplicate data;
-- tune against held-out data;
-- present post-correction results as independent blind results;
-- hide REVIEW cases;
-- approve using text similarity alone;
-- invent canonical specifications;
-- publish non-redistributable source content;
-- build Stretch before Floor/Target stability.
-
-## 19. Demo
-
-Show:
-1. near-identical records;
-2. high similarity;
-3. critical mismatch;
-4. gate → REVIEW;
-5. missing critical field → REVIEW;
-6. genuinely equivalent pair → HIGH_CONFIDENCE;
-7. Common Material mapping;
-8. original CPSE codes retained.
-
-Any consolidated-demand chart must be labeled directly:
-
-**Illustrative — based on synthetic dataset**
+## 26. Central Principle
+> **Similarity finds the candidate. Specifications decide whether it is safe. Humans control the final mapping.**
