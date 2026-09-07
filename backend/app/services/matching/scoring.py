@@ -1,0 +1,63 @@
+from typing import Any
+
+from app.services.matching.similarity import (
+    semantic_similarity,
+    specification_similarity,
+    text_similarity,
+    value_similarity,
+)
+
+
+TEXT_WEIGHT = 0.20
+SEMANTIC_WEIGHT = 0.20
+SPECIFICATION_WEIGHT = 0.35
+GRADE_WEIGHT = 0.15
+OTHER_ATTRIBUTES_WEIGHT = 0.10
+
+
+def calculate_match_score(
+    source: dict[str, Any],
+    target: dict[str, Any],
+) -> dict[str, float]:
+    text_score = text_similarity(
+        source.get("normalized_description", ""),
+        target.get("normalized_description", ""),
+    )
+
+    semantic_score = semantic_similarity(
+        source.get("normalized_description", ""),
+        target.get("normalized_description", ""),
+    )
+
+    specification_score = specification_similarity(
+        source.get("parsed_specifications"),
+        target.get("parsed_specifications"),
+        source.get("category"),
+    )
+
+    grade_score = value_similarity(
+        source.get("material_grade"),
+        target.get("material_grade"),
+    )
+
+    other_score = specification_similarity(
+        source.get("other_attributes"),
+        target.get("other_attributes"),
+    )
+
+    final_score = (
+        TEXT_WEIGHT * text_score
+        + SEMANTIC_WEIGHT * semantic_score
+        + SPECIFICATION_WEIGHT * specification_score
+        + GRADE_WEIGHT * grade_score
+        + OTHER_ATTRIBUTES_WEIGHT * other_score
+    )
+
+    return {
+        "text_similarity": round(text_score, 4),
+        "semantic_similarity": round(semantic_score, 4),
+        "specification_similarity": round(specification_score, 4),
+        "material_grade_similarity": round(grade_score, 4),
+        "other_attributes_similarity": round(other_score, 4),
+        "final_score": round(final_score, 4),
+    }
