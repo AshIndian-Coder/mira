@@ -1,22 +1,19 @@
-const matches = [
-  {
-    source: "IOCL · 10003741",
-    description: "SS304 GATE VALVE 2 IN 150 LB FLG",
-    score: "94%",
-  },
-  {
-    source: "ONGC · VAL-00921",
-    description: "SS 304 GATE VALVE 50.8MM CLASS 150",
-    score: "91%",
-  },
-  {
-    source: "BPCL · BV-004821",
-    description: 'STAINLESS STEEL GATE VALVE 2"',
-    score: "87%",
-  },
-];
+import type { Candidate } from '../../lib/api'
+import { formatPercent } from '../../lib/api'
 
-function MatchList() {
+type MatchListProps = {
+  candidates: Candidate[]
+  selectedId: number | null
+  onSelect: (candidate: Candidate) => void
+  loading?: boolean
+}
+
+function MatchList({
+  candidates,
+  selectedId,
+  onSelect,
+  loading = false,
+}: MatchListProps) {
   return (
     <div className="section-card match-list">
       <div className="section-header">
@@ -26,23 +23,41 @@ function MatchList() {
         </div>
       </div>
 
-      {matches.map((match, index) => (
-        <div
-          key={match.source}
-          className={`match-item ${
-            index === 0 ? "selected" : ""
-          }`}
-        >
-          <div>
-            <strong>{match.source}</strong>
-            <span>{match.description}</span>
-          </div>
-
-          <b>{match.score}</b>
+      {loading ? (
+        <div className="match-item">
+          <span>Loading review queue…</span>
         </div>
-      ))}
+      ) : candidates.length === 0 ? (
+        <div className="match-item">
+          <span>No pending reviews. Upload materials and run matching first.</span>
+        </div>
+      ) : (
+        candidates.map((candidate) => (
+          <button
+            type="button"
+            key={candidate.id}
+            className={`match-item ${selectedId === candidate.id ? 'selected' : ''}`}
+            onClick={() => onSelect(candidate)}
+            style={{
+              width: '100%',
+              border: 'none',
+              background: 'transparent',
+              textAlign: 'left',
+              cursor: 'pointer',
+            }}
+          >
+            <div>
+              <strong>
+                {candidate.source_cpse} · {candidate.source_code}
+              </strong>
+              <span>{candidate.source_description}</span>
+            </div>
+            <b>{formatPercent(candidate.scores.final_score, 0)}</b>
+          </button>
+        ))
+      )}
     </div>
-  );
+  )
 }
 
-export default MatchList;
+export default MatchList

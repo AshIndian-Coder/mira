@@ -1,0 +1,51 @@
+"""
+Audit trail route.
+
+GET /api/audit          — paginated append-only audit log
+GET /api/audit/export   — full audit log as JSON (for governance/export)
+"""
+
+from typing import Any
+
+from fastapi import APIRouter, Query
+
+router = APIRouter(prefix="/audit", tags=["Audit"])
+
+# Append-only list — review route appends to this on every decision.
+AUDIT_EVENTS: list[dict[str, Any]] = []
+
+
+@router.get("")
+def list_audit_events(
+    event_type: str | None = Query(None, description="e.g. MATCH_APPROVED, MATCH_REJECTED"),
+    actor: str | None = Query(None, description="Filter by reviewer user_id"),
+    skip: int = 0,
+    limit: int = 100,
+):
+    """Paginated audit log in reverse-chronological order."""
+    filtered = list(reversed(AUDIT_EVENTS))
+
+    if event_type:
+        filtered = [e for e in filtered if e["event_type"] == event_type.upper()]
+
+    if actor:
+        filtered = [e for e in filtered if e.get("actor") == actor]
+
+    total = len(filtered)
+    paginated = filtered[skip: skip + limit]
+
+    return {
+        "total": total,
+        "skip": skip,
+        "limit": limit,
+        "events": paginated,
+    }
+
+
+@router.get("/export")
+def export_audit_log():
+    """Full audit log — all events, oldest first. For governance / download."""
+    return {
+        "total": len(AUDIT_EVENTS),
+        "events": AUDIT_EVENTS,
+    }

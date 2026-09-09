@@ -87,8 +87,6 @@ The useful unit from tender/BOQ sources is the material/item record, not the ten
 ## Backend Status
 Implemented:
 - FastAPI foundation
-- PostgreSQL/SQLAlchemy configuration
-- material and match schemas
 - normalization
 - rule-based technical parsing
 - local `all-MiniLM-L6-v2`
@@ -99,6 +97,24 @@ Implemented:
 - HIGH_CONFIDENCE/REVIEW/DIFFERENT classifier
 - `POST /api/matching/compare`
 - regression tests
+
+Phase 5 additions:
+- `app/store.py` — shared in-memory MATERIALS + CANDIDATES store (DB-swappable)
+- `POST /api/materials/upload` — CSV ingestion → store
+- `GET /api/materials` — list with query/cpse/category filters + pagination
+- `GET /api/materials/stats` — summary counts
+- `GET /api/materials/{id}`
+- `POST /api/matching/run-batch` — full blocking + scoring pipeline across all ingested materials
+- `GET /api/matching/candidates` — filtered candidate list
+- `GET /api/matching/candidates/{id}`
+- `GET /api/matching/stats` — automation rate, blocking reduction, score percentiles
+- `GET /api/review/queue` — real REVIEW-decision candidates (no more mock data)
+- `POST /api/review/queue/{id}/action` — APPROVE/REJECT with audit emission
+- `GET /api/review/summary`
+- `GET /api/audit` + `GET /api/audit/export`
+- `GET /api/analytics/overview` + `/by-cpse` + `/categories` + `/scores`
+- `POST /api/mappings/generate` — Union-Find NMC generation from APPROVED pairs
+- `GET /api/mappings` + `/export/flat`
 
 **28 tests passing.**
 
@@ -119,22 +135,20 @@ Completed screens:
 - Audit Trail
 - Settings
 
-Frontend currently uses mock/demo data where backend endpoints are not connected. Build succeeds with only a non-blocking bundle-size warning.
+Frontend currently uses mock/demo data. Person 4 to wire using the now-complete API surface.
 
 ## Current Next Action
-First vertical slice:
+Backend is complete for Phases 4–6 scope.
 
-`Materials → GET /api/materials → PostgreSQL → real frontend records`
+API surface ready for Person 4 (frontend wiring):
+- `GET /api/materials` → Materials page
+- `GET /api/review/queue` → Match Review page
+- `GET /api/analytics/overview` → Dashboard
+- `POST /api/matching/run-batch` → trigger from UI
+- `POST /api/mappings/generate` → Mappings page
 
-Then connect Match Review, Common Materials, Mappings, ERP Integration, Analytics and Audit Trail.
-
-In parallel, inspect teammate tender/BOQ samples and finalize ingestion around the real data.
-
-After persistence/ingestion:
-- dataset-level candidate generation
-- common-material creation and NMC
-- CPSE-to-NMC mapping/migration
-- clustering/conflict detection
-- audit/analytics backend
-- optional LLM-assisted extraction/classification where justified
-- DEV tuning followed by blind evaluation
+Backend next priorities (Person 2 / matching engine):
+1. Write integration-style tests for run-batch endpoint
+2. Inspect real tender/BOQ data when available — tune blocking anchors
+3. Dataset-level evaluation: precision/recall on DEV dataset
+4. Optional: LLM-assisted attribute extraction fallback (Phase 12, stretch)
