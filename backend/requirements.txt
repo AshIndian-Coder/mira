@@ -54,7 +54,8 @@ transformers==5.16.1
 typer==0.27.2
 typing-inspection==0.4.4
 typing_extensions==4.16.0
+python-multipart==0.0.20
 uvicorn==0.52.4
-uvloop==0.22.1
+uvloop==0.22.1; sys_platform != "win32"
 watchfiles==1.2.0
 websockets==17.1

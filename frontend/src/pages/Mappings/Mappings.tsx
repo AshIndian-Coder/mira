@@ -1,295 +1,116 @@
-import { useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 
-type MappingStatus = 'APPROVED' | 'REVIEW'
+import { api, formatTimestamp, type Mapping } from '../../lib/api'
 
-type Mapping = {
+type FlatRow = {
   cpse: string
   materialCode: string
   originalDescription: string
   nmc: string
-  commonDescription: string
   category: string
-  status: MappingStatus
-  score: number
-  approvedBy: string
-  approvedOn: string
+  status: string
 }
 
-const mappings: Mapping[] = [
-  {
-    cpse: 'IOCL',
-    materialCode: '10003741',
-    originalDescription: 'SS304 GATE VALVE 2 IN 150 LB FLG',
-    nmc: 'MIRA-VAL-000001',
-    commonDescription: 'GATE VALVE, SS304, 2 IN, CLASS 150, FLANGED',
-    category: 'Valves',
-    status: 'APPROVED',
-    score: 94,
-    approvedBy: 'Data Steward',
-    approvedOn: '06 Sep 2026',
-  },
-  {
-    cpse: 'ONGC',
-    materialCode: 'VAL-00921',
-    originalDescription: 'SS 304 GATE VALVE 50.8MM CLASS 150',
-    nmc: 'MIRA-VAL-000001',
-    commonDescription: 'GATE VALVE, SS304, 2 IN, CLASS 150, FLANGED',
-    category: 'Valves',
-    status: 'APPROVED',
-    score: 91,
-    approvedBy: 'Data Steward',
-    approvedOn: '06 Sep 2026',
-  },
-  {
-    cpse: 'BPCL',
-    materialCode: 'BV-004821',
-    originalDescription: 'STAINLESS STEEL GATE VALVE 2"',
-    nmc: 'MIRA-VAL-000001',
-    commonDescription: 'GATE VALVE, SS304, 2 IN, CLASS 150, FLANGED',
-    category: 'Valves',
-    status: 'APPROVED',
-    score: 87,
-    approvedBy: 'Data Steward',
-    approvedOn: '06 Sep 2026',
-  },
-  {
-    cpse: 'NTPC',
-    materialCode: 'NT-VAL-1842',
-    originalDescription: 'GATE VALVE SS 304 DN50 PN16 FLANGED',
-    nmc: 'MIRA-VAL-000002',
-    commonDescription: 'GATE VALVE, SS304, DN50, PN16, FLANGED',
-    category: 'Valves',
-    status: 'APPROVED',
-    score: 93,
-    approvedBy: 'Data Steward',
-    approvedOn: '05 Sep 2026',
-  },
-  {
-    cpse: 'BHEL',
-    materialCode: 'BH-VAL-7712',
-    originalDescription: 'SS304 GATE VALVE DN50 PN16 FLG',
-    nmc: 'MIRA-VAL-000002',
-    commonDescription: 'GATE VALVE, SS304, DN50, PN16, FLANGED',
-    category: 'Valves',
-    status: 'APPROVED',
-    score: 90,
-    approvedBy: 'Data Steward',
-    approvedOn: '05 Sep 2026',
-  },
-  {
-    cpse: 'SAIL',
-    materialCode: 'SAIL-FST-0082',
-    originalDescription: 'HEX BOLT M16 X 60 MM SS304',
-    nmc: 'MIRA-FST-000001',
-    commonDescription: 'HEX BOLT, SS304, M16 X 60 MM',
-    category: 'Fasteners',
-    status: 'APPROVED',
-    score: 96,
-    approvedBy: 'Data Steward',
-    approvedOn: '04 Sep 2026',
-  },
-  {
-    cpse: 'RINL',
-    materialCode: 'RINL-BLT-1029',
-    originalDescription: 'SS 304 HEXAGONAL BOLT M16X60',
-    nmc: 'MIRA-FST-000001',
-    commonDescription: 'HEX BOLT, SS304, M16 X 60 MM',
-    category: 'Fasteners',
-    status: 'APPROVED',
-    score: 94,
-    approvedBy: 'Data Steward',
-    approvedOn: '04 Sep 2026',
-  },
-  {
-    cpse: 'BHEL',
-    materialCode: 'BH-EL-22104',
-    originalDescription: 'POWER CONNECTOR 415V 32A',
-    nmc: 'MIRA-ELC-000001',
-    commonDescription: 'POWER CONNECTOR, 415 V, 32 A',
-    category: 'Electrical',
-    status: 'REVIEW',
-    score: 82,
-    approvedBy: '—',
-    approvedOn: '—',
-  },
-]
-
-function StatusBadge({ status }: { status: MappingStatus }) {
+function StatusBadge({ status }: { status: string }) {
+  const approved = status === 'PROVISIONAL' || status === 'APPROVED'
   return (
-    <span
-      className={`mapping-status mapping-status-${status.toLowerCase()}`}
-    >
-      {status === 'APPROVED' ? 'Approved' : 'Review'}
+    <span className={`mapping-status mapping-status-${approved ? 'approved' : 'review'}`}>
+      {approved ? 'Approved' : status}
     </span>
   )
 }
 
-function MappingDetails({
-  mapping,
-  onClose,
-}: {
-  mapping: Mapping
-  onClose: () => void
-}) {
-  return (
-    <div className="mapping-detail-panel">
-      <div className="mapping-detail-header">
-        <div>
-          <div className="eyebrow">MATERIAL MAPPING</div>
-          <h2>{mapping.materialCode}</h2>
-          <p>{mapping.cpse} → {mapping.nmc}</p>
-        </div>
-
-        <button className="mapping-close-button" onClick={onClose}>
-          ×
-        </button>
-      </div>
-
-      <div className="mapping-detail-section">
-        <div className="mapping-detail-title">
-          <h3>Source Material</h3>
-          <StatusBadge status={mapping.status} />
-        </div>
-
-        <div className="mapping-object-card">
-          <div className="mapping-object-label">
-            CPSE · {mapping.cpse}
-          </div>
-
-          <strong>{mapping.materialCode}</strong>
-
-          <p>{mapping.originalDescription}</p>
-
-          <div className="mapping-object-meta">
-            <span>{mapping.category}</span>
-          </div>
-        </div>
-      </div>
-
-      <div className="mapping-arrow">
-        <span>Mapped to</span>
-        <strong>↓</strong>
-      </div>
-
-      <div className="mapping-detail-section">
-        <h3>Common Material</h3>
-
-        <div className="mapping-object-card mapping-common-card">
-          <div className="mapping-object-label">
-            COMMON NATIONAL MATERIAL CODE
-          </div>
-
-          <strong>{mapping.nmc}</strong>
-
-          <p>{mapping.commonDescription}</p>
-
-          <div className="mapping-object-meta">
-            <span>{mapping.category}</span>
-          </div>
-        </div>
-      </div>
-
-      <div className="mapping-detail-section">
-        <h3>Mapping Evidence</h3>
-
-        <div className="mapping-evidence-grid">
-          <div>
-            <span>Match confidence</span>
-            <strong>{mapping.score}%</strong>
-          </div>
-
-          <div>
-            <span>Mapping type</span>
-            <strong>Material equivalence</strong>
-          </div>
-
-          <div>
-            <span>Source identity</span>
-            <strong>Preserved</strong>
-          </div>
-
-          <div>
-            <span>Canonical record</span>
-            <strong>
-              {mapping.status === 'APPROVED'
-                ? 'Approved'
-                : 'Pending review'}
-            </strong>
-          </div>
-        </div>
-      </div>
-
-      <div className="mapping-detail-section">
-        <h3>Governance</h3>
-
-        <div className="mapping-governance-row">
-          <span>Status</span>
-          <StatusBadge status={mapping.status} />
-        </div>
-
-        <div className="mapping-governance-row">
-          <span>Approved by</span>
-          <strong>{mapping.approvedBy}</strong>
-        </div>
-
-        <div className="mapping-governance-row">
-          <span>Approved on</span>
-          <strong>{mapping.approvedOn}</strong>
-        </div>
-      </div>
-
-      <div className="mapping-detail-actions">
-        <button className="mapping-secondary-button">
-          View Common Material
-        </button>
-
-        <button className="mapping-primary-button">
-          Export Mapping
-        </button>
-      </div>
-    </div>
-  )
-}
-
 export default function Mappings() {
+  const [mappings, setMappings] = useState<Mapping[]>([])
   const [search, setSearch] = useState('')
-  const [category, setCategory] = useState('All Categories')
-  const [status, setStatus] = useState('All Statuses')
-  const [selected, setSelected] = useState<Mapping | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [generating, setGenerating] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [message, setMessage] = useState<string | null>(null)
 
-  const filteredMappings = useMemo(() => {
+  const loadMappings = useCallback(async () => {
+    try {
+      setLoading(true)
+      setError(null)
+      const response = await api.listMappings()
+      setMappings(response.mappings)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load mappings')
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    loadMappings()
+  }, [loadMappings])
+
+  const flatRows: FlatRow[] = useMemo(() => {
+    const rows: FlatRow[] = []
+    for (const mapping of mappings) {
+      for (const entry of mapping.cpse_mappings) {
+        rows.push({
+          cpse: entry.cpse,
+          materialCode: entry.material_code,
+          originalDescription: entry.description,
+          nmc: mapping.nmc,
+          category: entry.category ?? 'General',
+          status: mapping.status,
+        })
+      }
+    }
+    return rows
+  }, [mappings])
+
+  const filteredRows = useMemo(() => {
     const query = search.trim().toLowerCase()
+    if (!query) return flatRows
+    return flatRows.filter(
+      (row) =>
+        row.cpse.toLowerCase().includes(query) ||
+        row.materialCode.toLowerCase().includes(query) ||
+        row.nmc.toLowerCase().includes(query) ||
+        row.originalDescription.toLowerCase().includes(query),
+    )
+  }, [flatRows, search])
 
-    return mappings.filter((mapping) => {
-      const matchesSearch =
-        !query ||
-        mapping.cpse.toLowerCase().includes(query) ||
-        mapping.materialCode.toLowerCase().includes(query) ||
-        mapping.nmc.toLowerCase().includes(query) ||
-        mapping.originalDescription.toLowerCase().includes(query) ||
-        mapping.commonDescription.toLowerCase().includes(query)
+  const commonCodes = new Set(flatRows.map((row) => row.nmc)).size
 
-      const matchesCategory =
-        category === 'All Categories' ||
-        mapping.category === category
+  const handleGenerate = async () => {
+    try {
+      setGenerating(true)
+      setError(null)
+      const result = await api.generateMappings()
+      setMessage(
+        result.mappings_created > 0
+          ? `Created ${result.mappings_created} new mapping cluster(s)`
+          : result.message ?? 'No new mappings created',
+      )
+      await loadMappings()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to generate mappings')
+    } finally {
+      setGenerating(false)
+    }
+  }
 
-      const matchesStatus =
-        status === 'All Statuses' ||
-        mapping.status === status
-
-      return matchesSearch && matchesCategory && matchesStatus
-    })
-  }, [search, category, status])
-
-  const approved = mappings.filter(
-    (mapping) => mapping.status === 'APPROVED',
-  ).length
-
-  const review = mappings.filter(
-    (mapping) => mapping.status === 'REVIEW',
-  ).length
-
-  const commonCodes = new Set(mappings.map((mapping) => mapping.nmc)).size
+  const handleExport = async () => {
+    try {
+      const result = await api.exportMappingsFlat()
+      const blob = new Blob([JSON.stringify(result.rows, null, 2)], {
+        type: 'application/json',
+      })
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = 'mira-mappings-export.json'
+      link.click()
+      URL.revokeObjectURL(url)
+      setMessage(`Exported ${result.total_rows} mapping rows`)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Export failed')
+    }
+  }
 
   return (
     <div className="page">
@@ -297,48 +118,61 @@ export default function Mappings() {
         <div>
           <div className="eyebrow">CPSE → COMMON MASTER</div>
           <h1>Mappings</h1>
-          <p>
-            Track mappings between CPSE material codes and common national
-            material records.
-          </p>
+          <p>Track mappings between CPSE material codes and common national material records.</p>
         </div>
-
-        <button className="mapping-export-all-button">
-          Export Approved Mappings
-        </button>
+        <div style={{ display: 'flex', gap: '0.75rem' }}>
+          <button
+            className="mapping-export-all-button"
+            type="button"
+            onClick={handleGenerate}
+            disabled={generating}
+          >
+            {generating ? 'Generating…' : 'Generate Mappings'}
+          </button>
+          <button className="mapping-secondary-button" type="button" onClick={handleExport}>
+            Export Approved Mappings
+          </button>
+        </div>
       </div>
+
+      {message && (
+        <div className="common-info-banner" style={{ marginBottom: '1rem' }}>
+          <div className="common-info-icon">✓</div>
+          <div>
+            <strong>Update</strong>
+            <p>{message}</p>
+          </div>
+        </div>
+      )}
+
+      {error && (
+        <div className="mapping-info-banner" style={{ marginBottom: '1rem' }}>
+          <div className="mapping-info-icon">!</div>
+          <div>
+            <strong>Error</strong>
+            <p>{error}</p>
+          </div>
+        </div>
+      )}
 
       <div className="mapping-summary">
         <div>
           <span>Total Mappings</span>
-          <strong>{mappings.length}</strong>
+          <strong>{flatRows.length}</strong>
         </div>
-
-        <div>
-          <span>Approved</span>
-          <strong>{approved}</strong>
-        </div>
-
         <div>
           <span>Common Codes</span>
           <strong>{commonCodes}</strong>
         </div>
-
         <div>
-          <span>Pending Review</span>
-          <strong>{review}</strong>
+          <span>Clusters</span>
+          <strong>{mappings.length}</strong>
         </div>
-      </div>
-
-      <div className="mapping-info-banner">
-        <div className="mapping-info-icon">i</div>
-
         <div>
-          <strong>Original CPSE codes are retained</strong>
-          <p>
-            MIRA creates a common material mapping without replacing the
-            source-system material identity.
-          </p>
+          <span>Latest</span>
+          <strong>
+            {mappings[0]?.created_at ? formatTimestamp(mappings[0].created_at) : '—'}
+          </strong>
         </div>
       </div>
 
@@ -347,29 +181,10 @@ export default function Mappings() {
           <input
             className="mapping-search"
             type="text"
-            placeholder="Search CPSE, material code, description or NMC..."
+            placeholder="Search CPSE, material code, description or NMC…"
             value={search}
             onChange={(event) => setSearch(event.target.value)}
           />
-
-          <select
-            value={category}
-            onChange={(event) => setCategory(event.target.value)}
-          >
-            <option>All Categories</option>
-            <option>Valves</option>
-            <option>Fasteners</option>
-            <option>Electrical</option>
-          </select>
-
-          <select
-            value={status}
-            onChange={(event) => setStatus(event.target.value)}
-          >
-            <option>All Statuses</option>
-            <option value="APPROVED">Approved</option>
-            <option value="REVIEW">Review</option>
-          </select>
         </div>
 
         <div className="mapping-table-wrapper">
@@ -381,91 +196,50 @@ export default function Mappings() {
                 <th>Original Description</th>
                 <th>Common National Code</th>
                 <th>Category</th>
-                <th>Confidence</th>
                 <th>Status</th>
               </tr>
             </thead>
-
             <tbody>
-              {filteredMappings.map((mapping) => (
-                <tr
-                  key={`${mapping.cpse}-${mapping.materialCode}`}
-                  onClick={() => setSelected(mapping)}
-                >
-                  <td>
-                    <strong className="mapping-cpse">
-                      {mapping.cpse}
-                    </strong>
-                  </td>
-
-                  <td>
-                    <span className="mapping-code">
-                      {mapping.materialCode}
-                    </span>
-                  </td>
-
-                  <td className="mapping-description">
-                    {mapping.originalDescription}
-                  </td>
-
-                  <td>
-                    <span className="mapping-nmc">
-                      {mapping.nmc}
-                    </span>
-                  </td>
-
-                  <td>{mapping.category}</td>
-
-                  <td>
-                    <span
-                      className={`mapping-confidence ${
-                        mapping.score >= 90
-                          ? 'mapping-confidence-high'
-                          : 'mapping-confidence-medium'
-                      }`}
-                    >
-                      {mapping.score}%
-                    </span>
-                  </td>
-
-                  <td>
-                    <StatusBadge status={mapping.status} />
-                  </td>
-                </tr>
-              ))}
-
-              {filteredMappings.length === 0 && (
+              {loading ? (
                 <tr>
-                  <td colSpan={7} className="mapping-empty">
-                    No mappings match the current filters.
+                  <td colSpan={6} className="mapping-empty">
+                    Loading mappings…
                   </td>
                 </tr>
+              ) : filteredRows.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="mapping-empty">
+                    No mappings yet. Approve matches in Match Review, then click Generate Mappings.
+                  </td>
+                </tr>
+              ) : (
+                filteredRows.map((row) => (
+                  <tr key={`${row.cpse}-${row.materialCode}-${row.nmc}`}>
+                    <td>
+                      <strong className="mapping-cpse">{row.cpse}</strong>
+                    </td>
+                    <td>
+                      <span className="mapping-code">{row.materialCode}</span>
+                    </td>
+                    <td className="mapping-description">{row.originalDescription}</td>
+                    <td>
+                      <span className="mapping-nmc">{row.nmc}</span>
+                    </td>
+                    <td>{row.category}</td>
+                    <td>
+                      <StatusBadge status={row.status} />
+                    </td>
+                  </tr>
+                ))
               )}
             </tbody>
           </table>
         </div>
 
         <div className="mapping-footer">
-          Showing {filteredMappings.length} of {mappings.length} demo mappings
+          Showing {filteredRows.length} of {flatRows.length} mapping rows
         </div>
       </div>
-
-      {selected && (
-        <div
-          className="mapping-detail-overlay"
-          onClick={() => setSelected(null)}
-        >
-          <div
-            className="mapping-detail-modal"
-            onClick={(event) => event.stopPropagation()}
-          >
-            <MappingDetails
-              mapping={selected}
-              onClose={() => setSelected(null)}
-            />
-          </div>
-        </div>
-      )}
     </div>
   )
 }
