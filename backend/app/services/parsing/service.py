@@ -25,10 +25,22 @@ VOLTAGE_PATTERN = re.compile(
 
 
 def extract_grade(text: str) -> str | None:
-    for pattern in GRADE_PATTERNS:
+    patterns = [
+        (r"\bSS[- ]?(304|316|321)\b", lambda m: f"SS{m.group(1)}"),
+        (
+            r"\bSTAINLESS\s+STEEL\s+(304|316|321)\b",
+            lambda m: f"SS{m.group(1)}",
+        ),
+        (r"\bAISI[- ]?(304|316|321)\b", lambda m: f"SS{m.group(1)}"),
+        (r"\bIS[- ]?(304)\b", lambda m: f"SS{m.group(1)}"),
+    ]
+
+    for pattern, formatter in patterns:
         match = re.search(pattern, text, re.IGNORECASE)
+
         if match:
-            return f"SS{match.group(1)}"
+            return formatter(match)
+
     return None
 
 
