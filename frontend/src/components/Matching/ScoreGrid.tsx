@@ -1,21 +1,28 @@
-const scores = [
-  ["Text similarity", "94%"],
-  ["Semantic similarity", "91%"],
-  ["Specification similarity", "100%"],
-  ["Grade similarity", "100%"],
-];
+import type { MatchScores } from '../../lib/api'
+import { formatPercent } from '../../lib/api'
 
-function ScoreGrid() {
+type ScoreGridProps = {
+  scores: MatchScores
+}
+
+const SCORE_LABELS: Array<[keyof MatchScores, string]> = [
+  ['text_similarity', 'Text similarity'],
+  ['semantic_similarity', 'Semantic similarity'],
+  ['specification_similarity', 'Specification similarity'],
+  ['material_grade_similarity', 'Grade similarity'],
+]
+
+function ScoreGrid({ scores }: ScoreGridProps) {
   return (
     <div className="score-grid">
-      {scores.map(([label, value]) => (
-        <div key={label}>
+      {SCORE_LABELS.map(([key, label]) => (
+        <div key={key}>
           <span>{label}</span>
-          <strong>{value}</strong>
+          <strong>{formatPercent(scores[key], 0)}</strong>
         </div>
       ))}
     </div>
-  );
+  )
 }
 
-export default ScoreGrid;
+export default ScoreGrid
