@@ -40,10 +40,16 @@ def calculate_match_score(
         target.get("material_grade"),
     )
 
-    other_score = specification_similarity(
-        source.get("other_attributes"),
-        target.get("other_attributes"),
-    )
+    left_other = source.get("other_attributes")
+    right_other = target.get("other_attributes")
+    
+    if not left_other and not right_other:
+        other_score = 1.0
+    else:
+        other_score = specification_similarity(
+            left_other,
+            right_other,
+        )
 
     final_score = (
         TEXT_WEIGHT * text_score

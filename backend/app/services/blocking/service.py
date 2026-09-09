@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Any
+import re
 
 
 @dataclass(frozen=True)
@@ -11,79 +11,136 @@ class MaterialForBlocking:
     manufacturer_part_number: str | None = None
 
 
+STOPWORDS = {
+    "THE",
+    "AND",
+    "FOR",
+    "WITH",
+    "FROM",
+    "PART",
+    "PARTS",
+    "ITEM",
+    "TYPE",
+    "NO",
+    "NUMBER",
+    "ASSY",
+    "ASSEMBLY",
+    "SET",
+    "UNIT",
+    "MAKE",
+    "MODEL",
+    "SEAL",
+    "KIT",
+    "SET",
+    "ASSLY",
+    "ASSY",
+}
+
+
+ANCHORS = {
+    "VALVE",
+    "PIPE",
+    "PUMP",
+    "BEARING",
+    "BOLT",
+    "NUT",
+    "CONNECTOR",
+    "CABLE",
+    "FLANGE",
+    "GASKET",
+    "FILTER",
+    "MOTOR",
+    "DISHED",
+    "ELLIP",
+    "SUSPENSION",
+    "RIM",
+    "WEDGE",
+    "HUB",
+    "SEAL",
+    "DRIVER",
+    "SEAT",
+}
+
+
 def _token_set(text: str) -> set[str]:
+    tokens = re.findall(
+        r"[A-Z0-9]+(?:[.:/-][A-Z0-9]+)*",
+        text.upper(),
+    )
+
     return {
         token
-        for token in text.upper().split()
-        if token
+        for token in tokens
+        if token and token not in STOPWORDS
     }
 
 
-def generate_block_keys(material: MaterialForBlocking) -> set[str]:
-    """
-    Generate deterministic blocking keys.
+def generate_block_keys(
+    material: MaterialForBlocking,
+) -> set[str]:
 
-    Blocking only narrows the candidate space.
-    It does NOT determine whether two materials match.
-    """
+    keys = set()
 
-    keys: set[str] = set()
+    category = (
+        (material.category or "")
+        .strip()
+        .upper()
+    )
 
-    category = (material.category or "").strip().upper()
-    grade = (material.material_grade or "").strip().upper()
+    grade = (
+        (material.material_grade or "")
+        .strip()
+        .upper()
+    )
+
     part_number = (
         (material.manufacturer_part_number or "")
         .strip()
         .upper()
     )
 
-    tokens = _token_set(material.normalized_description)
+    tokens = _token_set(
+        material.normalized_description
+    )
 
-    # Strong identity block when manufacturer part number exists.
+    # Strong identifiers.
     if part_number:
         keys.add(f"MPN:{part_number}")
 
-    # Category-level block.
     if category:
         keys.add(f"CAT:{category}")
 
-    # Category + grade block.
     if category and grade:
-        keys.add(f"CAT_GRADE:{category}:{grade}")
+        keys.add(
+            f"CAT_GRADE:{category}:{grade}"
+        )
 
-    # A small set of useful description anchors.
-    anchors = {
-        "VALVE",
-        "PIPE",
-        "PUMP",
-        "BEARING",
-        "BOLT",
-        "NUT",
-        "CONNECTOR",
-        "CABLE",
-        "FLANGE",
-        "GASKET",
-        "FILTER",
-        "MOTOR",
-    }
-
-    for anchor in anchors.intersection(tokens):
+    # Category + technical anchor.
+    for anchor in ANCHORS.intersection(tokens):
         if category:
-            keys.add(f"TYPE:{category}:{anchor}")
-        else:
-            keys.add(f"TYPE:{anchor}")
+            keys.add(
+                f"TYPE:{category}:{anchor}"
+            )
+
+    # Fallback lexical blocking.
+    #
+    # Only technical-looking / sufficiently
+    # distinctive tokens are used here.
+    for token in tokens:
+
+        if len(token) < 4:
+            continue
+
+        # Ignore pure short numbers.
+        if token.isdigit() and len(token) < 5:
+            continue
+
+        keys.add(f"DESC:{token}")
 
     return keys
 
 
-def generate_candidates(
-    source: MaterialForBlocking,
-    targets: list[MaterialForBlocking],
-) -> list[MaterialForBlocking]:
-    """
-    Return target materials sharing at least one blocking key
-    with the source material.
-    """
+def generate_candidates(source, targets):
 
     source_keys = generate_block_keys(source)
 
@@ -93,6 +150,7 @@ def generate_candidates(
     candidates = []
 
     for target in targets:
+
         if source.id == target.id:
             continue
 

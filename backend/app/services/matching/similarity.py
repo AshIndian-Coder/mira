@@ -6,16 +6,13 @@ from app.services.matching.embeddings import semantic_similarity
 
 CATEGORY_SPEC_FIELDS = {
     "FASTENER": [
-        "material_grade",
         "dimensions",
     ],
     "VALVE": [
-        "material_grade",
         "pressure_rating",
         "dimensions",
     ],
     "PIPE": [
-        "material_grade",
         "pressure_rating",
         "dimensions",
     ],
@@ -43,11 +40,25 @@ def value_similarity(left: Any, right: Any) -> float:
     if left is None or right is None:
         return 0.0
 
+    if left == "" or right == "":
+        return 0.0
+
+    if isinstance(left, (list, tuple, set)) and len(left) == 0:
+        return 0.0
+
+    if isinstance(right, (list, tuple, set)) and len(right) == 0:
+        return 0.0
+
+    if isinstance(left, dict) and len(left) == 0:
+        return 0.0
+
+    if isinstance(right, dict) and len(right) == 0:
+        return 0.0
+
     if left == right:
         return 1.0
 
     return 0.0
-
 
 def specification_similarity(
     left: dict[str, Any] | None,
@@ -62,7 +73,9 @@ def specification_similarity(
     fields = CATEGORY_SPEC_FIELDS.get(normalized_category)
 
     if fields is None:
-        fields = set(left) | set(right)
+        fields = (
+            set(left) | set(right)
+        ) - {"material_grade"}
 
     scores = []
 
@@ -89,6 +102,6 @@ def specification_similarity(
             scores.append(value_similarity(left_value, right_value))
 
     if not scores:
-        return 1.0
+        return 0.0
 
     return sum(scores) / len(scores)
