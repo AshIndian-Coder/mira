@@ -6,6 +6,8 @@ from app.services.parsing.service import (
     extract_pressure_rating,
     extract_voltage,
     parse_specifications,
+    extract_nominal_bore,
+    extract_metric_thread,
 )
 
 
@@ -123,3 +125,75 @@ def test_extract_dished_end_dimensions():
             "unit": "MM",
         },
     }
+
+
+def test_embedded_nominal_bore():
+    result = extract_nominal_bore(
+        "GALVANISED MS SOCKET ERW 25MMNB IS:1239"
+    )
+
+    assert result == {
+        "value": 25.0,
+        "unit": "NB",
+    }
+
+
+def test_plain_nominal_bore():
+    result = extract_nominal_bore(
+        "PIPE 300NB"
+    )
+
+    assert result == {
+        "value": 300.0,
+        "unit": "NB",
+    }
+
+
+def test_metric_thread_valid():
+    result = extract_metric_thread(
+        "HEX BOLT M8 X 1.25"
+    )
+
+    assert result == {
+        "nominal_diameter": 8.0,
+        "pitch": 1.25,
+        "unit": "MM",
+    }
+
+
+def test_metric_thread_does_not_misread_length():
+    result = extract_metric_thread(
+        "HEX BOLT M8 X 40MM"
+    )
+
+    assert result is None
+
+
+def test_metric_thread_large_diameter():
+    result = extract_metric_thread(
+        "BOLT M45 X 3"
+    )
+
+    assert result == {
+        "nominal_diameter": 45.0,
+        "pitch": 3.0,
+        "unit": "MM",
+    }
+
+
+def test_fastener_grade():
+    assert extract_grade(
+        "HIGH TENSILE BOLT GR 12.9"
+    ) == "GR12.9"
+
+
+def test_sa_grade():
+    assert extract_grade(
+        "PLATE SA516 GR.70"
+    ) == "SA516 GR70"
+
+
+def test_ca6nm_grade():
+    assert extract_grade(
+        "IMPELLER MATERIAL CA6NM"
+    ) == "CA6NM"

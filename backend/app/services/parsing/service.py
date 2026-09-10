@@ -2,7 +2,12 @@ import re
 from typing import Any
 
 
+# ---------------------------------------------------------
+# MATERIAL GRADES
+# ---------------------------------------------------------
+
 GRADE_PATTERNS = [
+    # Stainless steel
     (r"\bSS[- ]?(304|316|321)\b", lambda m: f"SS{m.group(1)}"),
     (
         r"\bSTAINLESS\s+STEEL\s+(304|316|321)\b",
@@ -10,26 +15,74 @@ GRADE_PATTERNS = [
     ),
     (r"\bAISI[- ]?(304|316|321)\b", lambda m: f"SS{m.group(1)}"),
     (r"\bIS[- ]?(304)\b", lambda m: f"SS{m.group(1)}"),
+
+    # Carbon/alloy steel grades
+    (
+        r"\b(SA\d{3,4})\s*(?:GR(?:ADE)?\.?\s*)?([A-Z]?\d+(?:\.\d+)?)\b",
+        lambda m: f"{m.group(1)} GR{m.group(2)}",
+    ),
+
+    # Common fastener/property classes
+    (
+        r"\b(?:GR|GRADE|CLASS)\s*\.?\s*(\d+(?:\.\d+)?)\b",
+        lambda m: f"GR{m.group(1)}",
+    ),
+    (
+        r"\bPC\s*(\d+(?:\.\d+)?)\b",
+        lambda m: f"PC{m.group(1)}",
+    ),
+
+    # Common material designation
+    (
+        r"\b(CA6NM)\b",
+        lambda m: m.group(1),
+    ),
 ]
 
 
+# ---------------------------------------------------------
+# PRESSURE / VOLTAGE / NB
+# ---------------------------------------------------------
+
 PRESSURE_PATTERN = re.compile(
-    r"(?<!\w)(\d+(?:\.\d+)?)\s*(LB|LBS|POUND|POUNDS|PSI|BAR|#)(?!\w)",
+    r"(?<!\w)"
+    r"(\d+(?:\.\d+)?)"
+    r"\s*(LB|LBS|POUND|POUNDS|PSI|BAR|#)"
+    r"(?!\w)",
     re.IGNORECASE,
 )
-
 
 VOLTAGE_PATTERN = re.compile(
-    r"(?<!\w)(\d+(?:\.\d+)?)\s*(KV|V)(?!\w)",
+    r"(?<!\w)"
+    r"(\d+(?:\.\d+)?)"
+    r"\s*(KV|V)"
+    r"(?!\w)",
     re.IGNORECASE,
 )
 
 
+# Important:
+# Allows:
+#   25NB
+#   25 NB
+#   25MMNB
+#   25 MM NB
+#   200NBX6.35MM
+#
+# Does NOT require NB to be separated by whitespace.
 NB_PATTERN = re.compile(
-    r"(?<!\w)(\d+(?:\.\d+)?)\s*NB(?!\w)",
+    r"(?<![\w.])"
+    r"(\d+(?:\.\d+)?)"
+    r"(?:\s*MM)?"
+    r"\s*NB"
+    r"(?!\w)",
     re.IGNORECASE,
 )
 
+
+# ---------------------------------------------------------
+# METRIC THREAD
+# ---------------------------------------------------------
 
 METRIC_THREAD_PATTERN = re.compile(
     r"\bM(\d+(?:\.\d+)?)\s*[Xx]\s*(\d+(?:\.\d+)?)\b",
@@ -37,16 +90,16 @@ METRIC_THREAD_PATTERN = re.compile(
 )
 
 
-DIMENSION_PATTERN = re.compile(
-    r"(?<![\w.])(\d+(?:\.\d+)?)\s*(MM|IN|INCH|INCHES)(?!\w)",
-    re.IGNORECASE,
-)
 
+# ---------------------------------------------------------
+# PARSER HELPERS
+# ---------------------------------------------------------
 
 def extract_grade(text: str) -> str | None:
+    text = text.upper()
+
     for pattern, formatter in GRADE_PATTERNS:
         match = re.search(pattern, text, re.IGNORECASE)
-
         if match:
             return formatter(match)
 
@@ -54,7 +107,7 @@ def extract_grade(text: str) -> str | None:
 
 
 def extract_pressure_rating(text: str) -> dict[str, Any] | None:
-    match = PRESSURE_PATTERN.search(text)
+    match = PRESSURE_PATTERN.search(text or "")
 
     if not match:
         return None
@@ -71,7 +124,7 @@ def extract_pressure_rating(text: str) -> dict[str, Any] | None:
 
 
 def extract_voltage(text: str) -> dict[str, Any] | None:
-    match = VOLTAGE_PATTERN.search(text)
+    match = VOLTAGE_PATTERN.search(text or "")
 
     if not match:
         return None
@@ -83,7 +136,7 @@ def extract_voltage(text: str) -> dict[str, Any] | None:
 
 
 def extract_nominal_bore(text: str) -> dict[str, Any] | None:
-    match = NB_PATTERN.search(text)
+    match = NB_PATTERN.search(text or "")
 
     if not match:
         return None
@@ -95,182 +148,171 @@ def extract_nominal_bore(text: str) -> dict[str, Any] | None:
 
 
 def extract_metric_thread(text: str) -> dict[str, Any] | None:
-    match = METRIC_THREAD_PATTERN.search(text)
+    match = METRIC_THREAD_PATTERN.search(text or "")
+
+    if not match:
+        return None
+
+    diameter = float(match.group(1))
+    pitch = float(match.group(2))
+
+    # Reject diameter × length expressions such as M8 X 40MM.
+    if pitch > diameter * 0.30:
+        return None
+
+    return {
+        "nominal_diameter": diameter,
+        "pitch": pitch,
+        "unit": "MM",
+    }
+
+
+DIMENSION_PATTERN = re.compile(
+    r"(?<![\w.])"
+    r"(\d+(?:\.\d+)?)"
+    r"\s*(MM|IN|INCH|INCHES)"
+    r"(?!\w)",
+    re.IGNORECASE,
+)
+
+
+DIMENSION_TOKEN_PATTERNS = [
+    re.compile(
+        r"(?<![\w.])"
+        r"(\d+(?:\.\d+)?(?:\s*[Xx]\s*\d+(?:\.\d+)?)+)"
+        r"\s*MM\b",
+        re.IGNORECASE,
+    ),
+    re.compile(
+        r"\bOD\s*(\d+(?:\.\d+)?)\s*[Xx]\s*"
+        r"(\d+(?:\.\d+)?)\s*THK\b",
+        re.IGNORECASE,
+    ),
+    re.compile(
+        r"\b(\d+(?:\.\d+)?)\s*[Xx]\s*"
+        r"(\d+(?:\.\d+)?)\s*THK\b",
+        re.IGNORECASE,
+    ),
+]
+
+
+def extract_dimension_tokens(text: str) -> list[dict[str, Any]]:
+    text = text or ""
+    results: list[dict[str, Any]] = []
+
+    for pattern in DIMENSION_TOKEN_PATTERNS:
+        for match in pattern.finditer(text):
+            if match.lastindex == 1:
+                raw = match.group(1).replace(" ", "")
+                values = raw.split("X")
+
+                results.append({
+                    "values": [float(v) for v in values],
+                    "unit": "MM",
+                })
+
+            elif match.lastindex == 2:
+                results.append({
+                    "values": [
+                        float(match.group(1)),
+                        float(match.group(2)),
+                    ],
+                    "unit": "MM",
+                    "type": "OD_THICKNESS",
+                })
+
+    for match in DIMENSION_PATTERN.finditer(text):
+        value = float(match.group(1))
+        unit = match.group(2).upper()
+
+        if unit in {"INCH", "INCHES"}:
+            unit = "IN"
+
+        token = {
+            "value": value,
+            "unit": unit,
+        }
+
+        if not any(
+            existing.get("value") == value
+            and existing.get("unit") == unit
+            for existing in results
+            if isinstance(existing, dict)
+        ):
+            results.append(token)
+
+    return results
+
+
+def extract_dished_end_dimensions(
+    text: str,
+) -> dict[str, Any] | None:
+    text = text or ""
+
+    pattern = re.compile(
+        r"\bID\s*(\d+(?:\.\d+)?)"
+        r"\s*[Xx]\s*"
+        r"(\d+(?:\.\d+)?)"
+        r"\s*(?:THK)?"
+        r"\s*(?:MM)?\b",
+        re.IGNORECASE,
+    )
+
+    match = pattern.search(text)
 
     if not match:
         return None
 
     return {
-        "nominal_diameter": float(match.group(1)),
-        "pitch": float(match.group(2)),
-        "unit": "MM",
+        "internal_diameter": {
+            "value": float(match.group(1)),
+            "unit": "MM",
+        },
+        "thickness": {
+            "value": float(match.group(2)),
+            "unit": "MM",
+        },
     }
 
 
-def extract_dimension_tokens(text: str) -> list[dict[str, Any]]:
-    text = text.upper()
-    dimensions = []
+def extract_dimensions(text: str):
+    tokens = extract_dimension_tokens(text)
 
-    def add_dimension(value: str, unit: str = "MM") -> None:
-        normalized_unit = unit.upper()
+    if tokens:
+        return tokens[0]
 
-        if normalized_unit in {"INCH", "INCHES"}:
-            normalized_unit = "IN"
+    return extract_dished_end_dimensions(text)
 
-        dimension = {
-            "value": float(value),
-            "unit": normalized_unit,
-        }
 
-        if dimension not in dimensions:
-            dimensions.append(dimension)
+def extract_material_grade(text: str) -> str | None:
+    return extract_grade(text)
 
-    # Dimension sequences with an explicit trailing unit.
-    #
-    # 780X700X4MM
-    # 515X480X4.5 MM
-    # 1700X25 MM
-    sequence_pattern = re.compile(
-        r"(\d+(?:\.\d+)?"
-        r"(?:\s*[Xx]\s*\d+(?:\.\d+)?)+)"
-        r"\s*(MM|IN|INCH|INCHES)\b",
-        re.IGNORECASE,
-    )
 
-    for sequence, unit in sequence_pattern.findall(text):
-        values = re.findall(r"\d+(?:\.\d+)?", sequence)
+def extract_voltage_class(text: str) -> dict[str, Any] | None:
+    return extract_voltage(text)
 
-        for value in values:
-            add_dimension(value, unit)
 
-    # OD-prefixed thickness format.
-    #
-    # OD60.3X5.54THK
-    # OD60.3 X 5.54THK MM
-    od_thk_pattern = re.compile(
-        r"\bOD\s*(\d+(?:\.\d+)?)"
-        r"\s*[Xx]\s*(\d+(?:\.\d+)?)"
-        r"\s*(?:THK|THICKNESS)"
-        r"(?:\s*(MM|IN|INCH|INCHES))?",
-        re.IGNORECASE,
-    )
-
-    for first, second, unit in od_thk_pattern.findall(text):
-        add_dimension(first, unit or "MM")
-        add_dimension(second, unit or "MM")
-
-    # Generic X...THK format.
-    #
-    # 60.3X5.54THK
-    # 1700X25THK
-    thk_pattern = re.compile(
-        r"(?<![A-Z0-9.])"
-        r"(\d+(?:\.\d+)?)"
-        r"\s*[Xx]\s*"
-        r"(\d+(?:\.\d+)?)"
-        r"\s*(?:THK|THICKNESS)\b",
-        re.IGNORECASE,
-    )
-
-    for first, second in thk_pattern.findall(text):
-        add_dimension(first)
-        add_dimension(second)
-
-    # Explicit standalone dimensions.
-    #
-    # 60.3 MM
-    # 25MM
-    # 2 IN
-    explicit_pattern = re.compile(
-        r"(?<![\w.])"
-        r"(\d+(?:\.\d+)?)\s*"
-        r"(MM|IN|INCH|INCHES)"
-        r"(?!\w)",
-        re.IGNORECASE,
-    )
-
-    for value, unit in explicit_pattern.findall(text):
-        add_dimension(value, unit)
-
-    return dimensions
-
-def extract_dished_end_dimensions(text: str) -> dict[str, Any] | None:
-    text = text.upper()
-
-    # Pattern 1:
-    # ID1700X25THK
-    match = re.search(
-        r"\bID\s*(\d+(?:\.\d+)?)\s*X\s*"
-        r"(\d+(?:\.\d+)?)\s*THK\b",
-        text,
-        re.IGNORECASE,
-    )
-
-    if match:
-        return {
-            "internal_diameter": {
-                "value": float(match.group(1)),
-                "unit": "MM",
-            },
-            "thickness": {
-                "value": float(match.group(2)),
-                "unit": "MM",
-            },
-        }
-
-    # Pattern 2:
-    # ID1500X13
-    # Used by the TORI dished-end descriptions.
-    match = re.search(
-        r"\bID\s*(\d+(?:\.\d+)?)\s*X\s*"
-        r"(\d+(?:\.\d+)?)\s*(?:\(\s*MIN\s*\))?",
-        text,
-        re.IGNORECASE,
-    )
-
-    if match:
-        return {
-            "internal_diameter": {
-                "value": float(match.group(1)),
-                "unit": "MM",
-            },
-            "thickness": {
-                "value": float(match.group(2)),
-                "unit": "MM",
-            },
-        }
-
-    return None
-
-def extract_dimensions(text: str) -> dict[str, Any] | None:
-    dimensions = extract_dimension_tokens(text)
-
-    if not dimensions:
-        return None
-
-    return dimensions[0]
-
-def parse_specifications(description: str) -> dict[str, Any]:
-    text = description.upper()
+def parse_specifications(text: str) -> dict:
+    text = text or ""
 
     dimension_tokens = extract_dimension_tokens(text)
     dished_end_dimensions = extract_dished_end_dimensions(text)
 
     return {
-        "material_grade": extract_grade(text),
+        "material_grade": extract_material_grade(text),
         "pressure_rating": extract_pressure_rating(text),
         "dimensions": (
-            dished_end_dimensions
-            if dished_end_dimensions
-            else (
-                dimension_tokens[0]
-                if dimension_tokens
-                else None
-            )
+            dimension_tokens[0]
+            if dimension_tokens
+            else dished_end_dimensions
         ),
         "dimension_tokens": dimension_tokens,
         "dished_end_dimensions": dished_end_dimensions,
         "nominal_bore": extract_nominal_bore(text),
         "metric_thread": extract_metric_thread(text),
-        "voltage_class": extract_voltage(text),
+        "voltage_class": extract_voltage_class(text),
     }
+
+# =========================================================
+# PUBLIC PARSER API
+# =========================================================

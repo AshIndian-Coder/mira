@@ -1,4 +1,5 @@
 from typing import Any
+import os
 
 from app.services.matching.critical_gates import (
     evaluate_critical_gates,
@@ -7,10 +8,15 @@ from app.services.matching.critical_gates import (
 from app.services.matching.scoring import calculate_match_score
 
 
-# These are deliberately conservative starting points.
-# They are NOT the final evaluated thresholds.
-HIGH_CONFIDENCE_SCORE = 0.85
-DIFFERENT_SCORE = 0.45
+# Conservative starting points.
+# Final threshold must be selected using DEV evaluation.
+HIGH_CONFIDENCE_SCORE = float(
+    os.getenv("MIRA_HIGH_CONFIDENCE_SCORE", "0.85")
+)
+
+DIFFERENT_SCORE = float(
+    os.getenv("MIRA_DIFFERENT_SCORE", "0.45")
+)
 
 
 def classify_match(
@@ -26,7 +32,10 @@ def classify_match(
 
     scores = calculate_match_score(source, target)
 
-    critical_checks = evaluate_critical_gates(source, target)
+    critical_checks = evaluate_critical_gates(
+        source,
+        target,
+    )
 
     final_score = scores["final_score"]
 
@@ -40,21 +49,19 @@ def classify_match(
         for check in critical_checks
     )
 
-    gates_pass = gates_allow_high_confidence(critical_checks)
+    gates_pass = gates_allow_high_confidence(
+        critical_checks
+    )
 
-    # Strong similarity is not sufficient by itself.
     if (
         final_score >= HIGH_CONFIDENCE_SCORE
         and gates_pass
     ):
         decision = "HIGH_CONFIDENCE"
 
-    # Missing or conflicting critical specifications must
-    # be reviewed by a human.
     elif has_unknown or has_conflict:
         decision = "REVIEW"
 
-    # Ambiguous similarity should also be reviewed.
     elif final_score > DIFFERENT_SCORE:
         decision = "REVIEW"
 

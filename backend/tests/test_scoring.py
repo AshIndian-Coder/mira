@@ -70,3 +70,44 @@ def test_different_grade_reduces_grade_score():
     result = calculate_match_score(left, right)
 
     assert result["material_grade_similarity"] == 0.0
+
+
+def test_inches_and_mm_are_equivalent():
+    assert value_similarity(
+        {"value": 2, "unit": "IN"},
+        {"value": 50.8, "unit": "MM"},
+    ) == 1.0
+
+
+def test_different_dimensions_conflict():
+    assert value_similarity(
+        {"value": 2, "unit": "IN"},
+        {"value": 60, "unit": "MM"},
+    ) == 0.0
+
+
+def test_specification_uses_unit_conversion():
+    left = {
+        "dimensions": {
+            "value": 2,
+            "unit": "IN",
+        }
+    }
+
+    right = {
+        "dimensions": {
+            "value": 50.8,
+            "unit": "MM",
+        }
+    }
+
+    assert specification_similarity(
+        left,
+        right,
+        "FASTENER",
+    ) == 1.0
+
+from app.services.matching.similarity import (
+    value_similarity,
+    specification_similarity,
+)

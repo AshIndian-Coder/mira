@@ -1,5 +1,5 @@
 from typing import Any
-
+from app.services.matching.similarity import value_similarity
 
 # Critical fields by material category.
 #
@@ -54,7 +54,6 @@ def compare_critical_field(
     source_value = _get_field(source, field)
     target_value = _get_field(target, field)
 
-    # Both unavailable.
     if source_value is None and target_value is None:
         return {
             "field": field,
@@ -64,7 +63,6 @@ def compare_critical_field(
             "reason": "Critical field unavailable in both materials.",
         }
 
-    # Only source is available.
     if source_value is None:
         return {
             "field": field,
@@ -74,7 +72,6 @@ def compare_critical_field(
             "reason": "Critical field missing from source material.",
         }
 
-    # Only target is available.
     if target_value is None:
         return {
             "field": field,
@@ -84,14 +81,13 @@ def compare_critical_field(
             "reason": "Critical field missing from target material.",
         }
 
-    # Exact structured/scalar equality.
-    if source_value == target_value:
+    if value_similarity(source_value, target_value) == 1.0:
         return {
             "field": field,
             "status": "PASS",
             "source_value": source_value,
             "target_value": target_value,
-            "reason": "Critical values match.",
+            "reason": "Critical values match after normalization.",
         }
 
     return {

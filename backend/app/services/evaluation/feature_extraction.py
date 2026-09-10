@@ -83,8 +83,16 @@ def extract_features(row):
         target["material_grade"],
     )
 
-    # Dataset A currently has no other_attributes.
-    other_score = 0.0
+    left_other = source.get("other_attributes")
+    right_other = target.get("other_attributes")
+    
+    if not left_other and not right_other:
+        other_score = 1.0
+    else:
+        other_score = specification_similarity(
+            left_other,
+            right_other,
+        )
 
     return {
         "pair_id": row["pair_id"],

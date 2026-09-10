@@ -95,3 +95,25 @@ def test_different_categories_require_review():
     assert checks[0]["status"] == "CONFLICT"
 
     assert not gates_allow_high_confidence(checks)
+
+
+def test_dimension_unit_conversion_passes():
+    material_a = valve(
+        {"value": 150, "unit": "LB"},
+        {"value": 2, "unit": "IN"},
+    )
+
+    material_b = valve(
+        {"value": 150, "unit": "LB"},
+        {"value": 50.8, "unit": "MM"},
+    )
+
+    checks = evaluate_critical_gates(
+        material_a,
+        material_b,
+    )
+
+    assert all(
+        check["status"] == "PASS"
+        for check in checks
+    )
