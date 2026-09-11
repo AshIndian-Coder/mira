@@ -4,7 +4,7 @@
 
 **SIH26099 — AI-Driven Standardization and Harmonization of Material Codes Across CPSEs**
 
-****Deadline:**** 18 days hard freeze.
+**Deadline:** 18 days hard freeze.
 
 ## Team Roles
 
