@@ -9,10 +9,12 @@ from typing import Any
 
 from fastapi import APIRouter, Query
 
+from app.db_adapter import PersistentList, audit_logs_table
+
 router = APIRouter(prefix="/audit", tags=["Audit"])
 
-# Append-only list — review route appends to this on every decision.
-AUDIT_EVENTS: list[dict[str, Any]] = []
+# Append-only, Postgres-backed — review route appends to this on every decision.
+AUDIT_EVENTS = PersistentList(audit_logs_table)
 
 
 @router.get("")
@@ -47,5 +49,5 @@ def export_audit_log():
     """Full audit log — all events, oldest first. For governance / download."""
     return {
         "total": len(AUDIT_EVENTS),
-        "events": AUDIT_EVENTS,
+        "events": list(AUDIT_EVENTS),
     }
