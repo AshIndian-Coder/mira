@@ -70,6 +70,15 @@ You should see `(.venv)` in your terminal. Then install (5–15 min, one time on
 pip install -r requirements.txt
 ```
 
+> If you get `ERROR: No matching distribution found for torch==2.14.0+cpu`:
+> the `+cpu` torch build lives on PyTorch's own server, not PyPI.
+> Install torch first, then re-run the same command:
+>
+> ```bash
+> pip install torch --index-url https://download.pytorch.org/whl/cpu
+> pip install -r requirements.txt
+> ```
+
 ## 4. Database password
 
 The app default is `postgresql://postgres:postgres@localhost:5432/mira` (password = `postgres`).
@@ -126,3 +135,4 @@ Both survive = persistence works.
 | `No module named 'app'` / `'fastapi'` | Activate `.venv`, run from `backend` folder |
 | Slow first matching run | Normal — downloading AI model once (needs internet) |
 | `Port 8000 already in use` | Old server still running — close it or use `--port 8001` |
+| `No matching distribution ... torch==2.14.0+cpu` | Install torch from PyTorch's index first (see note in Step 3) |
