@@ -262,7 +262,7 @@ Important:
 
 Implemented:
 
-- `app/store.py` — shared in-memory MATERIALS + CANDIDATES store, designed to be DB-swappable.
+- `app/store.py` — Postgres-backed MATERIALS + CANDIDATES via `app/db_adapter.py` (`PersistentList`/`DBRow`; list-compatible interface, write-through mutation). See "Latest Update — 2026-09-12".
 
 - `POST /api/materials/upload` — CSV ingestion → store
 
@@ -302,15 +302,17 @@ Implemented:
 
 - `GET /api/mappings`
 
+- `GET /api/mappings/{id}`
+
 - `GET /api/mappings/export/flat`
+
+- `GET /` — landing page (service status + links); `GET /health` unchanged
 
 ### Backend limitations still remaining
 
-- PostgreSQL persistence is not yet the active material/candidate store.
+- PostgreSQL persistence **is now** the active material/candidate/mapping/audit store (done 2026-09-12, see Latest Update below).
 
 - pgvector persistence/search is not yet wired into the active API pipeline.
-
-- In-memory `app/store.py` is currently the runtime store.
 
 - SAP integration is not a live connection; the current architecture is integration-ready.
 
@@ -418,7 +420,7 @@ Wire the existing frontend to the backend API:
 
 5. Consolidate duplicate candidate-generation implementations and avoid unnecessary O(n²) cross-CPSE loops.
 
-6. Move active persistence toward PostgreSQL/pgvector.
+6. PostgreSQL persistence is DONE (2026-09-12); remaining is pgvector search integration only.
 
 7. Implement/verify clustering and conflict detection against approved relationships.
 
@@ -626,6 +628,72 @@ Do not use `git add .` because local `data/` must remain outside the commit.
 4. Complete Dataset A DEV/HELD-OUT evaluation.
 5. Align evaluator scoring with production scoring.
 6. Continue frontend API wiring.
-7. Only then consider broader PostgreSQL/pgvector integration and clustering verification.
+7. PostgreSQL persistence completed 2026-09-12 (PR #1); remaining here is pgvector integration and clustering verification.
+
+## Latest Update — 2026-09-12
+
+### Postgres persistence completed (PR #1)
+
+All runtime state moved from in-memory Python lists to PostgreSQL. Data now
+survives server restarts with **zero logic changes** to any route.
+
+#### Files (branch `arena/01a095f9-mira` → PR #1 into `main`)
+
+- `backend/mira_full_schema.sql` — NEW, 9 tables mirroring the exact dict
+  shapes the routes already produce (`cpses`, `users`, `upload_batches`,
+  `materials`, `match_suggestions`, `cnmc`, `mappings`, `feedback`,
+  `audit_logs`).
+- `backend/app/db_adapter.py` — NEW persistence engine: `PersistentList`
+  (`.append()`/`.extend()`/`.clear()`/iteration/`len()`, DB-backed),
+  `DBRow` (dict subclass with write-through `UPDATE` on key assignment),
+  `next_id()` (max-id + 1, restart-safe), ISO-string → `TIMESTAMP`
+  auto-coercion.
+- `backend/app/store.py` — rewritten: `MATERIALS`/`CANDIDATES` are now
+  `PersistentList`s; `next_candidate_id()` uses a self-reseeding in-memory
+  cache (batch-safe: `matching.py` mints all IDs before one `.extend()`);
+  `reset_stores()` clears candidates BEFORE materials (FK-safe order).
+- `backend/app/api/routes/mappings.py` — `MAPPINGS` now DB-backed.
+- `backend/app/api/routes/audit.py` — `AUDIT_EVENTS` now DB-backed.
+- `backend/app/main.py` — added landing page at `GET /` (was 404).
+- `LOCAL_SETUP.md` — NEW simple local run guide (Windows-first).
+- `README.md` — rewritten (was a 2-line stub): quickstart, API table,
+  persistence notes, repo layout, docs index.
+- `materials.py`, `matching.py`, `review.py`, `analytics.py` — zero changes.
+
+#### Bugs found and fixed during verification (live Postgres)
+
+1. `reset_stores()` cleared `materials` before `match_suggestions` →
+   `ForeignKeyViolation`. Fixed deletion order.
+2. `GET /api/audit/export` returned raw `PersistentList` → not
+   JSON-serializable. Wrapped in `list()` (same response shape).
+
+#### Verification evidence
+
+- Schema applies cleanly; upload → match → approve → mappings → audit →
+  analytics all pass over HTTP against real Postgres.
+- Restart test: 5 materials, 5 candidates, APPROVED status with reviewer +
+  comments + timestamp, audit events, mappings — all survive restart.
+- Post-restart inserts continue IDs with zero collisions
+  (materials 6, 7…; candidates 6–12).
+- Existing pytest suite: 38 passed; 8 failures are pre-existing and
+  environmental only (sandbox could not reach huggingface.co to download
+  `all-MiniLM-L6-v2`); no test touches `store`.
+- Matching's semantic step was stubbed (difflib) in the sandbox ONLY
+  (`/tmp`, never committed) due to no HuggingFace access; production
+  machines load the real local model normally.
+
+#### Local-run gotchas documented (in `LOCAL_SETUP.md`)
+
+- `torch==2.14.0+cpu` is not on PyPI → install from the PyTorch CPU index
+  first, then `pip install -r requirements.txt`.
+- `DATABASE_URL` passwords containing `@` must be URL-encoded (`%40`).
+- `.env` belongs in `backend/` (where uvicorn runs), never committed.
+
+### Continuation point after this update
+
+1. Merge PR #1 into `main`.
+2. Frontend API wiring (Person 4) can now rely on persistent data.
+3. Remaining backend: `run-batch` integration tests, pgvector search,
+   clustering/conflict verification, Dataset A DEV/HELD-OUT evaluation.
 
 ## EOF
