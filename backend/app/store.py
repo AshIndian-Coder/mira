@@ -1,42 +1,54 @@
 """
-Shared in-memory stores for the MIRA backend.
+Shared Postgres-backed stores for the MIRA backend.
 
-These are the authoritative runtime stores until Person 3 (Database)
-replaces them with PostgreSQL-backed persistence.
-
-All route modules should import from here — never define their own lists.
+This used to hold plain in-memory lists. It's now backed by real
+PostgreSQL persistence via PersistentList (see app/db_adapter.py), but
+MATERIALS and CANDIDATES still behave exactly like lists from the
+outside -- .append(), .extend(), .clear(), iteration, len(), and
+in-place dict mutation (`c["review_status"] = "APPROVED"`) all still
+work. No route file needs to change how it uses these.
 """
 
-from typing import Any
+from app.db_adapter import PersistentList, materials_table, match_suggestions_table, next_id
 
 # ---------------------------------------------------------------------------
 # Material master (populated by POST /api/materials/upload)
 # ---------------------------------------------------------------------------
-MATERIALS: list[dict[str, Any]] = []
+MATERIALS = PersistentList(materials_table)
 
 # ---------------------------------------------------------------------------
 # Match candidates (populated by POST /api/matching/run-batch)
-# Each entry structure:
-#   id, source_material_id, target_material_id,
-#   scores: {...}, critical_checks: [...], engine_decision,
-#   review_status: PENDING | APPROVED | REJECTED,
-#   reviewer_id, reviewer_comments, reviewed_at
 # ---------------------------------------------------------------------------
-CANDIDATES: list[dict[str, Any]] = []
+CANDIDATES = PersistentList(match_suggestions_table)
 
-# Monotonic counter for candidate IDs
-_candidate_id_counter: int = 0
+# ---------------------------------------------------------------------------
+# Candidate ID generation.
+#
+# matching.py generates ALL candidate ids for a batch in memory before
+# saving any of them (via one .extend() call at the end), so ids must be
+# handed out from an in-memory counter -- querying the DB fresh each
+# time would hand out the same id repeatedly within one batch. The
+# counter reseeds itself from the DB's current max id the first time
+# it's used after a restart, so ids stay correct and gap-free across
+# restarts too.
+# ---------------------------------------------------------------------------
+_candidate_id_cache: int | None = None
 
 
 def next_candidate_id() -> int:
-    global _candidate_id_counter
-    _candidate_id_counter += 1
-    return _candidate_id_counter
+    global _candidate_id_cache
+    if _candidate_id_cache is None:
+        _candidate_id_cache = next_id(match_suggestions_table)
+    else:
+        _candidate_id_cache += 1
+    return _candidate_id_cache
 
 
 def reset_stores() -> None:
-    """Clear all stores — used in tests."""
-    global _candidate_id_counter
-    MATERIALS.clear()
+    """Clear all stores -- used in tests."""
+    global _candidate_id_cache
+    # Order matters: match_suggestions has FKs to materials, so candidates
+    # must be deleted BEFORE materials or Postgres raises ForeignKeyViolation.
     CANDIDATES.clear()
-    _candidate_id_counter = 0
+    MATERIALS.clear()
+    _candidate_id_cache = None
