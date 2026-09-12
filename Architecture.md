@@ -301,26 +301,39 @@ PostgreSQL stores:
 pgvector supports vector search.
 
 ## 19. API Boundary
-Current:
+Current (all live, Postgres-backed — see memory.md "Latest Update — 2026-09-12"):
 ```text
+GET  /
 GET  /health
+POST /api/materials/upload
+GET  /api/materials
+GET  /api/materials/stats
+GET  /api/materials/{id}
 POST /api/matching/compare
+POST /api/matching/run-batch
+GET  /api/matching/candidates
+GET  /api/matching/candidates/{id}
+GET  /api/matching/stats
+GET  /api/review/queue
+GET  /api/review/queue/{id}
+POST /api/review/queue/{id}/action
+GET  /api/review/summary
+GET  /api/audit
+GET  /api/audit/export
+GET  /api/analytics/overview
+GET  /api/analytics/by-cpse
+GET  /api/analytics/categories
+GET  /api/analytics/scores
+GET  /api/mappings
+GET  /api/mappings/{id}
+POST /api/mappings/generate
+GET  /api/mappings/export/flat
 ```
 
 Planned:
 ```text
-POST /api/materials
-GET  /api/materials
-GET  /api/materials/{id}
-GET  /api/matches/review
-GET  /api/matches/{id}
-POST /api/matches/{id}/decision
 GET  /api/common-materials
 POST /api/common-materials
-GET  /api/mappings
-POST /api/mappings
-GET  /api/analytics
-GET  /api/audit
 GET  /api/integrations
 POST /api/integrations/{id}/sync
 ```
@@ -388,20 +401,19 @@ Implemented:
 - category-aware specification comparison
 - critical gates
 - match classifier
-- matching API
+- full matching/materials/review/audit/analytics/mappings API
+- **PostgreSQL persistence for materials, candidates, mappings, audit** (`db_adapter.py` + `mira_full_schema.sql`, verified incl. restart test)
+- CSV material ingestion, dataset-level matching, human review with audit
+- provisional NMC mapping generation
 - regression tests
 
-**28 tests passing.**
+**38 tests passing** (8 pre-existing failures are environmental only: no HuggingFace access in one sandbox).
 
 Next:
 1. Inspect tender/BOQ samples.
-2. Material persistence.
-3. Material ingestion.
-4. Connect Materials frontend.
-5. Dataset-level matching.
-6. Review persistence.
-7. Common materials/NMC/mapping.
-8. Clustering/conflict detection.
-9. Audit/analytics backend.
-10. Optional LLM extraction/classification if justified.
-11. Blind evaluation.
+2. Connect Materials frontend (backend ready).
+3. Common Material Record (canonical form beyond provisional NMC).
+4. Clustering/conflict detection verification.
+5. pgvector search integration.
+6. Optional LLM extraction/classification if justified.
+7. Blind evaluation.
