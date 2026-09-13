@@ -410,7 +410,7 @@ ERP/SAP integration capability
 
 The LLM must never displace evaluation, critical gates or human review.
 
-# Current State
+# Current State (updated 2026-09-12)
 Completed:
 - Frontend screens
 - FastAPI foundation
@@ -422,19 +422,24 @@ Completed:
 - category-aware specification similarity
 - critical gates
 - match classifier
-- `POST /api/matching/compare`
-- 28 passing backend tests
+- Full API: materials, matching (`compare` + dataset-level `run-batch`), review, audit, analytics, mappings
+- **PostgreSQL persistence** for materials, candidates, mappings, audit (verified incl. restart test)
+- CSV ingestion, human review with audit trail, provisional NMC mapping generation
+- 38 passing backend tests
 
 Verified:
 ```text
 Equivalent descriptions → HIGH_CONFIDENCE
 Critical conflict → REVIEW
 Critical UNKNOWN → REVIEW
+Upload → restart → data persists
+Approve → restart → still approved
 ```
 
 Immediate priorities:
 1. Inspect teammate-collected tender/BOQ data.
-2. Implement PostgreSQL Material persistence.
-3. Implement `GET /api/materials`.
-4. Connect Materials frontend.
-5. Continue toward dataset-level matching and review persistence.
+2. Connect Materials/Match-Review frontend to the persistent API.
+3. Common Material Record (canonical form beyond provisional NMC).
+4. Clustering/conflict detection verification.
+5. pgvector search integration.
+6. Dataset-level DEV/HELD-OUT evaluation.

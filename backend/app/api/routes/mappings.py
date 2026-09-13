@@ -14,19 +14,20 @@ from typing import Any
 from fastapi import APIRouter, HTTPException
 
 from app import store
+from app.db_adapter import PersistentList, mappings_table, next_id
 
 router = APIRouter(prefix="/mappings", tags=["Mappings"])
 
-# In-memory mapping store: each entry =
+# Postgres-backed mapping store: each entry =
 #   { id, nmc, cpse_mappings: [{cpse, material_code, description}], status, created_at }
-MAPPINGS: list[dict[str, Any]] = []
-_mapping_counter = 0
+MAPPINGS = PersistentList(mappings_table)
 
 
 def _next_mapping_id() -> int:
-    global _mapping_counter
-    _mapping_counter += 1
-    return _mapping_counter
+    # Safe to query fresh each call: each mapping is appended immediately
+    # after its id is generated (see generate_mappings() below), so the
+    # DB always reflects prior mappings before the next id is requested.
+    return next_id(mappings_table)
 
 
 def _make_nmc(mapping_id: int) -> str:

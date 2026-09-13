@@ -1,5 +1,6 @@
 import re
 from typing import Any
+from pathlib import Path
 
 from app.services.ingestion.adapters.base import (
     DocumentAdapter,
@@ -20,6 +21,8 @@ class GenericAdapter(DocumentAdapter):
     """
 
     name = "generic"
+    def __init__(self, cpse_hint: str | None = None) -> None:
+        self.cpse_hint = cpse_hint
 
     # Common material-code shapes:
     #   M0171184004
@@ -29,10 +32,24 @@ class GenericAdapter(DocumentAdapter):
     #
     # This is intentionally broader than any one CPSE's code format.
     MATERIAL_CODE_PATTERNS = (
-        re.compile(r"^M[A-Z0-9]{6,}$", re.IGNORECASE),
-        re.compile(r"^HE[A-Z0-9]{6,}$", re.IGNORECASE),
+        # Alphanumeric material identifiers must contain a digit so that
+        # ordinary prose words such as "material" or "management" cannot
+        # be mistaken for codes.
+        re.compile(
+            r"^M(?=[A-Z0-9]*\d)[A-Z0-9]{6,}$",
+            re.IGNORECASE,
+        ),
+        re.compile(
+            r"^HE(?=[A-Z0-9]*\d)[A-Z0-9]{6,}$",
+            re.IGNORECASE,
+        ),
+
+        # Plain numeric material codes.
         re.compile(r"^\d{8,12}$"),
-        re.compile(r"^\d+(?:\.\d+){2,}$"),
+
+        # Dotted material-code formats need more structure than ordinary
+        # tender clause numbers such as 2.4.1.
+        re.compile(r"^\d+(?:\.\d+){3,}$"),
     )
 
     UNIT_ALIASES = {
@@ -77,6 +94,7 @@ class GenericAdapter(DocumentAdapter):
     def extract_records(
         self,
         document: ParsedDocument,
+        cpse_hint: str | None = None,
     ) -> list[MaterialRecord]:
 
         records: list[MaterialRecord] = []
@@ -141,9 +159,13 @@ class GenericAdapter(DocumentAdapter):
 
                 records.append(
                     MaterialRecord(
-                        cpse=self._infer_cpse(
-                            document,
-                            material_code,
+                        cpse=(
+                            cpse_hint.upper()
+                            if cpse_hint
+                            else self._infer_cpse(
+                                document,
+                                material_code,
+                            )
                         ),
                         material_code=material_code,
                         description=description,
@@ -197,9 +219,9 @@ class GenericAdapter(DocumentAdapter):
         # identifier.
         match = re.match(
             r"^("
-            r"M[A-Z0-9]{6,}"
-            r"|HE[A-Z0-9]{6,}"
-            r"|\d+(?:\.\d+){2,}"
+            r"M(?=[A-Z0-9]*\d)[A-Z0-9]{6,}"
+            r"|HE(?=[A-Z0-9]*\d)[A-Z0-9]{6,}"
+            r"|\d+(?:\.\d+){3,}"
             r")"
             r"\s+(.+)$",
             value,
@@ -571,9 +593,13 @@ class GenericAdapter(DocumentAdapter):
 
     @staticmethod
     def _infer_cpse(
+        self,
         document: ParsedDocument,
         material_code: str,
     ) -> str:
+
+        if self.cpse_hint:
+            return self.cpse_hint.upper()
 
         filename = document.filename.upper()
 

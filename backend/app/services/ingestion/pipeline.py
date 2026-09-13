@@ -92,6 +92,7 @@ class IngestionPipeline:
         records = self._extract_records(
             document=document,
             report_type=profile.report_type,
+            cpse_hint=profile.cpse_hint,
         )
 
         # -------------------------------------------------------------
@@ -157,9 +158,26 @@ class IngestionPipeline:
         *,
         document: ParsedDocument,
         report_type: str,
+        cpse_hint: str | None = None,
     ) -> list[MaterialRecord]:
 
         specialized_records: list[MaterialRecord] = []
+
+        # A report-type classification must not override a conflicting
+        # CPSE identity. If the document belongs to a CPSE for which the
+        # selected specialized adapter is not applicable, use generic
+        # extraction instead of risking records from the wrong parser.
+        specialized_cpse = {
+            "bhel": "BHEL",
+            "nalco": "NALCO",
+            "ntpc": "NTPC",
+            "bpcl": "BPCL",
+        }
+
+        expected_cpse = specialized_cpse.get(report_type)
+
+        if cpse_hint and expected_cpse and cpse_hint.upper() != expected_cpse:
+            report_type = "unknown"
 
         # -------------------------------------------------------------
         # 1. Try the specialized adapter selected by the inspector.
@@ -214,7 +232,8 @@ class IngestionPipeline:
         #   - unfamiliar CPSE formats
         # -------------------------------------------------------------
         generic_records = self.generic_adapter.extract_records(
-            document
+            document,
+            cpse_hint=cpse_hint,
         )
 
         return generic_records
