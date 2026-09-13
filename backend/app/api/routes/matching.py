@@ -22,6 +22,7 @@ from app.services.blocking.service import (
     generate_block_keys,
     generate_candidates as blocking_generate_candidates,
 )
+from app.services.matching.vector_search import search_similar_materials
 from app import store
 
 router = APIRouter(prefix="/matching", tags=["Matching"])
@@ -124,7 +125,7 @@ def run_batch_matching(request: BatchRunRequest):
 
     1. Convert all ingested materials to blocker objects.
     2. Build the block index (key → list of material IDs).
-    3. For each material generate candidates via blocking.
+    3. For each material generate candidates via blocking (+ vector search).
     4. Score and classify each unique candidate pair.
     5. Store results in the shared CANDIDATES store.
 
@@ -166,22 +167,44 @@ def run_batch_matching(request: BatchRunRequest):
         # Cap per source material to avoid O(n²) explosion on large datasets
         raw_candidates = raw_candidates[: request.max_candidates_per_material]
 
-        for target_bo in raw_candidates:
-            pk = _pair_key(source_bo.id, target_bo.id)
+        target_ids = {bo.id for bo in raw_candidates}
+
+        # Additional candidates from vector search -- catches matches the
+        # rule-based blocker misses (different wording, no shared keywords).
+        # Wrapped defensively: if Milvus is down, rule-based blocking still
+        # runs unaffected -- this only ever adds candidates, never removes.
+        source_mat_for_vs = material_index[source_bo.id]
+        try:
+            vector_ids = search_similar_materials(
+                description=source_mat_for_vs.get("normalized_description", ""),
+                category=source_mat_for_vs.get("category"),
+                top_k=50,
+            )
+            target_ids.update(
+                vid for vid in vector_ids
+                if vid != source_bo.id and vid in material_index
+            )
+        except Exception:
+            pass
+
+        # sorted() keeps candidate-id assignment deterministic across runs
+        # (target_ids is a set, so raw iteration order would vary).
+        for target_id in sorted(target_ids):
+            pk = _pair_key(source_bo.id, target_id)
             if pk in seen_pairs:
                 continue
             seen_pairs.add(pk)
             total_pairs_evaluated += 1
 
             source_mat = material_index[source_bo.id]
-            target_mat = material_index[target_bo.id]
+            target_mat = material_index[target_id]
 
             result = classify_match(source_mat, target_mat)
 
             candidate: dict[str, Any] = {
                 "id": store.next_candidate_id(),
                 "source_material_id": source_bo.id,
-                "target_material_id": target_bo.id,
+                "target_material_id": target_id,
                 "source_cpse": source_mat["cpse"],
                 "target_cpse": target_mat["cpse"],
                 "source_code": source_mat["material_code"],

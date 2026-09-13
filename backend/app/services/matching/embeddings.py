@@ -3,7 +3,8 @@ from functools import lru_cache
 from sentence_transformers import SentenceTransformer
 
 
-MODEL_NAME = "all-MiniLM-L6-v2"
+MODEL_NAME = "Qwen/Qwen3-Embedding-0.6B"
+EMBEDDING_DIM = 1024  # locked to this model output size -- Milvus collection must match
 
 
 @lru_cache(maxsize=1)
