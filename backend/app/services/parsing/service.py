@@ -549,12 +549,15 @@ def extract_dimension_tokens(
             elif match.lastindex == 2:
 
                 results.append({
-                    "values": [
-                        float(match.group(1)),
-                        float(match.group(2)),
-                    ],
+                    "value": float(match.group(1)),
                     "unit": "MM",
-                    "type": "OD_THICKNESS",
+                    "type": "OD",
+                })
+
+                results.append({
+                    "value": float(match.group(2)),
+                    "unit": "MM",
+                    "type": "THICKNESS",
                 })
 
     for match in DIMENSION_PATTERN.finditer(text):

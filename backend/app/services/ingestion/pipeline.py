@@ -3,8 +3,6 @@ from pathlib import Path
 from typing import Any
 
 from app.services.ingestion.adapters.base import ParsedDocument
-from app.services.ingestion.adapters.bhel import parse_bhel_pdf
-from app.services.ingestion.adapters.nalco import parse_nalco_pdf
 from app.services.ingestion.adapters.generic import GenericAdapter
 from app.services.ingestion.document_inspector import DocumentInspector
 from app.services.ingestion.pdf_extractor import extract_pdf_text
@@ -22,8 +20,6 @@ class IngestionResult:
 
     source_file: str
     report_type: str
-    cpse_hint: str | None
-
     records: list[MaterialRecord]
 
     validation: dict[str, Any]
@@ -34,7 +30,6 @@ class IngestionResult:
         return {
             "source_file": self.source_file,
             "report_type": self.report_type,
-            "cpse_hint": self.cpse_hint,
             "record_count": len(self.records),
             "records": [
                 record.to_dict()
@@ -49,9 +44,8 @@ class IngestionPipeline:
     """
     Single entry point for document ingestion.
 
-    Specialized adapters are preferred when the document inspector
-    identifies a known report family. If a specialized adapter cannot
-    extract any records, the generic adapter is used as a fallback.
+    Documents are parsed through the generic adapter so that ingestion
+    remains independent of CPSE-specific or tender-specific layouts.
     """
 
     def __init__(self) -> None:
@@ -87,12 +81,10 @@ class IngestionPipeline:
         profile = self.inspector.inspect(document)
 
         # -------------------------------------------------------------
-        # 3. Select adapter
+        # 3. Extract material records
         # -------------------------------------------------------------
         records = self._extract_records(
             document=document,
-            report_type=profile.report_type,
-            cpse_hint=profile.cpse_hint,
         )
 
         # -------------------------------------------------------------
@@ -133,15 +125,13 @@ class IngestionPipeline:
 
         return IngestionResult(
             source_file=path.name,
-            report_type=profile.report_type,
-            cpse_hint=profile.cpse_hint,
+            report_type="generic",
             records=records,
             validation=validation,
             extraction_metadata={
                 "pages_extracted": len(pages),
                 "document_profile": {
-                    "report_type": profile.report_type,
-                    "cpse_hint": profile.cpse_hint,
+                    "report_type": "generic",
                     "signals": profile.signals,
                 },
                 "llm_provider": getattr(
@@ -157,86 +147,16 @@ class IngestionPipeline:
         self,
         *,
         document: ParsedDocument,
-        report_type: str,
-        cpse_hint: str | None = None,
     ) -> list[MaterialRecord]:
+        """
+        Extract material records using the generic adapter.
 
-        specialized_records: list[MaterialRecord] = []
-
-        # A report-type classification must not override a conflicting
-        # CPSE identity. If the document belongs to a CPSE for which the
-        # selected specialized adapter is not applicable, use generic
-        # extraction instead of risking records from the wrong parser.
-        specialized_cpse = {
-            "bhel": "BHEL",
-            "nalco": "NALCO",
-            "ntpc": "NTPC",
-            "bpcl": "BPCL",
-        }
-
-        expected_cpse = specialized_cpse.get(report_type)
-
-        if cpse_hint and expected_cpse and cpse_hint.upper() != expected_cpse:
-            report_type = "unknown"
-
-        # -------------------------------------------------------------
-        # 1. Try the specialized adapter selected by the inspector.
-        #
-        # A classification is a preference, not a guarantee that the
-        # adapter can actually extract this document.
-        # -------------------------------------------------------------
-        if report_type == "bhel":
-            specialized_records = parse_bhel_pdf(document.path)
-
-        elif report_type == "nalco":
-            specialized_records = parse_nalco_pdf(document.path)
-
-        elif report_type == "ntpc":
-            from app.services.ingestion.ntpc_parser import (
-                parse_ntpc_pdf,
-            )
-
-            raw_records = parse_ntpc_pdf(document.path)
-
-            specialized_records = [
-                MaterialRecord(
-                    cpse=record["cpse"],
-                    material_code=record["material_code"],
-                    description=record["description"],
-                    unit=record.get("unit"),
-                    quantity=record.get("quantity"),
-                    source_file=record.get("source_file"),
-                    source_page=record.get("source_page"),
-                    extraction_metadata={
-                        "adapter": "ntpc_legacy",
-                        "confidence": "medium",
-                    },
-                )
-                for record in raw_records
-            ]
-
-        # -------------------------------------------------------------
-        # 2. Accept specialized extraction only if it actually
-        #    produced records.
-        # -------------------------------------------------------------
-        if specialized_records:
-            return specialized_records
-
-        # -------------------------------------------------------------
-        # 3. Generic fallback.
-        #
-        # This protects us from:
-        #   - incorrect document classification
-        #   - incomplete specialized adapters
-        #   - new report variants
-        #   - unfamiliar CPSE formats
-        # -------------------------------------------------------------
-        generic_records = self.generic_adapter.extract_records(
+        PDF extraction and material detection remain format-agnostic.
+        CPSE identity is not inferred during generic document ingestion.
+        """
+        return self.generic_adapter.extract_records(
             document,
-            cpse_hint=cpse_hint,
         )
-
-        return generic_records
 
 
 def ingest_pdf(
@@ -271,8 +191,7 @@ def main() -> None:
     print("=" * 70)
 
     print(f"Source       : {result.source_file}")
-    print(f"Report type  : {result.report_type}")
-    print(f"CPSE hint    : {result.cpse_hint}")
+    print(f"Parser       : {result.report_type}")
     print(f"Records      : {len(result.records)}")
 
     print()
