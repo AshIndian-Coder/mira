@@ -20,8 +20,6 @@ export default function ERPIntegration() {
   const [exportRows, setExportRows] = useState<ExportRow[]>([])
   const [pendingReview, setPendingReview] = useState(0)
   const [loading, setLoading] = useState(true)
-  const [syncing, setSyncing] = useState(false)
-  const [lastAction, setLastAction] = useState('')
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
@@ -29,10 +27,11 @@ export default function ERPIntegration() {
       try {
         setLoading(true)
         setError(null)
-        const [cpseRes, overview, exportRes] = await Promise.all([
+        const [cpseRes, overview, exportRes, mappingsRes] = await Promise.all([
           api.analyticsByCpse(),
           api.analyticsOverview(),
           api.exportMappingsFlat(),
+          api.listMappings(),
         ])
 
         setSystems(
@@ -43,12 +42,16 @@ export default function ERPIntegration() {
           })),
         )
         setPendingReview(overview.review_pending)
+        const mappingStatusByNmc = new Map(
+          mappingsRes.mappings.map((mapping) => [mapping.nmc, mapping.status]),
+        )
+
         setExportRows(
           exportRes.rows.map((row) => ({
             cpse: row.cpse,
             code: row.cpse_material_code,
             nmc: row.nmc,
-            status: 'APPROVED',
+            status: mappingStatusByNmc.get(row.nmc) ?? 'UNKNOWN',
           })),
         )
       } catch (err) {
@@ -60,15 +63,6 @@ export default function ERPIntegration() {
 
     load()
   }, [])
-
-  const handleSync = () => {
-    setSyncing(true)
-    setLastAction('Synchronization initiated')
-    window.setTimeout(() => {
-      setSyncing(false)
-      setLastAction('Material master sync completed (adapter demo)')
-    }, 1200)
-  }
 
   const handleExport = async () => {
     try {
@@ -82,7 +76,6 @@ export default function ERPIntegration() {
       link.download = 'mira-erp-export.json'
       link.click()
       URL.revokeObjectURL(url)
-      setLastAction(`Prepared ${result.total_rows} approved mapping rows for export`)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Export failed')
     }
@@ -94,7 +87,7 @@ export default function ERPIntegration() {
         <div>
           <div className="eyebrow">ENTERPRISE CONNECTIVITY</div>
           <h1>ERP Integration</h1>
-          <p>Connect CPSE material masters and exchange approved harmonization mappings.</p>
+          <p>Review CPSE material sources and prepare harmonization mappings for ERP exchange.</p>
         </div>
       </div>
 
@@ -112,7 +105,7 @@ export default function ERPIntegration() {
         <div className="erp-section-header">
           <div>
             <div className="eyebrow">SOURCE SYSTEMS</div>
-            <h2>Connected Systems</h2>
+            <h2>Ingested Source Systems</h2>
           </div>
           <span className="erp-system-count">
             {loading ? '…' : `${systems.length} CPSE sources ingested`}
@@ -131,11 +124,11 @@ export default function ERPIntegration() {
                   <div className="erp-system-logo">{system.name.charAt(0)}</div>
                   <span className="erp-status erp-status-ready">
                     <span className="erp-status-dot" />
-                    Adapter Ready
+                    Source Available
                   </span>
                 </div>
                 <div className="erp-system-name">{system.name}</div>
-                <div className="erp-system-type">Integration adapter</div>
+                <div className="erp-system-type">CPSE material source</div>
                 <div className="erp-system-stats">
                   <div>
                     <span>Material records</span>
@@ -155,12 +148,13 @@ export default function ERPIntegration() {
       <section className="erp-section">
         <div className="erp-section-header">
           <div>
-            <div className="eyebrow">DATA EXCHANGE</div>
-            <h2>Synchronization</h2>
+            <div className="eyebrow">INTEGRATION STATUS</div>
+            <h2>ERP Exchange</h2>
           </div>
-          <button className="erp-primary-button" onClick={handleSync} disabled={syncing}>
-            {syncing ? 'Synchronizing…' : 'Sync Material Masters'}
-          </button>
+          <span className="erp-status erp-status-ready">
+            <span className="erp-status-dot" />
+            Integration Ready
+          </span>
         </div>
 
         <div className="erp-sync-panel">
@@ -169,19 +163,21 @@ export default function ERPIntegration() {
               <span />
             </div>
             <div>
-              <strong>
-                {syncing ? 'Synchronization in progress' : 'Ready for synchronization'}
-              </strong>
-              <p>{lastAction || 'No synchronization is currently running.'}</p>
+              <strong>Ready for ERP data exchange</strong>
+              <p>
+                MIRA currently supports material ingestion and mapping export.
+                Live ERP/SAP synchronization is not configured in this prototype.
+              </p>
             </div>
           </div>
+
           <div className="erp-sync-metrics">
             <div>
               <span>Records pending review</span>
               <strong>{loading ? '—' : formatNumber(pendingReview)}</strong>
             </div>
             <div>
-              <span>Approved mappings</span>
+              <span>Mapping records available</span>
               <strong>{loading ? '—' : formatNumber(exportRows.length)}</strong>
             </div>
           </div>
@@ -191,7 +187,7 @@ export default function ERPIntegration() {
       <section className="erp-section">
         <div className="erp-section-header">
           <div>
-            <div className="eyebrow">APPROVED OUTPUT</div>
+            <div className="eyebrow">MAPPING OUTPUT</div>
             <h2>Mapping Export</h2>
           </div>
           <button className="erp-secondary-button" onClick={handleExport}>
@@ -212,7 +208,7 @@ export default function ERPIntegration() {
             <tbody>
               {exportRows.length === 0 ? (
                 <tr>
-                  <td colSpan={4}>No approved mappings ready for export yet.</td>
+                  <td colSpan={4}>No mapping records ready for export yet.</td>
                 </tr>
               ) : (
                 exportRows.map((row) => (
@@ -227,7 +223,15 @@ export default function ERPIntegration() {
                       <span className="erp-nmc">{row.nmc}</span>
                     </td>
                     <td>
-                      <span className="erp-approved">Approved</span>
+                      <span
+                        className={
+                          row.status === 'APPROVED'
+                            ? 'erp-approved'
+                            : 'erp-mapping-status'
+                        }
+                      >
+                        {row.status.replace(/_/g, ' ')}
+                      </span>
                     </td>
                   </tr>
                 ))

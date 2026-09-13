@@ -9,7 +9,6 @@ type AuditEntry = {
   entityType: string
   description: string
   actor: string
-  role: string
   timestamp: string
   reference: string
 }
@@ -29,7 +28,6 @@ function mapAuditEvent(event: AuditEvent, index: number): AuditEntry {
     entityType: 'Material Mapping',
     description: `${event.source_cpse ?? ''} ${event.source_code ?? ''} ↔ ${event.target_cpse ?? ''} ${event.target_code ?? ''}`.trim(),
     actor: event.actor ?? 'System',
-    role: event.actor === 'operator_01' ? 'Data Steward' : 'System',
     timestamp: formatTimestamp(event.timestamp),
     reference: event.candidate_id ? `CND-${event.candidate_id}` : '—',
   }
@@ -51,6 +49,7 @@ function actionIcon(action: string) {
 
 export default function AuditTrail() {
   const [entries, setEntries] = useState<AuditEntry[]>([])
+  const [totalEvents, setTotalEvents] = useState(0)
   const [search, setSearch] = useState('')
   const [actionFilter, setActionFilter] = useState('All Actions')
   const [loading, setLoading] = useState(true)
@@ -61,6 +60,7 @@ export default function AuditTrail() {
       setLoading(true)
       setError(null)
       const response = await api.listAudit(0, 200)
+      setTotalEvents(response.total)
       setEntries(response.events.map(mapAuditEvent))
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load audit log')
@@ -119,7 +119,7 @@ export default function AuditTrail() {
         </div>
         <div className="audit-header-status">
           <span className="status-dot" />
-          Audit logging active
+          Audit trail connected
         </div>
       </div>
 
@@ -136,7 +136,7 @@ export default function AuditTrail() {
       <section className="audit-summary">
         <div className="audit-summary-card">
           <span>Total Events</span>
-          <strong>{loading ? '—' : formatNumber(entries.length)}</strong>
+          <strong>{loading ? '—' : formatNumber(totalEvents)}</strong>
           <small>Recorded actions</small>
         </div>
         <div className="audit-summary-card">
@@ -214,7 +214,6 @@ export default function AuditTrail() {
                 <div className="audit-description">{entry.description}</div>
                 <div className="audit-actor">
                   <strong>{entry.actor}</strong>
-                  <small>{entry.role}</small>
                 </div>
                 <div className="audit-time">{entry.timestamp}</div>
                 <div className="audit-reference">
@@ -227,7 +226,7 @@ export default function AuditTrail() {
 
         <div className="audit-footer">
           <span>
-            Showing {filteredEntries.length} of {entries.length} events
+            Showing {filteredEntries.length} of {formatNumber(totalEvents)} events
           </span>
         </div>
       </section>

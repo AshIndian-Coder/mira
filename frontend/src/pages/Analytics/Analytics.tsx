@@ -133,9 +133,9 @@ export default function Analytics() {
           <small>Cases resolved without review</small>
         </div>
         <div className="analytics-kpi">
-          <span>Harmonized</span>
+          <span>Approved</span>
           <strong>{loading || !overview ? '—' : formatNumber(overview.approved)}</strong>
-          <small>Approved common records</small>
+          <small>Human-approved candidate relationships</small>
         </div>
       </section>
 
@@ -171,8 +171,8 @@ export default function Analytics() {
         <div className="analytics-card">
           <div className="analytics-card-header">
             <div>
-              <h2>Harmonization Status</h2>
-              <p>Current state of material records.</p>
+              <h2>Candidate Disposition</h2>
+              <p>Current disposition of candidate relationships.</p>
             </div>
           </div>
           <div className="chart-container chart-container-donut">
@@ -243,8 +243,8 @@ export default function Analytics() {
         <div className="analytics-card">
           <div className="analytics-card-header">
             <div>
-              <h2>Match Confidence</h2>
-              <p>Distribution of candidate match scores.</p>
+              <h2>Candidate Score Distribution</h2>
+              <p>Distribution of final candidate match scores.</p>
             </div>
           </div>
           <div className="chart-container">
