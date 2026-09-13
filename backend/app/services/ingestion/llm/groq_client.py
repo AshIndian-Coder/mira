@@ -6,6 +6,10 @@ from typing import Any
 
 from groq import Groq
 
+from dotenv import load_dotenv
+
+load_dotenv()
+
 from app.services.ingestion.llm.base import (
     LLMExtractionResult,
     LLMProvider,
