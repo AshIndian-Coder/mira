@@ -110,16 +110,16 @@ export default function AuditTrail() {
   }
 
   return (
-    <main className="page-content audit-page">
+    <div className="page audit-page">
       <div className="page-header audit-header">
         <div>
           <div className="eyebrow">GOVERNANCE & TRACEABILITY</div>
           <h1>Audit Trail</h1>
           <p>Track material decisions, mapping changes and governance actions.</p>
         </div>
-        <div className="audit-header-status">
-          <span className="status-dot" />
-          Audit trail connected
+        <div className="dashboard-status">
+          <span className="dashboard-status-dot" />
+          <span>Audit trail connected</span>
         </div>
       </div>
 
@@ -133,7 +133,7 @@ export default function AuditTrail() {
         </div>
       )}
 
-      <section className="audit-summary">
+      <section className="audit-summary" style={{ gridTemplateColumns: 'repeat(3, 1fr)' }}>
         <div className="audit-summary-card">
           <span>Total Events</span>
           <strong>{loading ? '—' : formatNumber(totalEvents)}</strong>
@@ -179,49 +179,72 @@ export default function AuditTrail() {
           </select>
         </div>
 
-        <div className="audit-table">
-          <div className="audit-table-head">
-            <span>Action</span>
-            <span>Entity</span>
-            <span>Activity</span>
-            <span>Actor</span>
-            <span>Timestamp</span>
-            <span>Reference</span>
-          </div>
-
-          {loading ? (
-            <div className="audit-empty">
-              <strong>Loading audit events…</strong>
-            </div>
-          ) : filteredEntries.length === 0 ? (
-            <div className="audit-empty">
-              <strong>No audit events found</strong>
-              <span>Approve or reject matches to populate the audit trail.</span>
-            </div>
-          ) : (
-            filteredEntries.map((entry) => (
-              <div className="audit-table-row" key={`${entry.reference}-${entry.timestamp}`}>
-                <div>
-                  <span className={`audit-action ${actionClass(entry.action)}`}>
-                    <span className="audit-action-icon">{actionIcon(entry.action)}</span>
-                    {entry.action}
-                  </span>
-                </div>
-                <div className="audit-entity">
-                  <strong>{entry.entity}</strong>
-                  <small>{entry.entityType}</small>
-                </div>
-                <div className="audit-description">{entry.description}</div>
-                <div className="audit-actor">
-                  <strong>{entry.actor}</strong>
-                </div>
-                <div className="audit-time">{entry.timestamp}</div>
-                <div className="audit-reference">
-                  <span>{entry.reference}</span>
-                </div>
-              </div>
-            ))
-          )}
+        <div className="mapping-table-wrapper">
+          <table className="mapping-table">
+            <thead>
+              <tr>
+                <th style={{ width: '130px' }}>Action</th>
+                <th style={{ width: '220px' }}>Entity</th>
+                <th>Activity Description</th>
+                <th style={{ width: '140px' }}>Actor</th>
+                <th style={{ width: '190px' }}>Timestamp</th>
+                <th style={{ width: '110px' }}>Reference</th>
+              </tr>
+            </thead>
+            <tbody>
+              {loading ? (
+                <tr>
+                  <td colSpan={6} className="mapping-empty">
+                    Loading audit events…
+                  </td>
+                </tr>
+              ) : filteredEntries.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="mapping-empty">
+                    No audit events found. Approve or reject matches to populate the audit trail.
+                  </td>
+                </tr>
+              ) : (
+                filteredEntries.map((entry) => (
+                  <tr key={`${entry.reference}-${entry.timestamp}`}>
+                    <td>
+                      <span className={`audit-action ${actionClass(entry.action)}`}>
+                        <span className="audit-action-icon">{actionIcon(entry.action)}</span>
+                        {entry.action}
+                      </span>
+                    </td>
+                    <td>
+                      <div className="audit-entity">
+                        <strong
+                          className="mapping-code"
+                          style={{
+                            whiteSpace: 'nowrap',
+                            display: 'inline-block',
+                            letterSpacing: '0.01em',
+                          }}
+                        >
+                          {entry.entity}
+                        </strong>
+                        <small style={{ marginTop: '3px' }}>{entry.entityType}</small>
+                      </div>
+                    </td>
+                    <td className="mapping-description">{entry.description}</td>
+                    <td>
+                      <strong style={{ fontSize: '12px', color: '#1e293b' }}>{entry.actor}</strong>
+                    </td>
+                    <td style={{ fontSize: '12px', color: '#64748b', whiteSpace: 'nowrap' }}>
+                      {entry.timestamp}
+                    </td>
+                    <td>
+                      <span className="mapping-code" style={{ whiteSpace: 'nowrap' }}>
+                        {entry.reference}
+                      </span>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
         </div>
 
         <div className="audit-footer">
@@ -230,6 +253,6 @@ export default function AuditTrail() {
           </span>
         </div>
       </section>
-    </main>
+    </div>
   )
 }

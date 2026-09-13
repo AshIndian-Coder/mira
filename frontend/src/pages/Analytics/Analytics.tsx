@@ -23,10 +23,53 @@ import {
   type ScoreBucket,
 } from '../../lib/api'
 
-const PIE_COLORS = ['#172033', '#4f6f95', '#8da2bc']
-const CPSE_BAR_COLORS = ['#315B8A', '#4779A8', '#5E91B8', '#729FBE', '#879FB8', '#9BAFC2']
-const CONFIDENCE_BAR_COLORS = ['#315B8A', '#5E91B8', '#879FB8', '#B0BBC7']
-const CATEGORY_COLORS = ['#315B8A', '#4779A8', '#5E91B8', '#729FBE', '#879FB8', '#9BAFC2']
+const PIE_COLORS: Record<string, string> = {
+  Approved: '#10b981',
+  'Pending Review': '#f59e0b',
+  Rejected: '#ef4444',
+}
+
+const CPSE_BAR_COLORS = ['#334155', '#475569', '#64748b', '#0f172a', '#1e293b', '#94a3b8']
+const CONFIDENCE_BAR_COLORS = ['#4f46e5', '#6366f1', '#818cf8', '#a5b4fc', '#c7d2fe']
+const CATEGORY_COLORS = ['#1e293b', '#4f46e5', '#0284c7', '#10b981', '#f59e0b', '#8b5cf6', '#64748b']
+
+type TooltipPayloadItem = {
+  name?: string
+  value?: number | string
+  color?: string
+}
+
+function CustomChartTooltip({
+  active,
+  payload,
+  label,
+}: {
+  active?: boolean
+  payload?: TooltipPayloadItem[]
+  label?: string
+}) {
+  if (active && payload && payload.length) {
+    const item = payload[0]
+    return (
+      <div className="recharts-custom-tooltip">
+        {label && <div className="tooltip-label">{label}</div>}
+        <div className="tooltip-value-row">
+          {item.color && (
+            <span
+              className="tooltip-color-dot"
+              style={{ background: item.color }}
+            />
+          )}
+          <span className="tooltip-key">{item.name ? `${item.name}: ` : ''}</span>
+          <span className="tooltip-val">
+            {typeof item.value === 'number' ? item.value.toLocaleString() : item.value}
+          </span>
+        </div>
+      </div>
+    )
+  }
+  return null
+}
 
 export default function Analytics() {
   const [overview, setOverview] = useState<AnalyticsOverview | null>(null)
@@ -88,7 +131,7 @@ export default function Analytics() {
   }))
 
   return (
-    <main className="page-content analytics-page">
+    <div className="page analytics-page">
       <div className="page-header analytics-header">
         <div>
           <div className="eyebrow">MATERIAL INTELLIGENCE</div>
@@ -135,7 +178,7 @@ export default function Analytics() {
         <div className="analytics-kpi">
           <span>Approved</span>
           <strong>{loading || !overview ? '—' : formatNumber(overview.approved)}</strong>
-          <small>Human-approved candidate relationships</small>
+          <small>Human-approved relationships</small>
         </div>
       </section>
 
@@ -148,18 +191,45 @@ export default function Analytics() {
             </div>
           </div>
           <div className="chart-container">
-            {cpseChartData.length === 0 ? (
-              <p style={{ padding: '1rem' }}>No CPSE data yet.</p>
+            {loading ? (
+              <div className="dashboard-empty-state">Loading CPSE metrics…</div>
+            ) : cpseChartData.length === 0 ? (
+              <div className="dashboard-empty-state">No CPSE data yet. Upload materials first.</div>
             ) : (
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={cpseChartData} margin={{ top: 10, right: 20, left: 0, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                  <XAxis dataKey="cpse" />
-                  <YAxis />
-                  <Tooltip />
-                  <Bar dataKey="materials" name="Materials" radius={[3, 3, 0, 0]}>
+                <BarChart data={cpseChartData} margin={{ top: 16, right: 20, left: -10, bottom: 4 }}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#edf2f7" />
+                  <XAxis
+                    dataKey="cpse"
+                    tick={{ fontSize: 11, fill: '#64748b' }}
+                    axisLine={{ stroke: '#e2e8f0' }}
+                    tickLine={false}
+                  />
+                  <YAxis
+                    allowDecimals={false}
+                    tick={{ fontSize: 11, fill: '#64748b' }}
+                    axisLine={{ stroke: '#e2e8f0' }}
+                    tickLine={false}
+                  />
+                  <Tooltip
+                    content={<CustomChartTooltip />}
+                    cursor={{ fill: 'rgba(241, 245, 249, 0.7)', rx: 6, ry: 6 }}
+                    isAnimationActive={true}
+                    animationDuration={250}
+                    animationEasing="ease-out"
+                  />
+                  <Bar
+                    dataKey="materials"
+                    name="Materials"
+                    maxBarSize={44}
+                    radius={[6, 6, 0, 0]}
+                    animationDuration={600}
+                  >
                     {cpseChartData.map((entry, index) => (
-                      <Cell key={entry.cpse} fill={CPSE_BAR_COLORS[index % CPSE_BAR_COLORS.length]} />
+                      <Cell
+                        key={entry.cpse}
+                        fill={CPSE_BAR_COLORS[index % CPSE_BAR_COLORS.length]}
+                      />
                     ))}
                   </Bar>
                 </BarChart>
@@ -176,27 +246,46 @@ export default function Analytics() {
             </div>
           </div>
           <div className="chart-container chart-container-donut">
-            {harmonizationData.length === 0 ? (
-              <p style={{ padding: '1rem' }}>No harmonization data yet.</p>
+            {loading ? (
+              <div className="dashboard-empty-state">Loading disposition data…</div>
+            ) : harmonizationData.length === 0 ? (
+              <div className="dashboard-empty-state">No candidate disposition data available yet.</div>
             ) : (
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie
                     data={harmonizationData}
                     cx="50%"
-                    cy="48%"
-                    innerRadius={65}
-                    outerRadius={95}
-                    paddingAngle={2}
+                    cy="44%"
+                    innerRadius={58}
+                    outerRadius={84}
+                    paddingAngle={4}
                     dataKey="value"
                     nameKey="name"
+                    animationDuration={600}
                   >
-                    {harmonizationData.map((entry, index) => (
-                      <Cell key={entry.name} fill={PIE_COLORS[index % PIE_COLORS.length]} />
+                    {harmonizationData.map((entry) => (
+                      <Cell
+                        key={entry.name}
+                        fill={PIE_COLORS[entry.name] ?? '#64748b'}
+                      />
                     ))}
                   </Pie>
-                  <Tooltip />
-                  <Legend verticalAlign="bottom" height={36} />
+                  <Tooltip
+                    content={<CustomChartTooltip />}
+                    isAnimationActive={true}
+                    animationDuration={250}
+                    animationEasing="ease-out"
+                  />
+                  <Legend
+                    verticalAlign="bottom"
+                    height={36}
+                    formatter={(val) => (
+                      <span style={{ color: '#334155', fontSize: '11.5px', fontWeight: 600 }}>
+                        {val}
+                      </span>
+                    )}
+                  />
                 </PieChart>
               </ResponsiveContainer>
             )}
@@ -213,27 +302,47 @@ export default function Analytics() {
             </div>
           </div>
           <div className="chart-container chart-container-donut">
-            {categoryChartData.length === 0 ? (
-              <p style={{ padding: '1rem' }}>No category data yet.</p>
+            {loading ? (
+              <div className="dashboard-empty-state">Loading category metrics…</div>
+            ) : categoryChartData.length === 0 ? (
+              <div className="dashboard-empty-state">No category data yet.</div>
             ) : (
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie
                     data={categoryChartData}
                     cx="50%"
-                    cy="45%"
-                    innerRadius={55}
-                    outerRadius={88}
-                    paddingAngle={1}
+                    cy="44%"
+                    innerRadius={50}
+                    outerRadius={78}
+                    paddingAngle={3}
                     dataKey="value"
                     nameKey="name"
+                    animationDuration={600}
                   >
                     {categoryChartData.map((entry, index) => (
-                      <Cell key={entry.name} fill={CATEGORY_COLORS[index % CATEGORY_COLORS.length]} />
+                      <Cell
+                        key={entry.name}
+                        fill={CATEGORY_COLORS[index % CATEGORY_COLORS.length]}
+                      />
                     ))}
                   </Pie>
-                  <Tooltip />
-                  <Legend verticalAlign="bottom" height={50} wrapperStyle={{ fontSize: 11 }} />
+                  <Tooltip
+                    content={<CustomChartTooltip />}
+                    isAnimationActive={true}
+                    animationDuration={250}
+                    animationEasing="ease-out"
+                  />
+                  <Legend
+                    verticalAlign="bottom"
+                    height={44}
+                    wrapperStyle={{ fontSize: 11 }}
+                    formatter={(val) => (
+                      <span style={{ color: '#334155', fontSize: '11px', fontWeight: 500 }}>
+                        {val}
+                      </span>
+                    )}
+                  />
                 </PieChart>
               </ResponsiveContainer>
             )}
@@ -248,16 +357,40 @@ export default function Analytics() {
             </div>
           </div>
           <div className="chart-container">
-            {confidenceData.every((row) => row.count === 0) ? (
-              <p style={{ padding: '1rem' }}>No score data yet. Run matching first.</p>
+            {loading ? (
+              <div className="dashboard-empty-state">Loading score buckets…</div>
+            ) : confidenceData.every((row) => row.count === 0) ? (
+              <div className="dashboard-empty-state">No score data yet. Run matching first.</div>
             ) : (
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={confidenceData} margin={{ top: 10, right: 20, left: 0, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                  <XAxis dataKey="range" />
-                  <YAxis />
-                  <Tooltip />
-                  <Bar dataKey="count" name="Candidates" radius={[3, 3, 0, 0]}>
+                <BarChart data={confidenceData} margin={{ top: 16, right: 20, left: -10, bottom: 4 }}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#edf2f7" />
+                  <XAxis
+                    dataKey="range"
+                    tick={{ fontSize: 11, fill: '#64748b' }}
+                    axisLine={{ stroke: '#e2e8f0' }}
+                    tickLine={false}
+                  />
+                  <YAxis
+                    allowDecimals={false}
+                    tick={{ fontSize: 11, fill: '#64748b' }}
+                    axisLine={{ stroke: '#e2e8f0' }}
+                    tickLine={false}
+                  />
+                  <Tooltip
+                    content={<CustomChartTooltip />}
+                    cursor={{ fill: 'rgba(241, 245, 249, 0.7)', rx: 6, ry: 6 }}
+                    isAnimationActive={true}
+                    animationDuration={250}
+                    animationEasing="ease-out"
+                  />
+                  <Bar
+                    dataKey="count"
+                    name="Candidates"
+                    maxBarSize={38}
+                    radius={[6, 6, 0, 0]}
+                    animationDuration={600}
+                  >
                     {confidenceData.map((entry, index) => (
                       <Cell
                         key={entry.range}
@@ -271,6 +404,6 @@ export default function Analytics() {
           </div>
         </div>
       </section>
-    </main>
+    </div>
   )
 }
