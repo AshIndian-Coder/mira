@@ -354,26 +354,38 @@ Primary workflow:
 
 **Upload → Materials → Matching → HIGH_CONFIDENCE/REVIEW/DIFFERENT → Human Review → Approved → Common Material → CPSE→NMC Mapping → Export/Audit/Analytics.**
 
-### Frontend Completion
+### Frontend Completion & UI Polish
 
-Completed and pushed:
+Completed, polished, and verified:
 - Materials API integration
 - CSV upload
 - batch matching trigger
-- Match Review queue
+- Match Review queue & AI score progress meters
 - approve/reject actions
 - Dashboard analytics
-- Common Materials/mappings
+- Common Materials/mappings & inspection modal
 - mapping generation/export
 - ERP export preparation
-- Analytics
-- Audit Trail
+- Analytics & Audit Trail decluttering
 - truthful Settings/capability display
 - loading/error/empty states
 - removal of unused legacy services/types
 - removal of Vite starter assets.
 
-Frontend production build passed.
+### Frontend Design System & Layout Architecture (2026-09-13)
+
+- **Typography & Motion**: Plus Jakarta Sans headers, Inter data surfaces, JetBrains Mono codes; physics spring curve `cubic-bezier(0.16, 1, 0.3, 1)`.
+- **Floating Island Frame Architecture**:
+  - **Non-Scrolling Sidebar Frame**: `.sidebar` has fixed dimensions (`width: 252px; height: 100%; flex-shrink: 0;`), `overflow: hidden;`, and `border-radius: var(--radius-xl)` (16px), maintaining constant dimensions across all views with zero scrolling.
+  - **Scroll-Contained Main Content Frame**: `.main-content` enclosed in a rounded frame (`border-radius: 16px; overflow: hidden;`), Topbar locked at top (`58px`), with independent `.page` vertical scrolling.
+  - **Uniform Separation**: `.app-shell` applies uniform `12px` outer padding and `12px` gap across frames over `#ebf0f5`.
+- **Analytics & Chart Motion**:
+  - `maxBarSize={44}` and `allowDecimals={false}` on Recharts bar charts.
+  - Smooth hardware-accelerated tooltip cursor glide (`transition: transform 120ms`) with spring pop entrance and subtle rounded cursor highlight replacing harsh rectangular block cursors.
+- **Audit Trail Formatting**:
+  - 3-column summary cards, single-line `white-space: nowrap` on long mapping identifiers and timestamps.
+
+Frontend production build passed cleanly.
 
 Vite's large-chunk warning is non-blocking and is not a current priority.
 
@@ -491,11 +503,10 @@ Repository:
 - branch: `main`.
 
 Latest relevant history:
+- `03f40b7` — `polish frontend UI, animations, island frame layout, and chart tooltips`
 - `9c14188` — `Complete frontend integration and cleanup`
 - `8870eb9` — `Refactor schema for cpses, users, and materials tables`
 - `2c178ab` — `project memory`
-
-The frontend commit was rebased cleanly onto the remote schema refactor and pushed successfully.
 
 Untracked local artifacts remain intentionally outside the frontend commit:
 - `backend/app/services/evaluation/synthetic/`
