@@ -143,3 +143,4 @@ huggingface_cache/
 # Project-specific local files
 # ------------------------------------------------------------
 *.local
+.freebuff
