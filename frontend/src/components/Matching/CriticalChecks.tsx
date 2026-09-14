@@ -15,6 +15,20 @@ function formatValue(value: unknown) {
     return 'Not available'
   }
 
+  if (
+    typeof value === 'object' &&
+    value !== null &&
+    'value' in value &&
+    'unit' in value
+  ) {
+    const normalizedValue = value as {
+      value: unknown
+      unit: unknown
+    }
+
+    return `${normalizedValue.value} ${normalizedValue.unit}`
+  }
+
   if (typeof value === 'object') {
     return JSON.stringify(value)
   }

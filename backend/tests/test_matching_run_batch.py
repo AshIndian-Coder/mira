@@ -232,3 +232,60 @@ BHEL,BHEL-VALVE-001,SS 304 GATE VALVE 2 IN 150 LB,Valve,SS304
         store.reset_stores()
         MAPPINGS.clear()
         AUDIT_EVENTS.clear()
+
+
+def test_run_batch_excludes_same_cpse_pairs():
+    store.reset_stores()
+    MAPPINGS.clear()
+    AUDIT_EVENTS.clear()
+
+    try:
+        csv_content = """cpse,material_code,description,category,material_grade
+NTPC,NTPC-E2E-003,SS 304 GATE VALVE 2 IN 150 LB,Valve,SS304
+NTPC,NTPC-E2E-004,SS 304 GATE VALVE 2 IN 150 LB,Valve,SS304
+BHEL,BHEL-E2E-003,SS 304 GATE VALVE 2 IN 150 LB,Valve,SS304
+"""
+
+        upload_response = client.post(
+            "/api/materials/upload",
+            files={
+                "file": (
+                    "cross_cpse_test.csv",
+                    csv_content,
+                    "text/csv",
+                )
+            },
+        )
+
+        assert upload_response.status_code == 200
+        assert upload_response.json()["records_ingested"] == 3
+
+        batch_response = client.post(
+            "/api/matching/run-batch",
+            json={"overwrite": False},
+        )
+
+        assert batch_response.status_code == 200
+
+        batch_data = batch_response.json()
+
+        assert batch_data["materials_processed"] == 3
+        assert batch_data["candidate_pairs_evaluated"] == 2
+        assert batch_data["new_candidates_stored"] == 2
+        assert batch_data["total_candidates"] == 2
+
+        candidates_response = client.get("/api/matching/candidates")
+
+        assert candidates_response.status_code == 200
+
+        candidates = candidates_response.json()["candidates"]
+
+        assert len(candidates) == 2
+
+        for candidate in candidates:
+            assert candidate["source_cpse"] != candidate["target_cpse"]
+
+    finally:
+        store.reset_stores()
+        MAPPINGS.clear()
+        AUDIT_EVENTS.clear()

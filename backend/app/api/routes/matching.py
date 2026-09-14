@@ -167,14 +167,18 @@ def run_batch_matching(request: BatchRunRequest):
         raw_candidates = raw_candidates[: request.max_candidates_per_material]
 
         for target_bo in raw_candidates:
+            source_mat = material_index[source_bo.id]
+            target_mat = material_index[target_bo.id]
+
+            # Batch harmonization is cross-CPSE only.
+            if source_mat["cpse"].upper() == target_mat["cpse"].upper():
+                continue
+
             pk = _pair_key(source_bo.id, target_bo.id)
             if pk in seen_pairs:
                 continue
             seen_pairs.add(pk)
             total_pairs_evaluated += 1
-
-            source_mat = material_index[source_bo.id]
-            target_mat = material_index[target_bo.id]
 
             result = classify_match(source_mat, target_mat)
 
