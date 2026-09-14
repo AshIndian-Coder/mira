@@ -79,7 +79,7 @@ function Materials() {
         </div>
 
         <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
-          <label className="mapping-export-all-button" style={{ cursor: 'pointer' }}>
+          <label className="materials-upload-button">
             {uploading ? 'Uploading…' : 'Upload CSV'}
             <input
               type="file"

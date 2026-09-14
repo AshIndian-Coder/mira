@@ -8,6 +8,7 @@ type BadgeProps = {
 function Badge({ children, variant = "neutral" }: BadgeProps) {
   return (
     <span className={`status-badge ${variant}`}>
+      <span className="status-dot" style={{ width: '6px', height: '6px' }} />
       {children}
     </span>
   );

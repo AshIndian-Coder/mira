@@ -6,6 +6,7 @@ import { api, type Candidate } from '../../lib/api'
 
 function MatchReview() {
   const [candidates, setCandidates] = useState<Candidate[]>([])
+  const [totalPending, setTotalPending] = useState(0)
   const [selected, setSelected] = useState<Candidate | null>(null)
   const [loading, setLoading] = useState(true)
   const [acting, setActing] = useState(false)
@@ -16,6 +17,7 @@ function MatchReview() {
       setLoading(true)
       setError(null)
       const response = await api.reviewQueue()
+      setTotalPending(response.total_pending)
       setCandidates(response.queue)
       setSelected((current) => {
         if (response.queue.length === 0) return null
@@ -59,7 +61,7 @@ function MatchReview() {
           <p>Review candidate material equivalences before harmonization.</p>
         </div>
         <span className="review-count">
-          {loading ? '…' : `${candidates.length} pending`}
+          {loading ? '…' : `${totalPending} pending`}
         </span>
       </div>
 

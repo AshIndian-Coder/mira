@@ -117,3 +117,28 @@ def test_dimension_unit_conversion_passes():
         check["status"] == "PASS"
         for check in checks
     )
+
+
+def test_top_level_none_falls_back_to_parsed_specifications():
+    material_a = {
+        "category": "Valve",
+        "dimensions": None,
+        "parsed_specifications": {
+            "pressure_rating": {"value": 150, "unit": "LB"},
+            "dimensions": {"value": 2, "unit": "IN"},
+        },
+    }
+
+    material_b = {
+        "category": "Valve",
+        "dimensions": None,
+        "parsed_specifications": {
+            "pressure_rating": {"value": 150, "unit": "LB"},
+            "dimensions": {"value": 2, "unit": "IN"},
+        },
+    }
+
+    checks = evaluate_critical_gates(material_a, material_b)
+
+    assert all(check["status"] == "PASS" for check in checks)
+    assert gates_allow_high_confidence(checks)
