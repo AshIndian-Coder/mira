@@ -1,0 +1,1310 @@
+{
+  "generated_at": "2026-09-15 02:35:58",
+  "seed": 42,
+  "source_file": "Original_company_records_no_synthetic.csv",
+  "output_csv": "Final_Master_Material_Records.csv",
+  "total_rows": 832516,
+  "companies_total": 164,
+  "catalog_items": 1437,
+  "originals_stats": {
+    "raw": 25370,
+    "dedup_removed": 1653,
+    "kept": 23717,
+    "no_code_filled": 5810,
+    "no_unit_filled": 6788
+  },
+  "per_company": {
+    "CPCL": {
+      "original": 0,
+      "synthetic": 5000,
+      "total": 5000,
+      "name": "Chennai Petroleum Corporation Limited",
+      "sector": "OILGAS"
+    },
+    "IOCL": {
+      "original": 484,
+      "synthetic": 4516,
+      "total": 5000,
+      "name": "Indian Oil Corporation Limited",
+      "sector": "OILGAS"
+    },
+    "BPCL": {
+      "original": 968,
+      "synthetic": 4032,
+      "total": 5000,
+      "name": "Bharat Petroleum Corporation Limited",
+      "sector": "OILGAS"
+    },
+    "HPCL": {
+      "original": 0,
+      "synthetic": 5000,
+      "total": 5000,
+      "name": "Hindustan Petroleum Corporation Limited",
+      "sector": "OILGAS"
+    },
+    "ONGC": {
+      "original": 0,
+      "synthetic": 5000,
+      "total": 5000,
+      "name": "Oil and Natural Gas Corporation",
+      "sector": "OILGAS"
+    },
+    "GAIL": {
+      "original": 0,
+      "synthetic": 5000,
+      "total": 5000,
+      "name": "GAIL (India) Limited",
+      "sector": "OILGAS"
+    },
+    "OIL": {
+      "original": 4701,
+      "synthetic": 299,
+      "total": 5000,
+      "name": "Oil India Limited",
+      "sector": "OILGAS"
+    },
+    "MRPL": {
+      "original": 0,
+      "synthetic": 5000,
+      "total": 5000,
+      "name": "Mangalore Refinery and Petrochemicals",
+      "sector": "OILGAS"
+    },
+    "NRL": {
+      "original": 0,
+      "synthetic": 5000,
+      "total": 5000,
+      "name": "Numaligarh Refinery",
+      "sector": "OILGAS"
+    },
+    "BORL": {
+      "original": 0,
+      "synthetic": 5000,
+      "total": 5000,
+      "name": "Bharat Oman Refineries",
+      "sector": "OILGAS"
+    },
+    "HMEL": {
+      "original": 0,
+      "synthetic": 5000,
+      "total": 5000,
+      "name": "HPCL-Mittal Energy",
+      "sector": "OILGAS"
+    },
+    "NAYARA": {
+      "original": 0,
+      "synthetic": 5000,
+      "total": 5000,
+      "name": "Nayara Energy",
+      "sector": "OILGAS"
+    },
+    "RIL": {
+      "original": 0,
+      "synthetic": 5000,
+      "total": 5000,
+      "name": "Reliance Industries Limited",
+      "sector": "OILGAS"
+    },
+    "PETRONET": {
+      "original": 0,
+      "synthetic": 5000,
+      "total": 5000,
+      "name": "Petronet LNG",
+      "sector": "OILGAS"
+    },
+    "OPAL": {
+      "original": 0,
+      "synthetic": 5000,
+      "total": 5000,
+      "name": "ONGC Petro additions Limited",
+      "sector": "OILGAS"
+    },
+    "BCPL": {
+      "original": 0,
+      "synthetic": 5000,
+      "total": 5000,
+      "name": "Brahmaputra Cracker and Polymer",
+      "sector": "OILGAS"
+    },
+    "IPCL": {
+      "original": 0,
+      "synthetic": 5000,
+      "total": 5000,
+      "name": "Indian Petrochemicals Corporation",
+      "sector": "CHEMICAL"
+    },
+    "RCF": {
+      "original": 0,
+      "synthetic": 5000,
+      "total": 5000,
+      "name": "Rashtriya Chemicals and Fertilizers",
+      "sector": "CHEMICAL"
+    },
+    "FACT": {
+      "original": 0,
+      "synthetic": 5000,
+      "total": 5000,
+      "name": "Fertilisers and Chemicals Travancore",
+      "sector": "CHEMICAL"
+    },
+    "NFL": {
+      "original": 0,
+      "synthetic": 5000,
+      "total": 5000,
+      "name": "National Fertilizers",
+      "sector": "CHEMICAL"
+    },
+    "GACL": {
+      "original": 0,
+      "synthetic": 5000,
+      "total": 5000,
+      "name": "Gujarat Alkalies and Chemicals",
+      "sector": "CHEMICAL"
+    },
+    "GSFC": {
+      "original": 0,
+      "synthetic": 5000,
+      "total": 5000,
+      "name": "Gujarat State Fertilizers and Chemicals",
+      "sector": "CHEMICAL"
+    },
+    "GNFC": {
+      "original": 0,
+      "synthetic": 5000,
+      "total": 5000,
+      "name": "Gujarat Narmada Valley Fertilizers",
+      "sector": "CHEMICAL"
+    },
+    "HIL": {
+      "original": 0,
+      "synthetic": 5000,
+      "total": 5000,
+      "name": "Hindustan Insecticides",
+      "sector": "CHEMICAL"
+    },
+    "HOC": {
+      "original": 0,
+      "synthetic": 5000,
+      "total": 5000,
+      "name": "Hindustan Organic Chemicals",
+      "sector": "CHEMICAL"
+    },
+    "DCW": {
+      "original": 0,
+      "synthetic": 5000,
+      "total": 5000,
+      "name": "DCW Limited",
+      "sector": "CHEMICAL"
+    },
+    "DEEPAK": {
+      "original": 0,
+      "synthetic": 5000,
+      "total": 5000,
+      "name": "Deepak Fertilisers",
+      "sector": "CHEMICAL"
+    },
+    "TATACHEM": {
+      "original": 0,
+      "synthetic": 5000,
+      "total": 5000,
+      "name": "Tata Chemicals",
+      "sector": "CHEMICAL"
+    },
+    "AARTI": {
+      "original": 0,
+      "synthetic": 5000,
+      "total": 5000,
+      "name": "Aarti Industries",
+      "sector": "CHEMICAL"
+    },
+    "SRF": {
+      "original": 0,
+      "synthetic": 5000,
+      "total": 5000,
+      "name": "SRF Limited",
+      "sector": "CHEMICAL"
+    },
+    "PIIND": {
+      "original": 0,
+      "synthetic": 5000,
+      "total": 5000,
+      "name": "PI Industries",
+      "sector": "CHEMICAL"
+    },
+    "UPL": {
+      "original": 0,
+      "synthetic": 5000,
+      "total": 5000,
+      "name": "UPL Limited",
+      "sector": "CHEMICAL"
+    },
+    "ATUL": {
+      "original": 0,
+      "synthetic": 5000,
+      "total": 5000,
+      "name": "Atul Limited",
+      "sector": "CHEMICAL"
+    },
+    "BHEL": {
+      "original": 18,
+      "synthetic": 4982,
+      "total": 5000,
+      "name": "Bharat Heavy Electricals",
+      "sector": "HEAVY"
+    },
+    "LT": {
+      "original": 0,
+      "synthetic": 5000,
+      "total": 5000,
+      "name": "Larsen and Toubro",
+      "sector": "HEAVY"
+    },
+    "SIEMENS": {
+      "original": 0,
+      "synthetic": 5000,
+      "total": 5000,
+      "name": "Siemens India",
+      "sector": "HEAVY"
+    },
+    "ABB": {
+      "original": 0,
+      "synthetic": 5000,
+      "total": 5000,
+      "name": "ABB India",
+      "sector": "HEAVY"
+    },
+    "SCHNEIDER": {
+      "original": 0,
+      "synthetic": 5000,
+      "total": 5000,
+      "name": "Schneider Electric India",
+      "sector": "HEAVY"
+    },
+    "GEVERNOVA": {
+      "original": 0,
+      "synthetic": 5000,
+      "total": 5000,
+      "name": "GE Vernova India",
+      "sector": "HEAVY"
+    },
+    "HITACHI": {
+      "original": 0,
+      "synthetic": 5000,
+      "total": 5000,
+      "name": "Hitachi Energy India",
+      "sector": "HEAVY"
+    },
+    "BHARATFORGE": {
+      "original": 0,
+      "synthetic": 5000,
+      "total": 5000,
+      "name": "Bharat Forge",
+      "sector": "HEAVY"
+    },
+    "THERMAX": {
+      "original": 0,
+      "synthetic": 5000,
+      "total": 5000,
+      "name": "Thermax",
+      "sector": "HEAVY"
+    },
+    "KIRLOSKAR": {
+      "original": 0,
+      "synthetic": 5000,
+      "total": 5000,
+      "name": "Kirloskar Brothers",
+      "sector": "HEAVY"
+    },
+    "KIRLOSKAROE": {
+      "original": 0,
+      "synthetic": 5000,
+      "total": 5000,
+      "name": "Kirloskar Oil Engines",
+      "sector": "HEAVY"
+    },
+    "CUMMINS": {
+      "original": 0,
+      "synthetic": 5000,
+      "total": 5000,
+      "name": "Cummins India",
+      "sector": "HEAVY"
+    },
+    "SKFINDIA": {
+      "original": 0,
+      "synthetic": 5000,
+      "total": 5000,
+      "name": "SKF India",
+      "sector": "HEAVY"
+    },
+    "TIMKEN": {
+      "original": 0,
+      "synthetic": 5000,
+      "total": 5000,
+      "name": "Timken India",
+      "sector": "HEAVY"
+    },
+    "KSB": {
+      "original": 0,
+      "synthetic": 5000,
+      "total": 5000,
+      "name": "KSB Pumps",
+      "sector": "HEAVY"
+    },
+    "FLOWSERVE": {
+      "original": 0,
+      "synthetic": 5000,
+      "total": 5000,
+      "name": "Flowserve India",
+      "sector": "HEAVY"
+    },
+    "SULZER": {
+      "original": 0,
+      "synthetic": 5000,
+      "total": 5000,
+      "name": "Sulzer India",
+      "sector": "HEAVY"
+    },
+    "ALFALAVAL": {
+      "original": 0,
+      "synthetic": 5000,
+      "total": 5000,
+      "name": "Alfa Laval India",
+      "sector": "HEAVY"
+    },
+    "INGERSOLL": {
+      "original": 0,
+      "synthetic": 5000,
+      "total": 5000,
+      "name": "Ingersoll Rand India",
+      "sector": "HEAVY"
+    },
+    "TRIVENI": {
+      "original": 0,
+      "synthetic": 5000,
+      "total": 5000,
+      "name": "Triveni Engineering",
+      "sector": "HEAVY"
+    },
+    "ISGEC": {
+      "original": 0,
+      "synthetic": 5000,
+      "total": 5000,
+      "name": "ISGEC Heavy Engineering",
+      "sector": "HEAVY"
+    },
+    "BEL": {
+      "original": 0,
+      "synthetic": 5000,
+      "total": 5000,
+      "name": "Bharat Electronics",
+      "sector": "ELECTRICAL"
+    },
+    "HAL": {
+      "original": 0,
+      "synthetic": 5000,
+      "total": 5000,
+      "name": "Hindustan Aeronautics",
+      "sector": "ELECTRICAL"
+    },
+    "ECIL": {
+      "original": 0,
+      "synthetic": 5000,
+      "total": 5000,
+      "name": "Electronics Corporation of India",
+      "sector": "ELECTRICAL"
+    },
+    "HONEYWELL": {
+      "original": 0,
+      "synthetic": 5000,
+      "total": 5000,
+      "name": "Honeywell India",
+      "sector": "ELECTRICAL"
+    },
+    "EMERSON": {
+      "original": 0,
+      "synthetic": 5000,
+      "total": 5000,
+      "name": "Emerson India",
+      "sector": "ELECTRICAL"
+    },
+    "YOKOGAWA": {
+      "original": 0,
+      "synthetic": 5000,
+      "total": 5000,
+      "name": "Yokogawa India",
+      "sector": "ELECTRICAL"
+    },
+    "ROCKWELL": {
+      "original": 0,
+      "synthetic": 5000,
+      "total": 5000,
+      "name": "Rockwell Automation India",
+      "sector": "ELECTRICAL"
+    },
+    "PHOENIX": {
+      "original": 0,
+      "synthetic": 5000,
+      "total": 5000,
+      "name": "Phoenix Contact India",
+      "sector": "ELECTRICAL"
+    },
+    "WIKA": {
+      "original": 0,
+      "synthetic": 5000,
+      "total": 5000,
+      "name": "WIKA India",
+      "sector": "ELECTRICAL"
+    },
+    "ENDRESSHAUSER": {
+      "original": 0,
+      "synthetic": 5000,
+      "total": 5000,
+      "name": "Endress+Hauser India",
+      "sector": "ELECTRICAL"
+    },
+    "PEPPERL": {
+      "original": 0,
+      "synthetic": 5000,
+      "total": 5000,
+      "name": "Pepperl+Fuchs India",
+      "sector": "ELECTRICAL"
+    },
+    "DANFOSS": {
+      "original": 0,
+      "synthetic": 5000,
+      "total": 5000,
+      "name": "Danfoss India",
+      "sector": "ELECTRICAL"
+    },
+    "MITSUBISHI": {
+      "original": 0,
+      "synthetic": 5000,
+      "total": 5000,
+      "name": "Mitsubishi Electric India",
+      "sector": "ELECTRICAL"
+    },
+    "EATON": {
+      "original": 0,
+      "synthetic": 5000,
+      "total": 5000,
+      "name": "Eaton India",
+      "sector": "ELECTRICAL"
+    },
+    "LEGRAND": {
+      "original": 0,
+      "synthetic": 5000,
+      "total": 5000,
+      "name": "Legrand India",
+      "sector": "ELECTRICAL"
+    },
+    "HAVELLS": {
+      "original": 0,
+      "synthetic": 5000,
+      "total": 5000,
+      "name": "Havells India",
+      "sector": "ELECTRICAL"
+    },
+    "POLYCAB": {
+      "original": 0,
+      "synthetic": 5000,
+      "total": 5000,
+      "name": "Polycab India",
+      "sector": "ELECTRICAL"
+    },
+    "KEI": {
+      "original": 0,
+      "synthetic": 5000,
+      "total": 5000,
+      "name": "KEI Industries",
+      "sector": "ELECTRICAL"
+    },
+    "FINOLEX": {
+      "original": 0,
+      "synthetic": 5000,
+      "total": 5000,
+      "name": "Finolex Cables",
+      "sector": "ELECTRICAL"
+    },
+    "SAIL": {
+      "original": 6,
+      "synthetic": 4994,
+      "total": 5000,
+      "name": "Steel Authority of India",
+      "sector": "STEEL"
+    },
+    "TATASTEEL": {
+      "original": 0,
+      "synthetic": 5000,
+      "total": 5000,
+      "name": "Tata Steel",
+      "sector": "STEEL"
+    },
+    "JSW": {
+      "original": 0,
+      "synthetic": 5000,
+      "total": 5000,
+      "name": "JSW Steel",
+      "sector": "STEEL"
+    },
+    "JINDAL": {
+      "original": 0,
+      "synthetic": 5000,
+      "total": 5000,
+      "name": "Jindal Steel and Power",
+      "sector": "STEEL"
+    },
+    "NMDC": {
+      "original": 0,
+      "synthetic": 5000,
+      "total": 5000,
+      "name": "NMDC",
+      "sector": "STEEL"
+    },
+    "NALCO": {
+      "original": 12,
+      "synthetic": 4988,
+      "total": 5000,
+      "name": "National Aluminium Company",
+      "sector": "STEEL"
+    },
+    "HINDALCO": {
+      "original": 0,
+      "synthetic": 5000,
+      "total": 5000,
+      "name": "Hindalco",
+      "sector": "STEEL"
+    },
+    "VEDANTA": {
+      "original": 0,
+      "synthetic": 5000,
+      "total": 5000,
+      "name": "Vedanta",
+      "sector": "STEEL"
+    },
+    "RINL": {
+      "original": 0,
+      "synthetic": 5000,
+      "total": 5000,
+      "name": "Rashtriya Ispat Nigam",
+      "sector": "STEEL"
+    },
+    "MECON": {
+      "original": 0,
+      "synthetic": 5000,
+      "total": 5000,
+      "name": "MECON",
+      "sector": "STEEL"
+    },
+    "MIDHANI": {
+      "original": 0,
+      "synthetic": 5000,
+      "total": 5000,
+      "name": "Mishra Dhatu Nigam",
+      "sector": "STEEL"
+    },
+    "HCL": {
+      "original": 1,
+      "synthetic": 4999,
+      "total": 5000,
+      "name": "Hindustan Copper",
+      "sector": "STEEL"
+    },
+    "MOIL": {
+      "original": 0,
+      "synthetic": 5000,
+      "total": 5000,
+      "name": "MOIL",
+      "sector": "STEEL"
+    },
+    "COALINDIA": {
+      "original": 0,
+      "synthetic": 5000,
+      "total": 5000,
+      "name": "Coal India",
+      "sector": "STEEL"
+    },
+    "NLC": {
+      "original": 0,
+      "synthetic": 5000,
+      "total": 5000,
+      "name": "NLC India",
+      "sector": "STEEL"
+    },
+    "NTPC": {
+      "original": 17516,
+      "synthetic": 0,
+      "total": 17516,
+      "name": "NTPC",
+      "sector": "POWER"
+    },
+    "NHPC": {
+      "original": 0,
+      "synthetic": 5000,
+      "total": 5000,
+      "name": "NHPC",
+      "sector": "POWER"
+    },
+    "POWERGRID": {
+      "original": 0,
+      "synthetic": 5000,
+      "total": 5000,
+      "name": "Power Grid Corporation",
+      "sector": "POWER"
+    },
+    "NPCIL": {
+      "original": 0,
+      "synthetic": 5000,
+      "total": 5000,
+      "name": "NPCIL",
+      "sector": "POWER"
+    },
+    "REC": {
+      "original": 0,
+      "synthetic": 5000,
+      "total": 5000,
+      "name": "REC",
+      "sector": "POWER"
+    },
+    "SJVN": {
+      "original": 0,
+      "synthetic": 5000,
+      "total": 5000,
+      "name": "SJVN",
+      "sector": "POWER"
+    },
+    "THDC": {
+      "original": 0,
+      "synthetic": 5000,
+      "total": 5000,
+      "name": "THDC India",
+      "sector": "POWER"
+    },
+    "NEEPCO": {
+      "original": 0,
+      "synthetic": 5000,
+      "total": 5000,
+      "name": "NEEPCO",
+      "sector": "POWER"
+    },
+    "DVC": {
+      "original": 0,
+      "synthetic": 5000,
+      "total": 5000,
+      "name": "Damodar Valley Corporation",
+      "sector": "POWER"
+    },
+    "TATAPOWER": {
+      "original": 0,
+      "synthetic": 5000,
+      "total": 5000,
+      "name": "Tata Power",
+      "sector": "POWER"
+    },
+    "ADANIPOWER": {
+      "original": 0,
+      "synthetic": 5000,
+      "total": 5000,
+      "name": "Adani Power",
+      "sector": "POWER"
+    },
+    "JSWENERGY": {
+      "original": 0,
+      "synthetic": 5000,
+      "total": 5000,
+      "name": "JSW Energy",
+      "sector": "POWER"
+    },
+    "TORRENTP": {
+      "original": 0,
+      "synthetic": 5000,
+      "total": 5000,
+      "name": "Torrent Power",
+      "sector": "POWER"
+    },
+    "CESC": {
+      "original": 0,
+      "synthetic": 5000,
+      "total": 5000,
+      "name": "CESC",
+      "sector": "POWER"
+    },
+    "WBPDCL": {
+      "original": 11,
+      "synthetic": 4989,
+      "total": 5000,
+      "name": "West Bengal Power Development Corporation",
+      "sector": "POWER"
+    },
+    "IR": {
+      "original": 0,
+      "synthetic": 5000,
+      "total": 5000,
+      "name": "Indian Railways",
+      "sector": "RAIL"
+    },
+    "IREPS": {
+      "original": 0,
+      "synthetic": 5000,
+      "total": 5000,
+      "name": "IREPS",
+      "sector": "RAIL"
+    },
+    "RITES": {
+      "original": 0,
+      "synthetic": 5000,
+      "total": 5000,
+      "name": "RITES",
+      "sector": "RAIL"
+    },
+    "IRCON": {
+      "original": 0,
+      "synthetic": 5000,
+      "total": 5000,
+      "name": "IRCON",
+      "sector": "RAIL"
+    },
+    "RVNL": {
+      "original": 0,
+      "synthetic": 5000,
+      "total": 5000,
+      "name": "Rail Vikas Nigam",
+      "sector": "RAIL"
+    },
+    "BEML": {
+      "original": 0,
+      "synthetic": 5000,
+      "total": 5000,
+      "name": "BEML",
+      "sector": "RAIL"
+    },
+    "BLW": {
+      "original": 0,
+      "synthetic": 5000,
+      "total": 5000,
+      "name": "Banaras Locomotive Works",
+      "sector": "RAIL"
+    },
+    "CLW": {
+      "original": 0,
+      "synthetic": 5000,
+      "total": 5000,
+      "name": "Chittaranjan Locomotive Works",
+      "sector": "RAIL"
+    },
+    "ICF": {
+      "original": 0,
+      "synthetic": 5000,
+      "total": 5000,
+      "name": "Integral Coach Factory",
+      "sector": "RAIL"
+    },
+    "RCFK": {
+      "original": 0,
+      "synthetic": 5000,
+      "total": 5000,
+      "name": "Rail Coach Factory Kapurthala",
+      "sector": "RAIL"
+    },
+    "MCF": {
+      "original": 0,
+      "synthetic": 5000,
+      "total": 5000,
+      "name": "Modern Coach Factory",
+      "sector": "RAIL"
+    },
+    "BDL": {
+      "original": 0,
+      "synthetic": 5000,
+      "total": 5000,
+      "name": "Bharat Dynamics",
+      "sector": "DEFENCE"
+    },
+    "DRDO": {
+      "original": 0,
+      "synthetic": 5000,
+      "total": 5000,
+      "name": "DRDO",
+      "sector": "DEFENCE"
+    },
+    "GRSE": {
+      "original": 0,
+      "synthetic": 5000,
+      "total": 5000,
+      "name": "Garden Reach Shipbuilders",
+      "sector": "DEFENCE"
+    },
+    "COCHINSHIP": {
+      "original": 0,
+      "synthetic": 5000,
+      "total": 5000,
+      "name": "Cochin Shipyard",
+      "sector": "DEFENCE"
+    },
+    "MAZAGON": {
+      "original": 0,
+      "synthetic": 5000,
+      "total": 5000,
+      "name": "Mazagon Dock Shipbuilders",
+      "sector": "DEFENCE"
+    },
+    "GOASHIP": {
+      "original": 0,
+      "synthetic": 5000,
+      "total": 5000,
+      "name": "Goa Shipyard",
+      "sector": "DEFENCE"
+    },
+    "HINDSHIP": {
+      "original": 0,
+      "synthetic": 5000,
+      "total": 5000,
+      "name": "Hindustan Shipyard",
+      "sector": "DEFENCE"
+    },
+    "SCI": {
+      "original": 0,
+      "synthetic": 5000,
+      "total": 5000,
+      "name": "Shipping Corporation of India",
+      "sector": "PORTS"
+    },
+    "COCHINPORT": {
+      "original": 0,
+      "synthetic": 5000,
+      "total": 5000,
+      "name": "Cochin Port Authority",
+      "sector": "PORTS"
+    },
+    "CHENNAIPORT": {
+      "original": 0,
+      "synthetic": 5000,
+      "total": 5000,
+      "name": "Chennai Port Authority",
+      "sector": "PORTS"
+    },
+    "MUMBAIPORT": {
+      "original": 0,
+      "synthetic": 5000,
+      "total": 5000,
+      "name": "Mumbai Port Authority",
+      "sector": "PORTS"
+    },
+    "VIZAGPORT": {
+      "original": 0,
+      "synthetic": 5000,
+      "total": 5000,
+      "name": "Visakhapatnam Port Authority",
+      "sector": "PORTS"
+    },
+    "PARADIPPORT": {
+      "original": 0,
+      "synthetic": 5000,
+      "total": 5000,
+      "name": "Paradip Port Authority",
+      "sector": "PORTS"
+    },
+    "DEENDAYAL": {
+      "original": 0,
+      "synthetic": 5000,
+      "total": 5000,
+      "name": "Deendayal Port Authority",
+      "sector": "PORTS"
+    },
+    "IPA": {
+      "original": 0,
+      "synthetic": 5000,
+      "total": 5000,
+      "name": "Indian Ports Association",
+      "sector": "PORTS"
+    },
+    "TATAPROJ": {
+      "original": 0,
+      "synthetic": 5000,
+      "total": 5000,
+      "name": "Tata Projects",
+      "sector": "EPC"
+    },
+    "SHAPOORJI": {
+      "original": 0,
+      "synthetic": 5000,
+      "total": 5000,
+      "name": "Shapoorji Pallonji",
+      "sector": "EPC"
+    },
+    "AFCONS": {
+      "original": 0,
+      "synthetic": 5000,
+      "total": 5000,
+      "name": "Afcons Infrastructure",
+      "sector": "EPC"
+    },
+    "EIL": {
+      "original": 0,
+      "synthetic": 5000,
+      "total": 5000,
+      "name": "Engineers India Limited",
+      "sector": "EPC"
+    },
+    "NCC": {
+      "original": 0,
+      "synthetic": 5000,
+      "total": 5000,
+      "name": "NCC Limited",
+      "sector": "EPC"
+    },
+    "GMR": {
+      "original": 0,
+      "synthetic": 5000,
+      "total": 5000,
+      "name": "GMR Group",
+      "sector": "EPC"
+    },
+    "ADANIINFRA": {
+      "original": 0,
+      "synthetic": 5000,
+      "total": 5000,
+      "name": "Adani Infrastructure",
+      "sector": "EPC"
+    },
+    "JMC": {
+      "original": 0,
+      "synthetic": 5000,
+      "total": 5000,
+      "name": "JMC Projects",
+      "sector": "EPC"
+    },
+    "KALPATARU": {
+      "original": 0,
+      "synthetic": 5000,
+      "total": 5000,
+      "name": "Kalpataru Projects",
+      "sector": "EPC"
+    },
+    "TCE": {
+      "original": 0,
+      "synthetic": 5000,
+      "total": 5000,
+      "name": "Tata Consulting Engineers",
+      "sector": "EPC"
+    },
+    "CSIR": {
+      "original": 0,
+      "synthetic": 5000,
+      "total": 5000,
+      "name": "CSIR",
+      "sector": "RESEARCH"
+    },
+    "ISRO": {
+      "original": 0,
+      "synthetic": 5000,
+      "total": 5000,
+      "name": "ISRO",
+      "sector": "RESEARCH"
+    },
+    "BARC": {
+      "original": 0,
+      "synthetic": 5000,
+      "total": 5000,
+      "name": "BARC",
+      "sector": "RESEARCH"
+    },
+    "DAE": {
+      "original": 0,
+      "synthetic": 5000,
+      "total": 5000,
+      "name": "Department of Atomic Energy",
+      "sector": "RESEARCH"
+    },
+    "IGCAR": {
+      "original": 0,
+      "synthetic": 5000,
+      "total": 5000,
+      "name": "IGCAR",
+      "sector": "RESEARCH"
+    },
+    "VSSC": {
+      "original": 0,
+      "synthetic": 5000,
+      "total": 5000,
+      "name": "VSSC",
+      "sector": "RESEARCH"
+    },
+    "URSC": {
+      "original": 0,
+      "synthetic": 5000,
+      "total": 5000,
+      "name": "URSC",
+      "sector": "RESEARCH"
+    },
+    "SAC": {
+      "original": 0,
+      "synthetic": 5000,
+      "total": 5000,
+      "name": "SAC",
+      "sector": "RESEARCH"
+    },
+    "MSTC": {
+      "original": 0,
+      "synthetic": 5000,
+      "total": 5000,
+      "name": "MSTC",
+      "sector": "DIVERSIFIED"
+    },
+    "MMTC": {
+      "original": 0,
+      "synthetic": 5000,
+      "total": 5000,
+      "name": "MMTC",
+      "sector": "DIVERSIFIED"
+    },
+    "PEC": {
+      "original": 0,
+      "synthetic": 5000,
+      "total": 5000,
+      "name": "PEC",
+      "sector": "DIVERSIFIED"
+    },
+    "STC": {
+      "original": 0,
+      "synthetic": 5000,
+      "total": 5000,
+      "name": "STC",
+      "sector": "DIVERSIFIED"
+    },
+    "BALMER": {
+      "original": 0,
+      "synthetic": 5000,
+      "total": 5000,
+      "name": "Balmer Lawrie",
+      "sector": "DIVERSIFIED"
+    },
+    "ITILTD": {
+      "original": 0,
+      "synthetic": 5000,
+      "total": 5000,
+      "name": "ITI Limited",
+      "sector": "DIVERSIFIED"
+    },
+    "KIOCL": {
+      "original": 0,
+      "synthetic": 5000,
+      "total": 5000,
+      "name": "KIOCL",
+      "sector": "DIVERSIFIED"
+    },
+    "YANTRAIN": {
+      "original": 0,
+      "synthetic": 5000,
+      "total": 5000,
+      "name": "Yantra India",
+      "sector": "DIVERSIFIED"
+    },
+    "MUNITIONS": {
+      "original": 0,
+      "synthetic": 5000,
+      "total": 5000,
+      "name": "Munitions India",
+      "sector": "DIVERSIFIED"
+    },
+    "FSNL": {
+      "original": 0,
+      "synthetic": 5000,
+      "total": 5000,
+      "name": "Ferro Scrap Nigam",
+      "sector": "DIVERSIFIED"
+    },
+    "ECL": {
+      "original": 0,
+      "synthetic": 5000,
+      "total": 5000,
+      "name": "Eastern Coalfields",
+      "sector": "DIVERSIFIED"
+    },
+    "SECL": {
+      "original": 0,
+      "synthetic": 5000,
+      "total": 5000,
+      "name": "South Eastern Coalfields",
+      "sector": "DIVERSIFIED"
+    },
+    "CCL": {
+      "original": 0,
+      "synthetic": 5000,
+      "total": 5000,
+      "name": "Central Coalfields",
+      "sector": "DIVERSIFIED"
+    },
+    "MCL": {
+      "original": 0,
+      "synthetic": 5000,
+      "total": 5000,
+      "name": "Mahanadi Coalfields",
+      "sector": "DIVERSIFIED"
+    },
+    "WCL": {
+      "original": 0,
+      "synthetic": 5000,
+      "total": 5000,
+      "name": "Western Coalfields",
+      "sector": "DIVERSIFIED"
+    },
+    "AYULE": {
+      "original": 0,
+      "synthetic": 5000,
+      "total": 5000,
+      "name": "Andrew Yule",
+      "sector": "DIVERSIFIED"
+    },
+    "NRDC": {
+      "original": 0,
+      "synthetic": 5000,
+      "total": 5000,
+      "name": "NRDC",
+      "sector": "DIVERSIFIED"
+    }
+  },
+  "quality_flag_counts": {
+    "CLEAN": 641801,
+    "TYPO": 56680,
+    "WRONG_SPEC": 55613,
+    "MISSING_ATTR": 78422
+  },
+  "category_counts": {
+    "FASTENER": 290325,
+    "VALVE": 158087,
+    "BEARING": 117765,
+    "PIPE": 67977,
+    "PIPE FITTING": 33957,
+    "STEEL": 14207,
+    "CABLE": 13787,
+    "GASKET/SEAL": 12350,
+    "FLANGE": 10948,
+    "INSTRUMENT": 10507,
+    "SWITCHGEAR": 10216,
+    "OTHER": 8938,
+    "CHEMICAL": 7803,
+    "WELDING": 7458,
+    "SAFETY": 6345,
+    "PUMP": 5924,
+    "MOTOR": 5801,
+    "ELECTRICAL": 5343,
+    "IT": 5064,
+    "TOOLS": 4884,
+    "LUBRICANT": 3748,
+    "CONSUMABLE": 3735,
+    "OFFICE": 3285,
+    "RUBBER": 3281,
+    "FILTER": 3167,
+    "FURNITURE": 3123,
+    "LIFTING": 2751,
+    "PAINT": 2500,
+    "MEDICAL": 2428,
+    "HVAC": 2161,
+    "TANK": 2130,
+    "RAIL": 526,
+    "MARINE": 414,
+    "TRANSFORMER": 363,
+    "BOILER": 305,
+    "REFINERY": 298,
+    "FERTILIZER": 244,
+    "REFRACTORY": 214,
+    "COMPRESSOR": 157
+  },
+  "cross_cpse_groups_ge5": 1437,
+  "largest_cross_cpse_groups": [
+    [
+      "SIG-c9ebfd9d5ee6",
+      163
+    ],
+    [
+      "SIG-19ee632e3215",
+      163
+    ],
+    [
+      "SIG-1acc0f54b595",
+      163
+    ],
+    [
+      "SIG-f9dad6b4e20a",
+      163
+    ],
+    [
+      "SIG-472997a76304",
+      163
+    ],
+    [
+      "SIG-6593555b0530",
+      163
+    ],
+    [
+      "SIG-ee9c1c1b6c53",
+      163
+    ],
+    [
+      "SIG-9c90136016af",
+      163
+    ],
+    [
+      "SIG-b4644a159756",
+      162
+    ],
+    [
+      "SIG-8f92f86676b4",
+      162
+    ],
+    [
+      "SIG-399e8c77732d",
+      162
+    ],
+    [
+      "SIG-842234237b7e",
+      162
+    ],
+    [
+      "SIG-e5ebb5ed99da",
+      162
+    ],
+    [
+      "SIG-d4d88eb197b7",
+      162
+    ],
+    [
+      "SIG-4275e6b180a5",
+      162
+    ],
+    [
+      "SIG-ab549f04e9d6",
+      162
+    ],
+    [
+      "SIG-8375cfe33553",
+      162
+    ],
+    [
+      "SIG-adff0de73b67",
+      162
+    ],
+    [
+      "SIG-bf0a1aa85478",
+      162
+    ],
+    [
+      "SIG-8ea2ea259dbc",
+      162
+    ]
+  ],
+  "validation": {
+    "empty_cells": 0,
+    "bad_json": 0,
+    "dup_keys": 0,
+    "unknown_cpse": 0,
+    "cross_material_key": 0
+  },
+  "label_only_columns": [
+    "true_match_key",
+    "canonical_description",
+    "quality_flag",
+    "noise_tags"
+  ],
+  "runtime_seconds": 63.2
+}

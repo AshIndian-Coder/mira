@@ -1,0 +1,38 @@
+{
+  "generated_at": "2026-09-15 03:16:39",
+  "seed": 42,
+  "source": "Final_Master_Material_Records.csv",
+  "output": "Training_Pairs_Final.csv",
+  "total_pairs": 170000,
+  "pair_type_counts": {
+    "POS": 85000,
+    "HN_CORRUPT": 45000,
+    "HN_SIBLING": 25000,
+    "NEG_EASY": 15000
+  },
+  "split_counts": {
+    "heldout": 7216,
+    "train": 156136,
+    "dev": 6648
+  },
+  "group_split_counts": {
+    "train": 21860,
+    "dev": 1202,
+    "heldout": 1202
+  },
+  "groups_total": 24264,
+  "groups_multi_row": 1884,
+  "groups_singletons": 22380,
+  "groups_with_corrupt": 1405,
+  "sibling_templates": 1780,
+  "validation": {
+    "pair_spans_splits": 0,
+    "corrupt_as_positive": 0,
+    "identical_desc_pos": 0,
+    "same_group_negative": 0,
+    "corrupt_text_identical": 0,
+    "missing_material_code": 0
+  },
+  "label_only_note": "model input = desc_a/desc_b only; material_code_a/b, cpse_a/b, tmk_*, split, category are metadata (PDF \u00a75: material codes never a matching feature)",
+  "runtime_seconds": 11.3
+}
