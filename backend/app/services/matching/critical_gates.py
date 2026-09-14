@@ -37,8 +37,10 @@ def _get_field(
     or parsed specifications.
     """
 
-    if field in material:
-        return material.get(field)
+    value = material.get(field)
+
+    if value is not None:
+        return value
 
     specifications = material.get("parsed_specifications") or {}
 

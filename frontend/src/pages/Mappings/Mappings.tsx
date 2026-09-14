@@ -12,10 +12,24 @@ type FlatRow = {
 }
 
 function StatusBadge({ status }: { status: string }) {
-  const approved = status === 'PROVISIONAL' || status === 'APPROVED'
+  const normalized = status.toUpperCase()
+  const label =
+    normalized === 'PROVISIONAL'
+      ? 'Provisional'
+      : normalized === 'APPROVED'
+        ? 'Approved'
+        : status
+
+  const className =
+    normalized === 'APPROVED'
+      ? 'approved'
+      : normalized === 'PROVISIONAL'
+        ? 'provisional'
+        : 'review'
+
   return (
-    <span className={`mapping-status mapping-status-${approved ? 'approved' : 'review'}`}>
-      {approved ? 'Approved' : status}
+    <span className={`mapping-status mapping-status-${className}`}>
+      {label}
     </span>
   )
 }
@@ -130,7 +144,7 @@ export default function Mappings() {
             {generating ? 'Generating…' : 'Generate Mappings'}
           </button>
           <button className="mapping-secondary-button" type="button" onClick={handleExport}>
-            Export Approved Mappings
+            Export Mappings
           </button>
         </div>
       </div>

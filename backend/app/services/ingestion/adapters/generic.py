@@ -17,12 +17,9 @@ class GenericAdapter(DocumentAdapter):
     to identify material-like records from page text and preserves source
     evidence when a field cannot be confidently interpreted.
 
-    CPSE-specific adapters should always run before this adapter.
     """
 
     name = "generic"
-    def __init__(self, cpse_hint: str | None = None) -> None:
-        self.cpse_hint = cpse_hint
 
     # Common material-code shapes:
     #   M0171184004
@@ -94,7 +91,6 @@ class GenericAdapter(DocumentAdapter):
     def extract_records(
         self,
         document: ParsedDocument,
-        cpse_hint: str | None = None,
     ) -> list[MaterialRecord]:
 
         records: list[MaterialRecord] = []
@@ -159,14 +155,7 @@ class GenericAdapter(DocumentAdapter):
 
                 records.append(
                     MaterialRecord(
-                        cpse=(
-                            cpse_hint.upper()
-                            if cpse_hint
-                            else self._infer_cpse(
-                                document,
-                                material_code,
-                            )
-                        ),
+                        cpse="UNKNOWN",
                         material_code=material_code,
                         description=description,
                         unit=unit,
@@ -586,44 +575,6 @@ class GenericAdapter(DocumentAdapter):
         )
 
         return upper.startswith(metadata_prefixes)
-
-    # ------------------------------------------------------------------
-    # CPSE INFERENCE
-    # ------------------------------------------------------------------
-
-    @staticmethod
-    def _infer_cpse(
-        self,
-        document: ParsedDocument,
-        material_code: str,
-    ) -> str:
-
-        if self.cpse_hint:
-            return self.cpse_hint.upper()
-
-        filename = document.filename.upper()
-
-        known_cpse = (
-            "NTPC",
-            "BHEL",
-            "NALCO",
-            "BPCL",
-            "HPCL",
-            "IOCL",
-            "SAIL",
-            "ONGC",
-            "GAIL",
-            "HCL",
-            "MDL",
-        )
-
-        for cpse in known_cpse:
-            if cpse in filename:
-                return cpse
-
-        # Do not invent an organization when the source does not establish
-        # one. The caller can supply the CPSE externally later.
-        return "UNKNOWN"
 
     # ------------------------------------------------------------------
     # EXTRACTION CONFIDENCE

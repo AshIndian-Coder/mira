@@ -13,10 +13,24 @@ type CommonMaterial = {
 }
 
 function ApprovalBadge({ status }: { status: string }) {
-  const approved = status === 'PROVISIONAL' || status === 'APPROVED'
+  const normalized = status.toUpperCase()
+  const label =
+    normalized === 'PROVISIONAL'
+      ? 'Provisional'
+      : normalized === 'APPROVED'
+        ? 'Approved'
+        : status
+
+  const className =
+    normalized === 'APPROVED'
+      ? 'approved'
+      : normalized === 'PROVISIONAL'
+        ? 'provisional'
+        : 'review'
+
   return (
-    <span className={`common-status common-status-${approved ? 'approved' : 'review'}`}>
-      {approved ? 'Approved' : status}
+    <span className={`common-status common-status-${className}`}>
+      {label}
     </span>
   )
 }
