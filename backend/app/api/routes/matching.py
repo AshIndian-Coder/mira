@@ -196,7 +196,7 @@ def run_batch_matching(request: BatchRunRequest):
                 "critical_checks": result["critical_checks"],
                 "engine_decision": result["decision"],
                 "review_status": "PENDING"
-                if result["decision"] == "REVIEW"
+                if result["decision"] in {"HIGH_CONFIDENCE", "REVIEW"}
                 else result["decision"],
                 "reviewer_id": None,
                 "reviewer_comments": None,

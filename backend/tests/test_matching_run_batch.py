@@ -74,11 +74,10 @@ BHEL,BHEL-VALVE-001,SS 304 GATE VALVE 2 IN 150 LB,Valve,SS304
             "REVIEW",
             "DIFFERENT",
         }
-        assert candidate["review_status"] in {
-            "PENDING",
-            "HIGH_CONFIDENCE",
-            "DIFFERENT",
-        }
+        if candidate["engine_decision"] in {"HIGH_CONFIDENCE", "REVIEW"}:
+            assert candidate["review_status"] == "PENDING"
+        else:
+            assert candidate["review_status"] == candidate["engine_decision"]
 
     finally:
         store.reset_stores()

@@ -217,7 +217,7 @@ export const api = {
       pending: number
       approved: number
       rejected: number
-      auto_accepted_high_confidence: number
+      high_confidence: number
     }>('/api/review/summary'),
 
   reviewAction: (
