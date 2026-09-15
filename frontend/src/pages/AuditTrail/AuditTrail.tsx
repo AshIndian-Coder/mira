@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 
 import { api, formatNumber, formatTimestamp, type AuditEvent } from '../../lib/api'
 
@@ -55,23 +55,25 @@ export default function AuditTrail() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  const loadAudit = useCallback(async () => {
-    try {
-      setLoading(true)
-      setError(null)
-      const response = await api.listAudit(0, 200)
-      setTotalEvents(response.total)
-      setEntries(response.events.map(mapAuditEvent))
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load audit log')
-    } finally {
-      setLoading(false)
-    }
-  }, [])
 
   useEffect(() => {
-    loadAudit()
-  }, [loadAudit])
+    let active = true
+    api.listAudit(0, 200).then((response) => {
+      if (active) {
+        setTotalEvents(response.total)
+        setEntries(response.events.map(mapAuditEvent))
+        setLoading(false)
+      }
+    }).catch((err) => {
+      if (active) {
+        setError(err instanceof Error ? err.message : 'Failed to load audit log')
+        setLoading(false)
+      }
+    })
+    return () => {
+      active = false
+    }
+  }, [])
 
   const filteredEntries = useMemo(() => {
     const query = search.trim().toLowerCase()

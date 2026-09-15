@@ -56,8 +56,22 @@ export default function Mappings() {
   }, [])
 
   useEffect(() => {
-    loadMappings()
-  }, [loadMappings])
+    let active = true
+    api.listMappings().then((response) => {
+      if (active) {
+        setMappings(response.mappings)
+        setLoading(false)
+      }
+    }).catch((err) => {
+      if (active) {
+        setError(err instanceof Error ? err.message : 'Failed to load mappings')
+        setLoading(false)
+      }
+    })
+    return () => {
+      active = false
+    }
+  }, [])
 
   const flatRows: FlatRow[] = useMemo(() => {
     const rows: FlatRow[] = []

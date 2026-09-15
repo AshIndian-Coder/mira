@@ -34,8 +34,30 @@ function MatchReview() {
   }, [])
 
   useEffect(() => {
-    loadQueue()
-  }, [loadQueue])
+    let active = true
+    api.reviewQueue(0, 50).then((response) => {
+      if (active) {
+        setTotalPending(response.total_pending)
+        setCandidates(response.queue)
+        setSelected((current) => {
+          if (response.queue.length === 0) return null
+          if (current && response.queue.some((item) => item.id === current.id)) {
+            return response.queue.find((item) => item.id === current.id) ?? response.queue[0]
+          }
+          return response.queue[0]
+        })
+        setLoading(false)
+      }
+    }).catch((err) => {
+      if (active) {
+        setError(err instanceof Error ? err.message : 'Failed to load review queue')
+        setLoading(false)
+      }
+    })
+    return () => {
+      active = false
+    }
+  }, [])
 
   const handleAction = async (action: 'APPROVE' | 'REJECT') => {
     if (!selected) return

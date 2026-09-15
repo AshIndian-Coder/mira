@@ -15,6 +15,7 @@ from fastapi import APIRouter, HTTPException
 
 from app import store
 from app.db_adapter import PersistentList, mappings_table, next_id
+from app.services.clustering.service import cluster_approved_pairs
 from app.services.harmonization.service import build_common_material_record
 
 router = APIRouter(prefix="/mappings", tags=["Mappings"])
@@ -59,9 +60,9 @@ def generate_mappings():
     """
     Build CPSE→NMC mapping suggestions from APPROVED candidate pairs.
 
-    Algorithm (MVP):
+    Algorithm:
     1. Collect all APPROVED candidates.
-    2. Union-find to group connected material IDs into clusters.
+    2. Group connected material IDs into clusters using Union-Find.
     3. For each cluster, create one NMC and map every CPSE code to it.
 
     CRITICAL: Source CPSE codes are preserved; NMC is additive, not replacing.
@@ -75,28 +76,7 @@ def generate_mappings():
             "message": "Approve candidates via POST /api/review/queue/{id}/action first.",
         }
 
-    # --- Union-Find ---
-    parent: dict[int, int] = {}
-
-    def find(x: int) -> int:
-        if parent.setdefault(x, x) != x:
-            parent[x] = find(parent[x])
-        return parent[x]
-
-    def union(a: int, b: int) -> None:
-        parent[find(a)] = find(b)
-
-    for c in approved:
-        union(c["source_material_id"], c["target_material_id"])
-
-    # Group material IDs by cluster root
-    clusters: dict[int, list[int]] = {}
-    all_ids = {c["source_material_id"] for c in approved} | {
-        c["target_material_id"] for c in approved
-    }
-    for mid in all_ids:
-        root = find(mid)
-        clusters.setdefault(root, []).append(mid)
+    clusters = cluster_approved_pairs(approved)
 
     # Build material index for lookup
     mat_index: dict[int, dict[str, Any]] = {m["id"]: m for m in store.MATERIALS}

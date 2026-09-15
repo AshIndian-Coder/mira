@@ -31,8 +31,26 @@ function Materials() {
   }, [query])
 
   useEffect(() => {
-    loadMaterials()
-  }, [loadMaterials])
+    let active = true
+    api.listMaterials({
+      query: query || undefined,
+      limit: 100,
+    }).then((response) => {
+      if (active) {
+        setMaterials(response.materials)
+        setTotal(response.total)
+        setLoading(false)
+      }
+    }).catch((err) => {
+      if (active) {
+        setError(err instanceof Error ? err.message : 'Failed to load materials')
+        setLoading(false)
+      }
+    })
+    return () => {
+      active = false
+    }
+  }, [query])
 
   const handleUpload = async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
