@@ -90,7 +90,7 @@ def submit_review_action(candidate_id: int, request: ReviewActionRequest):
     candidate["reviewed_at"] = now
 
     # Emit audit event (consumed by /api/audit route)
-    from app.api.routes.audit import AUDIT_EVENTS  # local import to avoid circular dep
+    from app.api.v1.audit import AUDIT_EVENTS  # local import to avoid circular dep
     AUDIT_EVENTS.append({
         "event_type": f"MATCH_{action}D",
         "candidate_id": candidate_id,

@@ -2,8 +2,8 @@ from fastapi.testclient import TestClient
 
 from app.main import app
 from app import store
-from app.api.routes.mappings import MAPPINGS
-from app.api.routes.audit import AUDIT_EVENTS
+from app.api.v1.mappings import MAPPINGS
+from app.api.v1.audit import AUDIT_EVENTS
 
 
 client = TestClient(app)
