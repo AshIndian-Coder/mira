@@ -134,12 +134,33 @@ export type MappingEntry = {
   material_grade?: string | null
 }
 
+export type CommonMaterialRecord = {
+  canonical_description: string
+  category: string
+  canonical_technical_attributes: Record<string, unknown>
+  source_materials: Array<{
+    material_id: number | null
+    cpse: string | null
+    material_code: string | null
+    description: string | null
+    source_file?: string | null
+    source_page?: number | null
+  }>
+  provenance: {
+    source_count: number
+    material_ids: number[]
+  }
+  approval_status: string
+  critical_unknown_fields: string[]
+}
+
 export type Mapping = {
   id: number
   nmc: string
   cpse_mappings: MappingEntry[]
   cluster_size: number
   status: string
+  common_material_record: CommonMaterialRecord
   created_at: string
 }
 

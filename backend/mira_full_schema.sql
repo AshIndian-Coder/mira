@@ -68,17 +68,12 @@ CREATE TABLE cnmc (
 
 CREATE TABLE mappings (
  id BIGSERIAL PRIMARY KEY,
- material_id BIGINT NOT NULL,
- cnmc_id INTEGER NOT NULL,
- confidence_score DECIMAL(5,2),
- approved_by INTEGER,
- approved_at TIMESTAMP,
- status VARCHAR(50) DEFAULT 'active',
+ nmc VARCHAR(50),
+ cpse_mappings JSONB,
+ cluster_size INTEGER,
+ status VARCHAR(50),
  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
- FOREIGN KEY (material_id) REFERENCES materials(id),
- FOREIGN KEY (cnmc_id) REFERENCES cnmc(id),
- FOREIGN KEY (approved_by) REFERENCES users(id),
- UNIQUE (material_id, status)
+ common_material_record JSONB
 );
 
 CREATE TABLE match_suggestions (

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 
-import { api, type Mapping } from '../../lib/api'
+import { api, type CommonMaterialRecord, type Mapping } from '../../lib/api'
 
 type CommonMaterial = {
   nmc: string
@@ -9,6 +9,8 @@ type CommonMaterial = {
   material: string
   status: string
   sourceCount: number
+  technicalAttributes: Record<string, unknown>
+  unknownFields: string[]
   sources: Array<{ cpse: string; code: string; description: string }>
 }
 
@@ -35,15 +37,39 @@ function ApprovalBadge({ status }: { status: string }) {
   )
 }
 
+function formatAttributeLabel(field: string): string {
+  return field
+    .replace(/_/g, ' ')
+    .replace(/\b\w/g, (character) => character.toUpperCase())
+}
+
+function formatAttributeValue(value: unknown): string {
+  if (value === null || value === undefined || value === '') return 'UNKNOWN'
+
+  if (Array.isArray(value)) {
+    return value.length ? value.join(', ') : 'UNKNOWN'
+  }
+
+  if (typeof value === 'object') {
+    return JSON.stringify(value)
+  }
+
+  return String(value)
+}
+
 function mappingToCommonMaterial(mapping: Mapping): CommonMaterial {
-  const primary = mapping.cpse_mappings[0]
+  const cmr: CommonMaterialRecord = mapping.common_material_record
+  const technicalAttributes = cmr.canonical_technical_attributes ?? {}
+
   return {
     nmc: mapping.nmc,
-    description: primary?.description ?? mapping.nmc,
-    category: primary?.category ?? 'General',
-    material: primary?.material_grade ?? '—',
-    status: mapping.status,
-    sourceCount: mapping.cpse_mappings.length,
+    description: cmr.canonical_description,
+    category: cmr.category,
+    material: formatAttributeValue(technicalAttributes.material_grade),
+    status: cmr.approval_status,
+    sourceCount: cmr.provenance.source_count,
+    technicalAttributes,
+    unknownFields: cmr.critical_unknown_fields,
     sources: mapping.cpse_mappings.map((entry) => ({
       cpse: entry.cpse,
       code: entry.material_code,
@@ -140,7 +166,7 @@ export default function CommonMaterials() {
             <thead>
               <tr>
                 <th>Common National Code</th>
-                <th>Representative Description</th>
+                <th>Canonical Description</th>
                 <th>Category</th>
                 <th>Material / Grade</th>
                 <th>CPSE Sources</th>
@@ -200,7 +226,28 @@ export default function CommonMaterials() {
                   ×
                 </button>
               </div>
+
               <div className="common-detail-section">
+                <h3>Canonical Technical Attributes</h3>
+                <div className="common-source-list">
+                  {Object.entries(selected.technicalAttributes).map(([field, value]) => (
+                    <div className="common-source-item" key={field}>
+                      <div className="common-source-top">
+                        <strong>{formatAttributeLabel(field)}</strong>
+                        <span>{formatAttributeValue(value)}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                {selected.unknownFields.length > 0 && (
+                  <p style={{ marginTop: '10px', color: 'var(--text-muted)', fontSize: '11.5px' }}>
+                    {selected.unknownFields.length} field(s) remain UNKNOWN because source
+                    evidence is missing or conflicting.
+                  </p>
+                )}
+              </div>
+
+              <div className="common-detail-section" style={{ marginTop: '24px' }}>
                 <h3>CPSE Source Mappings</h3>
                 <div className="common-source-list">
                   {selected.sources.map((source) => (

@@ -15,6 +15,7 @@ from fastapi import APIRouter, HTTPException
 
 from app import store
 from app.db_adapter import PersistentList, mappings_table, next_id
+from app.services.harmonization.service import build_common_material_record
 
 router = APIRouter(prefix="/mappings", tags=["Mappings"])
 
@@ -117,6 +118,19 @@ def generate_mappings():
         mapping_id = _next_mapping_id()
         nmc = _make_nmc(mapping_id)
 
+        cluster_materials = [
+            mat_index[mid]
+            for mid in sorted(cluster_ids)
+            if mid in mat_index
+        ]
+
+        if not cluster_materials:
+            continue
+
+        common_material_record = build_common_material_record(
+            cluster_materials
+        )
+
         cpse_entries = []
         for mid in sorted(cluster_ids):
             mat = mat_index.get(mid)
@@ -137,6 +151,7 @@ def generate_mappings():
             "cpse_mappings": cpse_entries,
             "cluster_size": len(cluster_ids),
             "status": "PROVISIONAL",
+            "common_material_record": common_material_record,
             "created_at": datetime.now(timezone.utc).isoformat(),
         }
         MAPPINGS.append(mapping_record)

@@ -111,15 +111,49 @@ export default function Mappings() {
   const handleExport = async () => {
     try {
       const result = await api.exportMappingsFlat()
-      const blob = new Blob([JSON.stringify(result.rows, null, 2)], {
-        type: 'application/json',
+
+      const headers = [
+        'nmc',
+        'cpse',
+        'cpse_material_code',
+        'description',
+        'category',
+        'material_grade',
+      ]
+
+      const escapeCsv = (value: unknown) => {
+        const text = value == null ? '' : String(value)
+        return `"${text.replace(/"/g, '""')}"`
+      }
+
+      const csv = [
+        headers.join(','),
+        ...result.rows.map((row) =>
+          headers
+            .map((header) => escapeCsv(row[header as keyof typeof row]))
+            .join(','),
+        ),
+      ].join('\r\n')
+
+      const blob = new Blob([csv], {
+        type: 'text/csv;charset=utf-8;',
       })
+
       const url = URL.createObjectURL(blob)
       const link = document.createElement('a')
+
       link.href = url
-      link.download = 'mira-mappings-export.json'
+      link.download = 'mira-mappings-export.csv'
+      link.style.display = 'none'
+
+      document.body.appendChild(link)
       link.click()
-      URL.revokeObjectURL(url)
+      document.body.removeChild(link)
+
+      window.setTimeout(() => {
+        URL.revokeObjectURL(url)
+      }, 1000)
+
       setMessage(`Exported ${result.total_rows} mapping rows`)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Export failed')
@@ -144,7 +178,7 @@ export default function Mappings() {
             {generating ? 'Generating…' : 'Generate Mappings'}
           </button>
           <button className="mapping-secondary-button" type="button" onClick={handleExport}>
-            Export Mappings
+            Export CSV
           </button>
         </div>
       </div>
