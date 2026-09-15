@@ -1,0 +1,53 @@
+# --- Logs (auto-created at runtime by app/core/logger.py → LOG_FILE=logs/app.log) ---
+# Created every time via os.makedirs(..., exist_ok=True) in setup_logging()
+# and also in Dockerfile (mkdir -p logs). Will be created in production too.
+logs/
+*.log
+
+# --- Python cache (auto-created on import/pytest) ---
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+*.egg-info/
+dist/
+build/
+
+# --- Virtual env ---
+.venv/
+venv/
+.env
+.ENV
+
+# --- ML pipeline generated data (regeneratable) ---
+# Created by: python -m app.ml_pipeline.generate_synthetic_data
+#             python -m app.ml_pipeline.hard_negative_miner
+#             python -m app.ml_pipeline.export_feedback
+app/ml_pipeline/data/
+evaluation_reports/
+
+# --- Models & large artifacts (not in repo, download/train separately) ---
+models/
+*.bin
+*.safetensors
+*.pt
+*.pth
+
+# --- Vector DB & local DB (scratch SQLite for e2e_demo) ---
+/tmp/mira_e2e.db
+*.db
+*.sqlite
+*.sqlite3
+
+# --- OS ---
+.DS_Store
+Thumbs.db
+
+# --- IDE ---
+.vscode/
+.idea/
+*.swp
+*.swo

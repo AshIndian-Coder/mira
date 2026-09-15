@@ -1,0 +1,49 @@
+# --- Web framework ---
+fastapi>=0.115,<1.0
+uvicorn[standard]>=0.30
+python-multipart>=0.0.9
+pydantic>=2.7,<3.0
+pydantic-settings>=2.2,<3.0
+email-validator>=2.1
+
+# --- Authentication / security ---
+python-jose[cryptography]>=3.3
+passlib[bcrypt]>=1.7.4
+bcrypt==4.0.1
+
+# --- Database (PostgreSQL) ---
+SQLAlchemy>=2.0,<3.0
+psycopg2-binary>=2.9
+
+# --- Vector database (Milvus) ---
+pymilvus>=2.4,<3.0
+
+# --- Data processing (CSV/Excel ingestion) ---
+pandas>=2.0
+openpyxl>=3.1
+numpy>=1.26
+
+# --- External integrations ---
+requests>=2.31
+# pyrfc - SAP RFC connector (HEAVY, requires SAP NWRDK on the host machine).
+# Uncomment only when running live SAP integration in an environment with NWRDK:
+# pyrfc>=3.0
+
+# --- ML: Qwen-1B-Embedding inference (large install, GPU recommended) ---
+# These power app/services/matching_engine/qwen_embedding.py.
+# The backend gracefully falls back to a deterministic hashing embedder
+# when these are not installed (see EMBEDDING_BACKEND=hashing).
+# torch>=2.2
+# transformers>=4.40
+
+# --- ML: offline training pipeline (app/ml_pipeline/) ---
+# torch>=2.2
+# transformers>=4.40
+# sentence-transformers>=3.0
+# datasets>=2.19
+# scikit-learn>=1.4
+
+# --- Testing ---
+pytest>=8.0
+httpx>=0.27
+
