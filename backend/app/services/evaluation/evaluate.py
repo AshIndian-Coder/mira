@@ -1,5 +1,10 @@
 import csv
+import json
 from pathlib import Path
+import sys
+from typing import Any, Callable, Dict, List, Optional
+
+from app.services.matching.classifier import classify_match
 
 
 FEATURE_DIR = Path("data/evaluation/features")
@@ -15,33 +20,41 @@ WEIGHTS = {
 DEV_FILE = FEATURE_DIR / "dev_features.csv"
 HELDOUT_FILE = FEATURE_DIR / "heldout_features.csv"
 HARD_NEGATIVES_FILE = FEATURE_DIR / "hard_negatives_features.csv"
+STRUCTURED_HARD_NEGATIVES_FILE = Path("data/evaluation/dataset_a_hard_negatives.json")
 
 
-def load_rows(path):
+def load_rows(path: Path) -> List[Dict[str, str]]:
     with path.open(encoding="utf-8", newline="") as f:
         return list(csv.DictReader(f))
 
 
-def final_score(row):
+def load_structured_hard_negatives(path: Path) -> List[Dict[str, Any]]:
+    with path.open(encoding="utf-8") as f:
+        return json.load(f)
+
+
+def final_score(row: Dict[str, str]) -> float:
     return sum(
         WEIGHTS[field] * float(row[field])
         for field in WEIGHTS
     )
 
 
-def classify_score(score, threshold):
+def classify_score(score: float, threshold: float) -> str:
     """
     Score-only evaluation.
 
     This deliberately does NOT apply production critical gates,
-    because Dataset A does not contain category information.
+    because Dataset A CSV does not contain category information.
     """
     if score >= threshold:
         return "SAME"
     return "DIFFERENT"
 
 
-def evaluate_committed_decisions(rows, threshold):
+def evaluate_committed_decisions(
+    rows: List[Dict[str, str]], threshold: float
+) -> Dict[str, Any]:
     """
     Evaluate only committed SAME/DIFFERENT decisions.
 
@@ -107,7 +120,7 @@ def evaluate_committed_decisions(rows, threshold):
     }
 
 
-def score_distribution(rows):
+def score_distribution(rows: List[Dict[str, str]]):
     same = []
     different = []
 
@@ -122,7 +135,7 @@ def score_distribution(rows):
     return same, different
 
 
-def mean(values):
+def mean(values: List[float]) -> float:
     return (
         sum(values) / len(values)
         if values
@@ -130,7 +143,7 @@ def mean(values):
     )
 
 
-def threshold_candidates(rows):
+def threshold_candidates(rows: List[Dict[str, str]]) -> List[float]:
     """
     Candidate thresholds derived ONLY from DEV scores.
 
@@ -142,7 +155,7 @@ def threshold_candidates(rows):
     ]
 
 
-def choose_dev_threshold(rows):
+def choose_dev_threshold(rows: List[Dict[str, str]]) -> Dict[str, Any]:
     best = None
 
     for threshold in threshold_candidates(rows):
@@ -168,7 +181,7 @@ def choose_dev_threshold(rows):
     return best
 
 
-def print_metrics(title, metrics):
+def print_metrics(title: str, metrics: Dict[str, Any]):
     print(f"\n{title}")
     print("-" * len(title))
 
@@ -191,51 +204,125 @@ def print_metrics(title, metrics):
     )
 
 
-def evaluate_hard_negatives(rows, threshold):
-    high_confidence = 0
+def evaluate_hard_negatives_score_diagnostic(
+    rows: List[Dict[str, str]], threshold: float
+) -> Dict[str, Any]:
+    """
+    Diagnostic score-only evaluation on the 300-row Dataset A CSV hard negatives.
+    Note: This does NOT execute critical gates.
+    """
+    above_threshold = 0
 
     for row in rows:
         if final_score(row) >= threshold:
-            high_confidence += 1
+            above_threshold += 1
 
     total = len(rows)
 
     rate = (
-        high_confidence / total
+        above_threshold / total
         if total
         else 0.0
     )
 
     return {
         "total": total,
-        "false_high_confidence": high_confidence,
+        "score_above_threshold": above_threshold,
         "rate": rate,
     }
 
 
-def main():
+def evaluate_production_safety(
+    records: List[Dict[str, Any]],
+    classifier_fn: Optional[
+        Callable[[Dict[str, Any], Dict[str, Any]], Dict[str, Any]]
+    ] = None,
+) -> Dict[str, Any]:
+    """
+    Evaluate production safety gates directly against structured hard-negative pairs.
+    Calls classify_match(left, right) for each pair without reconstructing materials.
+    """
+    if classifier_fn is None:
+        classifier_fn = classify_match
+
+    high_confidence = 0
+    review = 0
+    different = 0
+    by_conflict_field: Dict[str, Dict[str, int]] = {}
+
+    for record in records:
+        left = record["left"]
+        right = record["right"]
+        conflict_field = record.get("conflict_field", "unknown")
+
+        if conflict_field not in by_conflict_field:
+            by_conflict_field[conflict_field] = {
+                "total": 0,
+                "HIGH_CONFIDENCE": 0,
+                "REVIEW": 0,
+                "DIFFERENT": 0,
+            }
+
+        result = classifier_fn(left, right)
+        decision = result.get("decision")
+
+        by_conflict_field[conflict_field]["total"] += 1
+
+        if decision == "HIGH_CONFIDENCE":
+            high_confidence += 1
+            by_conflict_field[conflict_field]["HIGH_CONFIDENCE"] += 1
+        elif decision == "REVIEW":
+            review += 1
+            by_conflict_field[conflict_field]["REVIEW"] += 1
+        elif decision == "DIFFERENT":
+            different += 1
+            by_conflict_field[conflict_field]["DIFFERENT"] += 1
+        else:
+            raise ValueError(f"Unexpected classifier decision: {decision}")
+
+    total = len(records)
+    false_high_confidence = high_confidence
+    rate = (
+        false_high_confidence / total
+        if total
+        else 0.0
+    )
+
+    return {
+        "total": total,
+        "high_confidence": high_confidence,
+        "review": review,
+        "different": different,
+        "false_high_confidence": false_high_confidence,
+        "false_high_confidence_rate": rate,
+        "by_conflict_field": by_conflict_field,
+    }
+
+
+def main() -> int:
     dev_rows = load_rows(DEV_FILE)
     heldout_rows = load_rows(HELDOUT_FILE)
-    hard_rows = load_rows(HARD_NEGATIVES_FILE)
+    hard_csv_rows = load_rows(HARD_NEGATIVES_FILE)
+    structured_hard_records = load_structured_hard_negatives(
+        STRUCTURED_HARD_NEGATIVES_FILE
+    )
 
-    print("MIRA DATASET A EVALUATION")
-    print("=" * 28)
+    print("MIRA EVALUATION REPORT")
+    print("=" * 60)
 
     print("\nFrozen score weights:")
     for field, weight in WEIGHTS.items():
         print(f"  {field}: {weight:.2f}")
 
-    # --------------------------------------------------------------
-    # Score distributions
-    # --------------------------------------------------------------
+    # ==============================================================
+    # 1. DATASET A EFFECTIVENESS (DEV & HELD-OUT)
+    # ==============================================================
+    print("\n" + "=" * 60)
+    print("DATASET A EFFECTIVENESS")
+    print("=" * 60)
 
-    dev_same, dev_different = score_distribution(
-        dev_rows
-    )
-
-    heldout_same, heldout_different = score_distribution(
-        heldout_rows
-    )
+    dev_same, dev_different = score_distribution(dev_rows)
+    heldout_same, heldout_different = score_distribution(heldout_rows)
 
     print("\nDEV score distribution")
     print("----------------------")
@@ -251,27 +338,18 @@ def main():
     print(f"DIFFERENT count:  {len(heldout_different)}")
     print(f"DIFFERENT mean:   {mean(heldout_different):.4f}")
 
-    # --------------------------------------------------------------
     # DEV threshold selection
-    # --------------------------------------------------------------
-
     best = choose_dev_threshold(dev_rows)
-
     threshold = best["threshold"]
 
-    print(
-        f"\nSelected DEV threshold: {threshold:.2f}"
-    )
+    print(f"\nSelected DEV threshold: {threshold:.2f}")
 
     print_metrics(
         "DEV committed-decision metrics",
         best["metrics"],
     )
 
-    # --------------------------------------------------------------
     # HELD-OUT evaluation
-    # --------------------------------------------------------------
-
     heldout_metrics = evaluate_committed_decisions(
         heldout_rows,
         threshold,
@@ -282,42 +360,77 @@ def main():
         heldout_metrics,
     )
 
-    # --------------------------------------------------------------
-    # Hard negatives
-    # --------------------------------------------------------------
+    # ==============================================================
+    # 2. DATASET A SCORE-ONLY DIAGNOSTIC
+    # ==============================================================
+    print("\n" + "=" * 60)
+    print("DATASET A SCORE-ONLY DIAGNOSTIC")
+    print("=" * 60)
+    print("Diagnostic: evaluates 300-row CSV on score threshold alone.")
+    print("NOTE: Does NOT apply critical gates (Dataset A CSV lacks category).")
 
-    hard_metrics = evaluate_hard_negatives(
-        hard_rows,
+    diag_metrics = evaluate_hard_negatives_score_diagnostic(
+        hard_csv_rows,
         threshold,
     )
 
-    print("\nREAL HARD NEGATIVES")
-    print("-------------------")
-    print(
-        f"Total:                    "
-        f"{hard_metrics['total']}"
-    )
-    print(
-        f"False HIGH_CONFIDENCE:    "
-        f"{hard_metrics['false_high_confidence']}"
-    )
-    print(
-        f"False HIGH_CONFIDENCE rate: "
-        f"{hard_metrics['rate']:.4f}"
-    )
+    print(f"Total:                        {diag_metrics['total']}")
+    print(f"Score >= threshold count:     {diag_metrics['score_above_threshold']}")
+    print(f"Score >= threshold rate:      {diag_metrics['rate']:.4f}")
+
+    # ==============================================================
+    # 3. PRODUCTION GATE SAFETY (STRUCTURED HARD NEGATIVES)
+    # ==============================================================
+    print("\n" + "=" * 60)
+    print("PRODUCTION GATE SAFETY")
+    print("=" * 60)
+    print("Evaluates production classify_match() on 732 structured hard negatives.")
+
+    safety_metrics = evaluate_production_safety(structured_hard_records)
+
+    print(f"\nTotal structured hard negatives: {safety_metrics['total']}")
+    print(f"HIGH_CONFIDENCE count:           {safety_metrics['high_confidence']}")
+    print(f"REVIEW count:                    {safety_metrics['review']}")
+    print(f"DIFFERENT count:                 {safety_metrics['different']}")
+    print(f"False HIGH_CONFIDENCE count:     {safety_metrics['false_high_confidence']}")
+    print(f"False HIGH_CONFIDENCE rate:      {safety_metrics['false_high_confidence_rate']:.4f}")
+
+    print("\nBreakdown by conflict_field:")
+    for field_name in sorted(safety_metrics["by_conflict_field"].keys()):
+        stats = safety_metrics["by_conflict_field"][field_name]
+        print(f"  Field: {field_name}")
+        print(f"    Total:           {stats['total']}")
+        print(f"    HIGH_CONFIDENCE: {stats['HIGH_CONFIDENCE']}")
+        print(f"    REVIEW:          {stats['REVIEW']}")
+        print(f"    DIFFERENT:       {stats['DIFFERENT']}")
 
     # --------------------------------------------------------------
     # Weight check
     # --------------------------------------------------------------
-
     print("\nWeight sum:")
     print(f"  {sum(WEIGHTS.values()):.2f}")
 
     if abs(sum(WEIGHTS.values()) - 1.0) > 1e-9:
-        raise RuntimeError(
-            "Frozen matching weights do not sum to 1.0"
+        raise RuntimeError("Frozen matching weights do not sum to 1.0")
+
+    # --------------------------------------------------------------
+    # Safety Check Assertion
+    # --------------------------------------------------------------
+    if safety_metrics["false_high_confidence"] > 0:
+        print("\n" + "=" * 60)
+        print("PRODUCTION SAFETY CHECK: FAILED")
+        print(
+            f"ERROR: {safety_metrics['false_high_confidence']} structured hard negative(s) "
+            f"produced false HIGH_CONFIDENCE!"
         )
+        print("=" * 60)
+        return 1
+
+    print("\n" + "=" * 60)
+    print("PRODUCTION SAFETY CHECK: PASS")
+    print("=" * 60)
+    return 0
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())
