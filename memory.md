@@ -526,6 +526,84 @@ Do **not** use `git add .` until these artifacts have an explicit repository pol
 
 It does not currently ignore all raw/processed/training datasets, so their repository policy needs deliberate treatment.
 
+## Master Training Dataset — 2026-09-15
+
+Built the final master training dataset (`Final_Master_Material_Records.csv`, repo root, ~240 MB, 832,516 rows).
+
+Generator: `backend/app/ml_pipeline/generate_master_dataset.py` (stdlib only, deterministic, per-company RNG seeds).
+Regenerate with: `python backend/app/ml_pipeline/generate_master_dataset.py --per-company 5000 --seed 42`
+
+Composition:
+- 164 CPSEs across all 11 sectors (Oil & Gas, Petrochemical, Heavy Engineering, Electrical, Steel, Power, Railways, Defence, Ports, EPC, Research) + 18 diversity CPSEs (MSTC, MMTC, PEC, STC, Balmer Lawrie, ITI, KIOCL, Yantra India, Munitions India, FSNL, ECL/SECL/CCL/MCL/WCL, Andrew Yule, NRDC).
+- ORIGINAL records from `Original_company_records_no_synthetic.csv` kept verbatim and de-duplicated: 23,717 kept (raw 25,370; 1,653 exact dups removed). NTPC kept fully (17,516) with zero synthetic. OIL 4,701+299; BPCL 968+4,032; IOCL 484+4,516; BHEL/NALCO/WBPDCL/SAIL/HCL topped to 5,000. Every empty cell filled (5,810 codes generated in company format; repeated source codes suffixed `-R2`, `-R3` like revisions).
+- SYNTHETIC: 5,000 per remaining company from a 1,437-item sector-gated catalog (bearings, fasteners, valves, pipes, fittings, flanges, gaskets, pumps, motors, transformers, switchgear, cables, instruments, safety, welding, lubricants, chemicals, steel, tools, IT, office, furniture, filters, lifting, boiler, refinery, refractory, rail, marine, fertilizer) with per-company abbreviation/spacing/case personalities, UOM variants + honest KG↔MT conflicts, SAP 40-char truncation for ~35% of companies, typos, and WRONG_SPEC hard negatives.
+
+Columns (16, exact order, zero empty cells): cpse_code, material_code, description, cleaned_description, category, attributes, uom, last_purchase_price, avg_annual_quantity, data_quality_score, status, created_at, true_match_key, canonical_description, quality_flag, noise_tags.
+
+Quality flags: CLEAN 641,801 / TYPO 56,680 / WRONG_SPEC 55,613 / MISSING_ATTR 78,422.
+Cross-CPSE duplicate groups (≥5 companies): 1,437; popular groups (BRG 6204/6205/6206/6305 2RS, BOLT HEX M12/M16) span 162–163 of 164 companies.
+
+Validation: empty_cells=0, bad_json=0, dup_keys=0, unknown_cpse=0, cross_material_key=0 (see `generation_report.json`).
+PPT demo groups: `sample_groups.txt` (25 groups, e.g. BRG BALL 6205 2RS across 162 companies with rendered variants).
+
+GROUND-TRUTH RULES (do not violate):
+- `true_match_key` (format `SIG-<md12>`), `canonical_description`, `quality_flag`, `noise_tags` are LABEL/SPLIT columns only — strip before any model input (AI-Model-Training PDF §5/§9).
+- WRONG_SPEC rows carry `true_match_key` suffixed `#CORRUPT` — never a positive pair; they are the hard-negative supply.
+- Split by `true_match_key` group, never by row.
+- Original `description` text is never modified; synthetic descriptions must not have critical values mutated (typos only hit non-critical alpha tokens).
+
+## Training Pair Manifest — 2026-09-15
+
+Built `Training_Pairs_Final.csv` (repo root, ~26 MB, 170,000 pairs) via `backend/app/ml_pipeline/build_pair_manifest.py` (deterministic, `--seed 42`, 17s runtime).
+Regenerate: `python backend/app/ml_pipeline/build_pair_manifest.py --seed 42`
+
+Pair mix: POS 85,000 (label 1, same base true_match_key group; all 1,884 multi-row groups; ≤60/group) · HN_CORRUPT 45,000 (label 0, WRONG_SPEC #CORRUPT row vs clean sibling, text-identical pairs filtered out) · HN_SIBLING 25,000 (label 0, same category + same digit-template, different group: 6205↔6305, CL150↔CL300) · NEG_EASY 15,000 (label 0, cross-category).
+
+Frozen group-level split 90/5/5: 21,860/1,202/1,202 groups → 156,092 train / 6,677 dev / 7,231 heldout pairs. Both members of every pair are in the SAME split. Split is by group hash, stable across regenerations with same seed.
+
+Columns: pair_id, split, pair_type, label, desc_a, desc_b, tmk_a, tmk_b, cpse_a, cpse_b, category. Model input = desc_a/desc_b ONLY; split/tmk/cpse/category are metadata.
+
+Known limitation (honest note for PPT): HN_SIBLING dev/heldout are thin (147/105) because sibling buckets require both groups in the same 5% slice — structural, not a bug. Report sibling-hard-negative metrics primarily on train, and treat dev/heldout sibling numbers as indicative.
+
+Validation (all zero): pair_spans_splits, corrupt_as_positive, identical_desc_pos, same_group_negative, corrupt_text_identical. Details in `pairs_report.json`.
+
+## Inter-CPSE Material Discovery Flow — 2026-09-15
+
+The business payoff of matching is collaborative procurement. Agreed flow:
+
+1. CPSE needs a material → search by description (or pick from own catalog).
+2. Matcher resolves it to a CNMC (gates + human approval on new matches).
+3. Discovery query: `mappings` (status=approved) → `materials` → `cpses` — every CPSE holding that material with its local code, last_purchase_price, avg_annual_quantity.
+4. Demand aggregation: sum(avg_annual_quantity) across CPSEs → pooled-negotiation savings estimate (feeds the ROI Calculator).
+5. CPSEs proceed to direct dealing.
+
+Prototype features from this flow (no new tables required):
+- "Where else does this exist?" panel on Common Material detail (CPSEs + codes + price + annual qty).
+- Demand-aggregation card (combined annual demand + savings estimate).
+- Reverse lookup: which materials are held by CPSEs facing shortage.
+
+Honesty rule for PPT and demo: avg_annual_quantity is procurement history, NOT live stock-on-hand. The prototype demonstrates discovery + demand aggregation; live inventory arrives via the SAP connector in deployment.
+
+Matching decision-ladder (implement consistently):
+- Descriptions available → full matching engine (embeddings + specs + gates).
+- Same CPSE, both have codes → material_code is authoritative within that namespace (intra-CPSE dedup).
+- Code present, description missing, different CPSE → resolve only via existing approved mappings (code-registry lookup through CNMC); no mapping → UNKNOWN → human attaches description (REVIEW).
+- Neither → manual entry.
+- Material codes are NEVER a similarity/matching feature (PDF §5); they are the payload of the mapping layer.
+- INTRA-CPSE dedup is a first-class case: candidate generation (vector search) must NOT exclude same-CPSE candidates. Same CPSE + same material_code = identity (no matching). Same CPSE + different codes + similar descriptions = internal duplicate → matcher finds it; it is the easiest, highest-scored case and the most concrete ROI (avoid re-purchasing items already in stores). The NTPC real-records slice is the honest intra-CPSE demo (real duplicates across tenders).
+
+## National Positioning — One Nation One Portal — 2026-09-15
+
+Existing systems (name them in Q&A): SAP MDG / per-CPSE MDM (governs master inside ONE company), GeM/IREPS/CPPP (procurement marketplaces, not identity unification), UNSPSC/e-class (category codes, no mapping from messy descriptions), per-CPSE dedup scripts (one-time, isolated).
+
+The gap MIRA fills: no existing system sees two companies' data at once or governs cross-company equivalence. MIRA is the missing federation layer ABOVE existing ERPs — it does not replace SAP MDG; it federates across instances.
+
+Key sentence: "SAP MDG governs a master inside one company; MIRA governs equivalence across the nation."
+
+Cooperation model (answer to "why will CPSEs agree?"): CPSEs share MAPPINGS, not masters. Data stays in-company; only human-approved, audit-trailed equivalence decisions become national. Per-material adoption is possible; any single joiner gets intra-CPSE dedup value from day one. Minimum-cooperation design, trust engineered into architecture.
+
+PS capability → evidence table (all 11 expected-solution bullets map to built artifacts): matching = hybrid score + 170K pair manifest; duplicate detection = gates + hard negatives; standardization = canonical_description + expander; classification = category taxonomy + UNSPSC; CNMC = schema + generator design; mapping = mappings table + real cross-CPSE code pairs in Training_Pairs_Final.csv; legacy migration = code-registry ladder; review workflow = Match Review Queue; dashboard/analytics = built; audit = audit_logs; SAP = integration-ready connector (honest, not live).
+
 ## Testing
 
 Backend:

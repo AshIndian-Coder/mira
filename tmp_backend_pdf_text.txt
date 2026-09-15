@@ -1,0 +1,151 @@
+BACKEND
+
+material-master-backend/      # FastAPI app start, CORS setup, sabhi routers register karega
+                              # DB URLs, model paths, secret keys, environment variables
+ app/
+  main.py                     # Saare API endpoints yaha
+  config.py                   # Login/logout, JWT token generate karega
+                              # Material data upload (CSV/Excel) handle karega
+  api/v1/                     # AI match suggestions fetch karne ka endpoint
+   routes_auth.py             # Approve/Reject matches (CORE WORKFLOW)
+   routes_ingestion.py        # CNMC create/read/update + generateCNMC(), approveCNMC()
+   routes_matching.py         # CPSE code  CNMC mapping (getMappings, createMapping)
+   routes_review.py           # Dashboard stats, charts data APIs
+   routes_cnmc.py             # ROI Calculator API (savings calculate karega)
+   routes_mapping.py          # Audit trail fetch karne ka endpoint
+   routes_dashboard.py        # SAP APIs: getSAPStatus(), triggerSync()
+   routes_roi.py              # User management APIs (UserManagement.jsx)
+   routes_audit.py
+   routes_sap.py              # Password hashing, JWT create/verify
+   routes_users.py            # Role check (admin, data_steward, reviewer, auditor)
+                              # App logs likhne ke liye
+  core/
+   security.py                # Database tables ka Python representation (SQLAlchemy)
+   rbac.py                    # users table ka model
+   logger.py                  # cpses table: sap_url, last_sync_at, last_sync_status,
+                              last_sync_error
+  models/                     # materials table ka model (upload_batch_id FK)
+   user.py                    # cnmc table ka model
+   cpse.py                    # mappings table ka model
+                              # match_suggestions table ka model (status = current state)
+   material.py                # feedback table (reason TEXT, export_feedback.py ke liye)
+   cnmc.py                    # audit_logs table ka model
+   mapping.py                 # upload_batches table ka model
+   match_suggestion.py
+   feedback.py                # Request/Response data validation (Pydantic)
+   audit_log.py               # Material upload/response ka format define karega
+   upload_batch.py            # Match suggestion ka format
+                              # CNMC data ka format
+  schemas/                    # User login/register + UserManagement ka format
+   material_schema.py
+   match_schema.py            #  ASLI BUSINESS LOGIC YAHA HAI 
+   cnmc_schema.py
+   user_schema.py             # STAGE 1: Data saaf karna
+                              # Extra spaces, special characters hatayega
+  services/                   # BRGBearing, VLVValve convert karega (dictionary based)
+                              # KG/Kilogram/Kgs sab ko "KG" bana dega
+   preprocessing/
+    text_cleaner.py           # STAGE 2: Description se attributes nikalna
+    abbreviation_expander.py  # "BRG BALL 6205 2RS" se {type, size, seal} nikalega (spaCy
+    uom_normalizer.py         NER)
+
+   ner_extraction/            # STAGE 3: AI MATCHING (Sabse important part)
+    attribute_extractor.py    # Qwen-1B-Embedding load, 1536-dim vector (Milvus se lock)
+                              # Milvus me similar materials search karega (top 100)
+                              # Spelling mistakes/typo pakadega (Levenshtein distance)
+   matching_engine/
+    qwen_embedding.py
+    vector_search.py
+    fuzzy_matcher.py
+    attribute_matcher.py         # Extracted attributes compare karega (size match, type match)
+                                 # Sabhi scores combine karke final confidence banayega
+    ensemble_ranker.py           #  "Kyu match hua" ka reason (MatchCard.jsx reasoning)
+
+    explainable_ai.py            # STAGE 4: Duplicate group banana
+                                 # Similar materials ko group me daalega (ek CNMC ke liye)
+
+                                 # STAGE 5: National code banana
+   clustering/                   # Unique CNMC code generate karega (CNMC-000001, ...)
+                                 # UNSPSC/NIC classification code assign karega
+    cluster_engine.py
+                                 #  ROI CALCULATOR (Strategic Extra)
+                                 # Duplicate materials merge karne se kitna paisa bachega
+
+   cnmc_generator/               # Audit trail service
+                                 # Har important action (approve/reject/upload) ko log karega
+    code_generator.py
+                                 # Model improvement loop
+    taxonomy_mapper.py           # Approve/reject + reason TEXT feedback table me save
+                                 # export_feedback.py + train_qwen.py call karke retrain
+
+                                 # SAP pull/push; cpses.last_sync_at/status/error update
+   roi_calculator/
+                                 # PostgreSQL connection setup
+    savings_estimator.py         # Milvus connection (material_embeddings, dim=1536)
+
+                                 # OFFLINE TRAINING (AI MODEL TRAINING.pdf se same scripts)
+                                 # Step 1: Fake material pairs (paraphrasing)
+   audit/                        # Step 2:  Tricky examples (BRG 6205 vs 6305)
+                                 # Step 2b: feedback table se feedback_pairs.csv
+    audit_service.py             # Step 3: Qwen-1B, dim 1536, synthetic+hard neg+feedback
+                                 # Step 4: INT8 compress (size 4x kam, potato laptop ready)
+                                 # Step 5: Accuracy, precision, recall (validation set)
+
+   active_learning/              # Roles: admin, data_steward, reviewer, auditor
+                                 # Chote helper functions (date format, etc.)
+          feedback_collector.py
+                                 # Matching engine ka test
+          model_retrainer.py
+                                 # Python libraries list
+
+
+  integrations/
+
+   sap_connector.py
+
+
+
+  db/
+
+   postgres.py
+
+   vector_db.py
+
+
+
+  ml_pipeline/
+
+   generate_synthetic_data.py
+
+   hard_negative_miner.py
+
+   export_feedback.py
+
+   train_qwen.py
+
+   quantize_model.py
+
+   evaluate_model.py
+
+
+
+  utils/
+
+   constants.py
+
+   helpers.py
+
+
+
+ tests/
+
+  test_matching.py
+
+
+
+ requirements.txt
+
+ Dockerfile
+
+ README.md
+
