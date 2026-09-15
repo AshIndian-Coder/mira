@@ -7,6 +7,9 @@ from typing import Any, Dict, List, Optional
 from pydantic import BaseModel, ConfigDict, Field
 
 
+# ---------------------------------------------------------------------- #
+# Upload (one row of the CSV/Excel file, after column alias resolution)
+# ---------------------------------------------------------------------- #
 class MaterialUploadRow(BaseModel):
     material_code: str = Field(min_length=1, max_length=100)
     description: str = Field(min_length=1, max_length=4000)
@@ -42,6 +45,9 @@ class MaterialUpdate(BaseModel):
     status: Optional[str] = Field(default=None, pattern="^(active|obsolete|merged)$")
 
 
+# ---------------------------------------------------------------------- #
+# Responses
+# ---------------------------------------------------------------------- #
 class MaterialResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -134,3 +140,4 @@ class QualityReportResponse(BaseModel):
     score_distribution: Dict[str, int] = Field(default_factory=dict)
     missing_fields: Dict[str, int] = Field(default_factory=dict)
     category_breakdown: Dict[str, int] = Field(default_factory=dict)
+

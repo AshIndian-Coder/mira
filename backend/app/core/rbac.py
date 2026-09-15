@@ -1,3 +1,9 @@
+"""Role-Based Access Control.
+
+``require_permission("review_match")`` returns a FastAPI dependency that
+loads the current user and rejects with 403 unless the user's role is in
+the permission matrix for that action (see app.utils.constants.PERMISSIONS).
+"""
 from __future__ import annotations
 
 from typing import Callable
@@ -12,6 +18,7 @@ from app.utils.constants import PERMISSIONS, ROLES
 def has_permission(role: str, action: str) -> bool:
     """True when ``role`` may perform ``action``."""
     if action not in PERMISSIONS:
+        # Unknown actions are denied by default (fail closed).
         return False
     return role in PERMISSIONS[action]
 
@@ -61,3 +68,4 @@ def require_roles(*roles: str) -> Callable[..., User]:
         return user
 
     return dependency
+

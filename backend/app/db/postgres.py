@@ -94,6 +94,7 @@ def init_db() -> None:
     In production Alembic migrations should own the schema; this is the
     dev/demo convenience path and is safe (CREATE TABLE IF NOT EXISTS).
     """
+    # Import all models so they register on Base.metadata.
     import app.models  # noqa: F401
 
     Base.metadata.create_all(bind=engine)
@@ -149,3 +150,4 @@ def seed_default_data() -> None:
         raise
     finally:
         db.close()
+

@@ -1,12 +1,11 @@
-"""
-Collect human approve/reject signals for active learning.
+"""Collect human approve/reject signals for active learning.
 
 The feedback table is the training-signal store:
   * approve -> label 1 (same material)
   * reject  -> label 0 (different material)
 
-export_feedback.py(ml_pipeline) converts these rows into
-data/training/feedback_pairs.csv for Qwen fine-tuning.
+``export_feedback.py`` (ml_pipeline) converts these rows into
+``data/training/feedback_pairs.csv`` for Qwen fine-tuning.
 """
 from __future__ import annotations
 
@@ -91,3 +90,4 @@ def get_training_feedback(
             }
         )
     return rows
+

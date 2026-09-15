@@ -24,6 +24,7 @@ from app.utils.helpers import utcnow
 class Mapping(Base):
     __tablename__ = "mappings"
     __table_args__ = (
+        # One active mapping per material (UNIQUE(material_id, status) in schema).
         UniqueConstraint("material_id", "status", name="uq_mappings_material_status"),
         Index("idx_mappings_cnmc", "cnmc_id"),
         Index("idx_mappings_status", "status"),
@@ -40,9 +41,11 @@ class Mapping(Base):
     status = Column(String(50), default="active", nullable=False)
     created_at = Column(DateTime, default=utcnow, nullable=False)
 
+    # Relationships
     material = relationship("Material", back_populates="mappings", foreign_keys=[material_id])
     cnmc = relationship("CNMC", back_populates="mappings")
     approver = relationship("User", foreign_keys=[approved_by])
 
     def __repr__(self) -> str:  # pragma: no cover
         return f"<Mapping material={self.material_id} cnmc={self.cnmc_id} {self.status}>"
+

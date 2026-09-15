@@ -1,5 +1,12 @@
-"""
-Vector search operations (top-K similar materials in milliseconds).
+"""Vector search operations (top-K similar materials in milliseconds).
+
+Operational layer over the connection manager in ``app.db.vector_db``:
+  * ``index_materials``  - embed + upsert rows
+  * ``search_similar``   - ANN/cosine top-K with filters
+  * ``attach_materials`` - resolve hit ids back to material dicts (Postgres)
+
+For the in-memory fallback backend, candidate materials are resolved
+directly from PostgreSQL so search results are complete.
 """
 from __future__ import annotations
 
@@ -28,6 +35,7 @@ class VectorSearchService:
         """'milvus' when the vector DB is reachable, else 'in_memory'."""
         return self._store.backend_name
 
+    # ---------------- indexing ---------------- #
 
     def index_materials(self, materials: Sequence[Dict[str, Any]]) -> int:
         """Embed and store vectors for material dicts.
@@ -56,6 +64,7 @@ class VectorSearchService:
     def delete_materials(self, material_ids: Sequence[int]) -> None:
         self._store.delete(list(material_ids))
 
+    # ---------------- search ---------------- #
 
     def search_similar(
         self,
@@ -124,6 +133,7 @@ class VectorSearchService:
             db.close()
         return result
 
+    # ---------------- status ---------------- #
 
     def stats(self) -> Dict[str, Any]:
         return self._store.stats()
@@ -148,3 +158,4 @@ def get_vector_search_service() -> VectorSearchService:
             if _vector_search_service is None:
                 _vector_search_service = VectorSearchService()
     return _vector_search_service
+

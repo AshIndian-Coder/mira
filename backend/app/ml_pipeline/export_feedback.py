@@ -1,5 +1,4 @@
-"""
-Step 2b - Export reviewer feedback from PostgreSQL as training pairs.
+"""Step 2b - Export reviewer feedback from PostgreSQL as training pairs.
 
 Joins feedback + match_suggestions + materials and writes
     data/training/feedback_pairs.csv
@@ -81,3 +80,4 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+

@@ -180,3 +180,4 @@ def update_cnmc(
         commit=True,
     )
     return _to_response(cnmc)
+

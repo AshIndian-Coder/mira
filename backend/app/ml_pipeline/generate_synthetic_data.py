@@ -1,5 +1,4 @@
-"""
-Step 1 - Generate synthetic positive training pairs.
+"""Step 1 - Generate synthetic positive training pairs.
 
 Builds equivalent-material pairs from seed materials by applying *safe*
 transformations only:
@@ -25,7 +24,11 @@ from typing import List, Tuple
 from app.services.preprocessing.abbreviation_expander import ABBREVIATION_MAP, expand_abbreviations
 from app.services.preprocessing.text_cleaner import clean_description
 
+# ---------------------------------------------------------------------- #
+# Seed materials (representative of CPSE material masters)
+# ---------------------------------------------------------------------- #
 SEED_MATERIALS: List[Tuple[str, str]] = [
+    # (canonical description, category)
     ("BEARING BALL 6205 2RS", "Bearing"),
     ("BEARING BALL 6305 2RS", "Bearing"),
     ("BEARING TAPERED ROLLER 32210", "Bearing"),
@@ -48,6 +51,7 @@ SEED_MATERIALS: List[Tuple[str, str]] = [
     ("CONNECTOR ELECTRICAL 11KV", "Electrical Connector"),
 ]
 
+# Safe transformations: only terminology/ordering, never critical values.
 ABBREV_TO_FULL = {k: v for k, v in ABBREVIATION_MAP.items() if k != v}
 FULL_TO_ABBREV = {v: k for k, v in ABBREV_TO_FULL.items()}
 
@@ -129,6 +133,7 @@ def generate_pairs(
         pairs.append((d1, d2, label))
         return True
 
+    # --- Positives: same material, two transformed views ---
     attempts = 0
     while len([p for p in pairs if p[2] == 1]) < positive_target and attempts < positive_target * 20:
         attempts += 1
@@ -143,6 +148,7 @@ def generate_pairs(
             view_1 = _case_variant(view_1)
         _add(view_1, view_2, 1)
 
+    # --- Negatives: different materials (prefer same category) ---
     by_category: dict = {}
     for base, category in SEED_MATERIALS:
         by_category.setdefault(category, []).append(base)
@@ -188,3 +194,4 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+

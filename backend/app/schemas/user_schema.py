@@ -83,3 +83,4 @@ class UserListResponse(BaseModel):
 class DeactivateUserResponse(BaseModel):
     message: str
     user: UserResponse
+

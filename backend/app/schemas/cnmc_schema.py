@@ -1,12 +1,37 @@
-"""CNMC, mapping & migration status schemas."""
+"""CNMC (Common National Material Code) & mapping schemas."""
 from __future__ import annotations
 
 from datetime import datetime
-from typing import List, Optional
+from typing import Any, Dict, List, Optional
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from app.schemas.material_schema import MaterialResponse
+
+
+class CNMCCreate(BaseModel):
+    standardized_description: str = Field(min_length=3, max_length=4000)
+    category: Optional[str] = None
+    unspsc_code: Optional[str] = None
+    nic_code: Optional[str] = None
+    technical_specs: Optional[Dict[str, Any]] = None
+    material_ids: List[int] = Field(
+        default_factory=list,
+        description="Optionally map these materials to the new CNMC immediately",
+    )
+
+
+class CNMCUpdate(BaseModel):
+    standardized_description: Optional[str] = Field(default=None, min_length=3)
+    category: Optional[str] = None
+    unspsc_code: Optional[str] = None
+    nic_code: Optional[str] = None
+    technical_specs: Optional[Dict[str, Any]] = None
+
+
+class CNMCGenerateRequest(BaseModel):
+    material_ids: List[int] = Field(min_length=2, description="Cluster member material ids")
+    reason: Optional[str] = None
 
 
 class CNMCResponse(BaseModel):
@@ -25,33 +50,8 @@ class CNMCResponse(BaseModel):
     mapped_materials_count: int = 0
 
 
-class CNMCDetailResponse(BaseModel):
-    id: int
-    cnmc_code: str
-    standardized_description: str
-    category: Optional[str] = None
-    unspsc_code: Optional[str] = None
-    nic_code: Optional[str] = None
-    technical_specs: Optional[Dict[str, Any]] = None
-    created_at: Optional[datetime] = None
-    approved_by: Optional[int] = None
-    approved_at: Optional[datetime] = None
-    mapped_materials_count: int = 0
+class CNMCDetailResponse(CNMCResponse):
     mapped_materials: List[MaterialResponse] = Field(default_factory=list)
-
-
-class CNMCGenerateRequest(BaseModel):
-    material_ids: List[int] = Field(..., min_length=2, description="At least two existing materials")
-    category: Optional[str] = Field(default=None, description="Override detected category")
-    reason: Optional[str] = Field(default=None, max_length=500)
-
-
-class CNMCUpdate(BaseModel):
-    standardized_description: Optional[str] = None
-    category: Optional[str] = None
-    unspsc_code: Optional[str] = None
-    nic_code: Optional[str] = None
-    technical_specs: Optional[Dict[str, Any]] = None
 
 
 class CNMCRegistryResponse(BaseModel):
@@ -125,3 +125,4 @@ class MigrationStatusResponse(BaseModel):
     pending_matches: int
     active_cnmc_count: int
     progress_percent: float
+

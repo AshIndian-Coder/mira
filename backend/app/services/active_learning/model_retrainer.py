@@ -1,5 +1,4 @@
-"""
-Periodic model retraining orchestration (active learning loop).
+"""Periodic model retraining orchestration (active learning loop).
 
 Wiring:
     export_feedback.py   -> feedback_pairs.csv from the DB feedback table
@@ -7,7 +6,7 @@ Wiring:
     quantize_model.py    -> INT8 checkpoint
     evaluate_model.py    -> baseline vs fine-tune vs INT8 report
 
-trigger_retraining runs these as subprocesses (offline scripts), so a
+``trigger_retraining`` runs these as subprocesses (offline scripts), so a
 training crash can never take down the API. It is guarded: without the
 heavy ML dependencies installed it returns a clean "skipped" status.
 """
@@ -106,3 +105,4 @@ def trigger_retraining(
     report["finished_at"] = datetime.utcnow().isoformat()
     logger.info("Retraining finished: %s", report["status"])
     return report
+

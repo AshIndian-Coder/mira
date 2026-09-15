@@ -1,14 +1,8 @@
-"""
-ROI and savings estimator for MIRA.
+"""ROI / savings calculator (Strategic Extra)."""
+from app.services.roi_calculator.savings_estimator import (
+    estimate_savings,
+    estimate_savings_from_clusters,
+)
 
-Estimates procurement and inventory savings from merging duplicate materials
-into unified CNMCs. The savings come from:
-  * Bulk purchasing discounts (larger order quantities)
-  * Reduced inventory carrying costs (fewer SKUs)
-  * Reduced procurement overhead (fewer suppliers to manage)
+__all__ = ["estimate_savings", "estimate_savings_from_clusters"]
 
-The estimator uses configurable assumptions from app.config.settings:
-  * BULK_DISCOUNT_RATE: discount from consolidating orders
-  * CARRYING_COST_RATE: annual inventory holding cost rate
-  * SAFETY_STOCK_DAYS: safety stock days reduced per merged SKU
-"""

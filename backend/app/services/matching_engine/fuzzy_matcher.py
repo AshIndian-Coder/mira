@@ -1,6 +1,11 @@
-"""
-String similarity metrics (typo/spelling robustness).
-calculate_fuzzy_score blends them into the single 0..1 text
+"""String similarity metrics (typo/spelling robustness).
+
+Pure Python (stdlib only):
+  * normalized Levenshtein distance
+  * Jaccard token overlap
+  * token-sort ratio (order-insensitive SequenceMatcher)
+
+``calculate_fuzzy_score`` blends them into the single 0..1 ``text``
 component of the MIRA hybrid score.
 """
 from __future__ import annotations
@@ -10,6 +15,7 @@ from difflib import SequenceMatcher
 from typing import List
 
 _TOKEN_SPLIT = re.compile(r"[\s\-_/.,()]+")
+
 
 def _tokens(text: str) -> List[str]:
     return [tok for tok in _TOKEN_SPLIT.split((text or "").lower()) if tok]
@@ -75,15 +81,16 @@ def calculate_fuzzy_score(text1: str, text2: str) -> float:
   + 0.35 * token-sort ratio
   + 0.20 * Jaccard overlap
     """
-    a = (text1 or "").strip()
-    b = (text2 or "").strip()
-    if not a and not b:
+    t1 = (text1 or "").strip().lower()
+    t2 = (text2 or "").strip().lower()
+    if not t1 and not t2:
         return 1.0
-    if not a or not b:
+    if not t1 or not t2:
         return 0.0
+    score = (
+        0.45 * normalized_levenshtein(t1, t2)
+        + 0.35 * token_sort_ratio(t1, t2)
+        + 0.20 * jaccard_similarity(t1, t2)
+    )
+    return max(0.0, min(1.0, score))
 
-    lev = normalized_levenshtein(a, b)
-    tsl = token_sort_ratio(a, b)
-    jac = jaccard_similarity(a, b)
-
-    return max(0.0, min(1.0, 0.45 * lev + 0.35 * tsl + 0.20 * jac))

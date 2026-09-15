@@ -1,5 +1,11 @@
-"""
-Step 2 - Mine hard negatives (the core MIRA differentiator).
+"""Step 2 - Mine hard negatives (the core MIRA differentiator).
+
+Hard negatives are pairs that LOOK similar (same category, high lexical
+overlap) but are NOT equivalent because a critical specification differs:
+
+    "BRG BALL 6205 2RS"  vs  "BRG BALL 6305 2RS"      (size)
+    "VLV GATE 150NB CS"  vs  "VLV GATE 150NB CS PN25" (pressure)
+    "BOLT M16 MS"        vs  "BOLT M16 SS"            (grade)
 
 Lexical similarity must never imply technical equivalence - this dataset
 is what teaches the model that.
@@ -18,6 +24,9 @@ from typing import List, Tuple
 
 from app.services.preprocessing.text_cleaner import clean_description
 
+# Critical field mutation templates: (regex to find, callable that turns the
+# match text into a DIFFERENT variant, or None to skip this match).
+# Only ONE critical value changes per pair - everything else stays shared.
 def _mutate_size(original: str) -> str:
     digits = re.sub(r"\D", "", original)
     if not digits:
@@ -132,6 +141,7 @@ def mine_hard_negatives(
 
 
 _DEFAULT_SEEDS: List[Tuple[str, str]] = [
+    # Bearings (size-code mutations)
     ("BRG BALL 6205 2RS", "Bearing"),
     ("BRG BALL 6305 ZZ", "Bearing"),
     ("BRG BALL 6206 2RS", "Bearing"),
@@ -141,6 +151,7 @@ _DEFAULT_SEEDS: List[Tuple[str, str]] = [
     ("BEARING CILINDRICAL ROLLER NU210", "Bearing"),
     ("BEARING NEEDLE K80140", "Bearing"),
     ("BEARING SLEEVE 1216", "Bearing"),
+    # Valves (pressure / size mutations)
     ("VLV GATE 150NB CS PN16", "Valve"),
     ("VLV GLOBE 150NB CS PN16", "Valve"),
     ("GATE VALVE 100NB CARBON STEEL PN16", "Valve"),
@@ -148,11 +159,13 @@ _DEFAULT_SEEDS: List[Tuple[str, str]] = [
     ("CHECK VALVE 200NB CARBON STEEL PN16", "Valve"),
     ("BUTTERFLY VALVE 80NB CS PN10", "Valve"),
     ("GLOBE VALVE 50NB STAINLESS STEEL PN25", "Valve"),
+    # Pipes (bore mutations)
     ("PIPE SCH40 2 INCH CS", "Pipe"),
     ("PIPE DN50 SCHEDULE 40 CS", "Pipe"),
     ("PIPE 150NB GALVANIZED", "Pipe"),
     ("STEEL PIPE DN80 SCHEDULE 40", "Pipe"),
     ("PIPE 89MM CARBON STEEL", "Pipe"),
+    # Fasteners (thread / grade mutations)
     ("BOLT M16 X 60 MS GR8.8", "Fastener"),
     ("HEX BOLT M20 X 80 CS GR10.9", "Fastener"),
     ("HEX BOLT M24 X 100 CS GR8.8", "Fastener"),
@@ -160,6 +173,7 @@ _DEFAULT_SEEDS: List[Tuple[str, str]] = [
     ("STUD M20 X 120 CS", "Fastener"),
     ("WASHER FLAT 150NB SS", "Gasket"),
     ("GASKET FLAT 100NB CS", "Gasket"),
+    # Electrical (voltage mutations)
     ("CABLE 3X2.5 SQMM COPPER", "Cable"),
     ("CABLE 4X4 SQMM COPPER", "Cable"),
     ("CONNECTOR 11KV ALUMINIUM", "Electrical Connector"),
@@ -192,3 +206,4 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+

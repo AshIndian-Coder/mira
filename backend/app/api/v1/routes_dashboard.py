@@ -50,6 +50,7 @@ def stats(db: Session = Depends(get_db), user: User = Depends(get_current_active
         or 0
     )
 
+    # Duplicate groups = CNMCs with 2+ active mappings
     sub = (
         db.query(Mapping.cnmc_id)
         .filter(Mapping.status == MAPPING_STATUS_ACTIVE)
@@ -129,6 +130,7 @@ def category_heatmap(
     )
     status_totals = {status: int(count) for status, count in duplicate_pairs}
 
+    # pairs per category (via material_1's category as proxy)
     per_category = (
         db.query(Material.category, func.count(MatchSuggestion.id))
         .join(MatchSuggestion, MatchSuggestion.material_1_id == Material.id)
@@ -197,3 +199,4 @@ def cpse_comparison(
             }
         )
     return {"items": rows}
+

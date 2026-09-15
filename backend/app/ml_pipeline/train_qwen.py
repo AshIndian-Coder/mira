@@ -1,5 +1,4 @@
-"""
-Step 3 - Fine-tune Qwen-1B-Embedding (contrastive pair learning).
+"""Step 3 - Fine-tune Qwen-1B-Embedding (contrastive pair learning).
 
 Loads the pair CSVs produced by steps 1/2/2b and fine-tunes with
 contrastive loss so equivalent materials end up close in embedding space
@@ -27,6 +26,7 @@ from app.config import settings
 
 TRAIN_DATA_DIR = os.path.join(os.path.dirname(__file__), "data", "training")
 
+# Training signal weighting (MIRA: feedback is a weak label).
 PAIR_SOURCES = [
     ("synthetic_pairs.csv", 1.0),
     ("hard_negatives.csv", 1.0),
@@ -149,6 +149,8 @@ def train(
           f"({sum(p.label for p in pairs)} positive / {sum(1 - p.label for p in pairs)} negative)")
 
     tokenizer = AutoTokenizer.from_pretrained(base_model)
+    # SequenceClassification head reuses the embedding backbone; we save the
+    # transformer part + projection so the production service can pool.
     model = AutoModelForSequenceClassification.from_pretrained(
         base_model, num_labels=2, problem_type="single_label_classification"
     )
@@ -181,6 +183,7 @@ def train(
 
     save_dir = output_dir or "models/qwen_finetuned"
     os.makedirs(save_dir, exist_ok=True)
+    # Save the backbone (used for embeddings) + tokenizer + metadata.
     model.backbone.save_pretrained(save_dir)
     tokenizer.save_pretrained(save_dir)
     meta = {
@@ -231,3 +234,4 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+

@@ -38,6 +38,7 @@ router = APIRouter(prefix="/sap", tags=["sap"])
 
 class SyncRequest(BaseModel):
     cpse_id: Optional[int] = Field(default=None, description="Single CPSE, or omit for all active")
+    commit: bool = Field(default=True)
 
 
 class PushRequest(BaseModel):
@@ -109,6 +110,7 @@ def _sync_one(db: Session, cpse: Cpse, user: User) -> dict:
                     "cleaned_description": existing.cleaned_description if existing else material.cleaned_description,
                 }
             )
+        # Refresh attributes/cleaned for updated rows too
         for row_dict in embedding_rows:
             m = db.query(Material).filter(Material.id == row_dict["id"]).first()
             if m and not m.cleaned_description:
@@ -243,3 +245,4 @@ def push_cnmc(
         commit=True,
     )
     return {"cpse_id": cpse.id, **result}
+

@@ -1,3 +1,10 @@
+"""Centralized structured logging.
+
+- JSON-formatted lines (machine readable, grep friendly)
+- Console + daily rotating file (logs/app.log)
+- One shared configuration for the whole app: call ``setup_logging()`` once
+  at startup, then ``get_logger("mira.<module>")`` everywhere.
+"""
 from __future__ import annotations
 
 import json
@@ -43,10 +50,12 @@ def setup_logging(level: Optional[str] = None, log_file: Optional[str] = None) -
     root = logging.getLogger()
     root.setLevel(getattr(logging, level_name, logging.INFO))
 
+    # Console
     console = logging.StreamHandler(stream=sys.stdout)
     console.setFormatter(_JsonFormatter())
     root.addHandler(console)
 
+    # Rotating file (daily)
     try:
         os.makedirs(os.path.dirname(file_path) or ".", exist_ok=True)
         file_handler = logging.handlers.TimedRotatingFileHandler(
@@ -61,6 +70,7 @@ def setup_logging(level: Optional[str] = None, log_file: Optional[str] = None) -
     except OSError:  # pragma: no cover - read-only FS etc.
         root.warning("Could not open log file %s; console logging only", file_path)
 
+    # Quiet down noisy third-party loggers
     for noisy in ("uvicorn.access", "httpx", "pymilvus", "passlib"):
         logging.getLogger(noisy).setLevel(logging.WARNING)
 
@@ -85,3 +95,4 @@ def log_extra(logger: logging.Logger, level: int, msg: str, **data) -> None:
     )
     record.extra_data = data
     logger.handle(record)
+

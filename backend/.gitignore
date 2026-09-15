@@ -1,3 +1,8 @@
+# ===============================
+# MIRA Backend - .gitignore
+# Generated 2026-09-15 - backend-only handoff
+# ===============================
+
 # --- Logs (auto-created at runtime by app/core/logger.py → LOG_FILE=logs/app.log) ---
 # Created every time via os.makedirs(..., exist_ok=True) in setup_logging()
 # and also in Dockerfile (mkdir -p logs). Will be created in production too.

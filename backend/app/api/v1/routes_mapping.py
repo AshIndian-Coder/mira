@@ -210,3 +210,4 @@ def migration_status(
         active_cnmc_count=int(cnmc_count),
         progress_percent=progress,
     )
+

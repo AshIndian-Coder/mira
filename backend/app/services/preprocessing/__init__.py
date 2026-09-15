@@ -1,12 +1,11 @@
-"""
-STAGE 1 - Data cleaning & normalization.
+"""STAGE 1 - Data cleaning & normalization.
 
 Pipeline for a raw material description:
     text_cleaner.clean_description()
     -> abbreviation_expander.expand_abbreviations()
     -> uom_normalizer.normalize_uom()
 
-preprocess_description runs the first two steps and returns the
+``preprocess_description`` runs the first two steps and returns the
 canonical description used for embeddings and fuzzy matching.
 """
 from app.services.preprocessing.text_cleaner import clean_description, remove_extra_spaces, remove_special_chars, normalize_case
@@ -33,3 +32,4 @@ __all__ = [
     "is_known_uom",
     "preprocess_description",
 ]
+

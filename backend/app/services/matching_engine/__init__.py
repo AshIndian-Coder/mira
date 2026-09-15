@@ -1,12 +1,15 @@
-"""
-STAGE 3 - AI matching core.
+"""STAGE 3 - AI matching core (the most critical part of MIRA).
 
 Hybrid matching pipeline (frozen weighted formula, MIRA spec):
+
     final_score = 0.20 * text
                 + 0.20 * semantic          (Qwen-1B-Embedding, 1536-dim)
                 + 0.35 * specification
                 + 0.15 * material_grade
                 + 0.10 * other_attributes
+
+plus deterministic critical gates. The AI is a semantic component - it
+never approves equivalence on its own.
 
 Public API:
     MatchingEngine()            -> engine with default services
@@ -33,6 +36,9 @@ from app.services.matching_engine.explainable_ai import generate_explanation
 
 from typing import Any, Dict, List, Optional
 
+# ---------------------------------------------------------------------- #
+# High-level orchestration used by the API layer
+# ---------------------------------------------------------------------- #
 
 
 class MatchingEngine:
@@ -48,6 +54,7 @@ class MatchingEngine:
         self.vectors = vector_service or get_vector_search_service()
         self.ranker = ranker or EnsembleRanker()
 
+    # ---------------- indexing ---------------- #
 
     def index_materials(self, materials: List[Dict[str, Any]]) -> int:
         """Embed (in chunks) and upsert materials into the vector store.
@@ -60,6 +67,7 @@ class MatchingEngine:
             return 0
         return self.vectors.index_materials(materials)
 
+    # ---------------- matching ---------------- #
 
     def match_material(
         self,
@@ -180,3 +188,4 @@ __all__ = [
     "rank_match",
     "generate_explanation",
 ]
+

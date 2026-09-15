@@ -78,3 +78,4 @@ def verify_integrity(
 ):
     """Recompute the hash chain and report trail integrity."""
     return verify_audit_chain(db)
+

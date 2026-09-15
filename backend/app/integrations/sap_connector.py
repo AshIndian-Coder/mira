@@ -1,5 +1,4 @@
-"""
-SAP/ERP integration connector.
+"""SAP/ERP integration connector.
 
 Two modes:
   * LIVE      - pyrfc + SAP NWRDK (set SAP_SIMULATE=false, provide
@@ -10,6 +9,9 @@ Two modes:
                 problem (same physical material, different codes/terms),
                 so the full matching -> review -> CNMC -> ROI flow works.
 
+The connector never raises for data problems; callers update
+``cpses.last_sync_at / last_sync_status / last_sync_error`` from the
+returned report.
 """
 from __future__ import annotations
 
@@ -33,6 +35,7 @@ class SAPConnector:
                 "live sync will fail until NWRDK+pyrfc are available."
             )
 
+    # ------------------------------------------------------------------ #
 
     def _check_pyrfc(self) -> bool:
         try:
@@ -45,6 +48,9 @@ class SAPConnector:
     def mode(self) -> str:
         return "simulated" if self.simulate else ("live" if self._pyrfc_available else "live_unavailable")
 
+    # ------------------------------------------------------------------ #
+    # Pull
+    # ------------------------------------------------------------------ #
 
     def pull_materials(self, cpse: Any) -> Dict[str, Any]:
         """Pull the material master for a CPSE.
@@ -90,6 +96,9 @@ class SAPConnector:
             )
         return {"rows": [r for r in rows if r["material_code"]], "error": None}
 
+    # ------------------------------------------------------------------ #
+    # Push (approved CNMC mappings back to SAP)
+    # ------------------------------------------------------------------ #
 
     def push_cnmc(self, cpse: Any, mappings: List[Dict[str, Any]]) -> Dict[str, Any]:
         """Push approved CNMC mapping rows into the SAP material master."""
@@ -124,6 +133,9 @@ class SAPConnector:
             logger.exception("Live SAP push failed for %s", getattr(cpse, "short_code", cpse))
             return {"status": "failed", "count": 0, "error": str(exc)}
 
+    # ------------------------------------------------------------------ #
+    # Simulated demo data
+    # ------------------------------------------------------------------ #
 
     def _simulated_pull(self, cpse: Any) -> List[Dict[str, Any]]:
         """Deterministic sample materials per CPSE (demo mode).
@@ -136,6 +148,7 @@ class SAPConnector:
         base = int(getattr(cpse, "id", 1) or 1)
         start = base * 1000
 
+        # (description variants, uom, category, price, annual qty)
         catalog = [
             ("BRG BALL 6205 2RS", "NOS", "Bearing", 450.00, 12000),
             ("BALL BEARING 6205 2RS SEALED", "NOS", "Bearing", 410.00, 9500),
@@ -151,6 +164,8 @@ class SAPConnector:
             ("CBL POWER 3 CORE 2.5 SQMM", "MTR", "Cable", 95.00, 60000),
             ("POWER CABLE 3X2.5 SQ MM COPPER", "MTR", "Cable", 88.00, 52000),
         ]
+        # Each CPSE gets a slightly different slice (offset by its id) so
+        # the union across CPSEs shows cross-organization duplicates.
         rows: List[Dict[str, Any]] = []
         for index, (description, uom, category, price, quantity) in enumerate(catalog):
             rows.append(
@@ -175,3 +190,4 @@ def get_sap_connector() -> SAPConnector:
     if _connector is None:
         _connector = SAPConnector()
     return _connector
+

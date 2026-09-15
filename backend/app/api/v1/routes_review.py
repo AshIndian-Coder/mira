@@ -95,18 +95,21 @@ def _process_review(
     material_2 = suggestion.material_2
     is_approve = action == FEEDBACK_APPROVE
 
+    # 1) current state
     suggestion.status = SUGGESTION_STATUS_APPROVED if is_approve else SUGGESTION_STATUS_REJECTED
     suggestion.reviewed_by = user.id
     suggestion.reviewed_at = utcnow()
     if reason:
         suggestion.review_comments = reason[:500]
 
+    # 2) feedback (active learning signal)
     store_feedback(db, suggestion, user.id, action, reason)
 
     mapping_ids: List[int] = []
     cnmc_code: Optional[str] = None
 
     if is_approve:
+        # 3) resolve / create the CNMC + mappings
         mapping_1 = (
             db.query(Mapping)
             .filter(Mapping.material_id == material_1.id, Mapping.status == MAPPING_STATUS_ACTIVE)
@@ -120,9 +123,12 @@ def _process_review(
         confidence = float(suggestion.final_confidence or 0)
 
         if mapping_1 and mapping_2 and mapping_1.cnmc_id == mapping_2.cnmc_id:
+            # Already mapped to the same CNMC - nothing to do.
             cnmc_code = mapping_1.cnmc.cnmc_code
             mapping_ids = [mapping_1.id, mapping_2.id]
         elif mapping_1 and mapping_2:
+            # Both mapped but to DIFFERENT CNMCs: merge into the larger
+            # cluster and supersede the smaller one's mapping.
             size_1 = len(mapping_1.cnmc.mappings or [])
             size_2 = len(mapping_2.cnmc.mappings or [])
             target = mapping_1 if size_1 >= size_2 else mapping_2
@@ -171,6 +177,7 @@ def _process_review(
             cnmc_code = cnmc.cnmc_code
             mapping_ids = [m.id for m in cnmc.mappings]
 
+    # 4) audit
     log_action(
         db,
         user,
@@ -281,3 +288,4 @@ def bulk_approve(
             errors.append({"match_id": match_id, "error": str(exc)})
             rejected += 1
     return BulkReviewResponse(approved=approved, rejected=0, failed=rejected, errors=errors)
+

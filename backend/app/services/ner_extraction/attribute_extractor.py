@@ -1,8 +1,19 @@
+"""Attribute extraction (NLP stage 2).
+
+Parses a cleaned material description into a structured attribute dict that
+feeds:
+  * attribute_matcher (specification / grade / other similarity)
+  * critical gates (dimensions, pressure_rating, voltage_class, material_grade)
+  * taxonomy_mapper (category classification)
+
+Rule-based by design: deterministic, dependency-free, and reproducible.
+"""
 from __future__ import annotations
 
 import re
 from typing import Any, Dict, List, Optional
 
+# Canonical attribute keys produced by the extractor.
 ATTRIBUTE_KEYS = [
     "type",
     "subtype",
@@ -19,6 +30,9 @@ ATTRIBUTE_KEYS = [
     "length",
 ]
 
+# ---------------------------------------------------------------------- #
+# Material type taxonomy (checked in priority order)
+# ---------------------------------------------------------------------- #
 _TYPE_PATTERNS: List[tuple] = [
     ("Bearing", re.compile(r"\b(BEARING|BRG)\b")),
     ("Valve", re.compile(r"\b(VALVE|VLV)\b")),
@@ -48,6 +62,7 @@ _TYPE_PATTERNS: List[tuple] = [
 ]
 
 _SUBTYPE_PATTERNS: List[tuple] = [
+    # Bearing subtypes
     ("Ball", re.compile(r"\bBALL\b")),
     ("Tapered Roller", re.compile(r"\bTAPERED?\b")),
     ("Cylindrical Roller", re.compile(r"\bCYLINDRICAL\b")),
@@ -56,6 +71,7 @@ _SUBTYPE_PATTERNS: List[tuple] = [
     ("Deep Groove", re.compile(r"\bDEEP GROOVE\b")),
     ("Thrust", re.compile(r"\bTHRUST\b")),
     ("Sleeve", re.compile(r"\bSLEEVE\b")),
+    # Valve subtypes
     ("Gate", re.compile(r"\bGATE\b")),
     ("Globe", re.compile(r"\bGLOBE\b")),
     ("Check", re.compile(r"\bCHECK\b")),
@@ -64,6 +80,7 @@ _SUBTYPE_PATTERNS: List[tuple] = [
     ("Diaphragm", re.compile(r"\bDIAPHRAGM\b")),
     ("Plug", re.compile(r"\bPLUG\b")),
     ("Angular", re.compile(r"\bANGULAR\b")),
+    # Fastener subtypes
     ("Hex", re.compile(r"\bHEX|HEXAGON|HEXAGONAL\b")),
     ("Union", re.compile(r"\bUNION\b")),
     ("Lock Nut", re.compile(r"\bLOCK\b")),
@@ -71,11 +88,15 @@ _SUBTYPE_PATTERNS: List[tuple] = [
     ("Flange Bolt", re.compile(r"\bFLANGE\b")),
     ("Spring Washer", re.compile(r"\bSPRING\b")),
     ("Anchor", re.compile(r"\bANCHOR\b")),
+    # Pipe subtypes
     ("Galvanized", re.compile(r"\bGALVANIZED|GI\b")),
     ("Weld", re.compile(r"\bWELD|WELDED\b")),
     ("Seamless", re.compile(r"\bSEAMLESS\b")),
 ]
 
+# ---------------------------------------------------------------------- #
+# Material grade patterns
+# ---------------------------------------------------------------------- #
 _GRADE_PATTERNS: List[tuple] = [
     ("Carbon Steel", re.compile(r"\b(CARBON STEEL|CS|HYPEREUTECTOID|HYPOEUTECTOID)\b")),
     ("Stainless Steel", re.compile(r"\bSTAINLESS STEEL|SS ?\d{3,4}\b")),
@@ -97,6 +118,7 @@ _GRADE_PATTERNS: List[tuple] = [
     ("Fiberglass", re.compile(r"\bFIBERGLASS|FIBER REINFORCED PLASTIC\b")),
 ]
 
+# Map a grade name to a coarse family (for compatible-grade scoring)
 GRADE_FAMILY = {
     "Carbon Steel": "steel",
     "Mild Steel": "steel",
@@ -112,6 +134,9 @@ GRADE_FAMILY = {
     "Zinc": "zinc",
 }
 
+# ---------------------------------------------------------------------- #
+# Other field patterns
+# ---------------------------------------------------------------------- #
 _PRESSURE_RE = re.compile(
     r"\b(?:PN|CLASS|PRESSURE ?RATING)?\s*(\d{1,4})\s*(?:PN|BAR|PSI|KGF/CM2|KG/CM2)\b"
     r"|\bPN\s*(\d{1,4})\b|\bASME\s*CLASS\s*(\d{1,4})\b|\bCLASS\s+(\d{1,4})\b",
@@ -181,6 +206,7 @@ def extract_voltage_class(text: str) -> Optional[str]:
     return f"{value}V"
 
 
+# Types where a bare number + NB/MM means nominal bore (canonical DN form)
 _BORE_TYPES = ("Pipe", "Valve", "Pipe Fitting", "Gasket", "Seal", "Spring", "Filter", "Cylinder")
 
 
@@ -284,3 +310,4 @@ def grade_family(grade: Optional[str]) -> Optional[str]:
     if not grade:
         return None
     return GRADE_FAMILY.get(grade)
+

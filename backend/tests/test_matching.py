@@ -1,4 +1,5 @@
-"""
+"""Matching engine test suite.
+
 Covers the full deterministic stack WITHOUT requiring PostgreSQL, Milvus
 or a GPU:
   * preprocessing (cleaner / abbreviations / UOM)
@@ -684,3 +685,4 @@ class TestEndToEndPipeline:
     def test_milvus_dim_lock(self):
         service = QwenEmbeddingService(backend="hashing")
         assert service.dim == 1536
+

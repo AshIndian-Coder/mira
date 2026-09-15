@@ -177,3 +177,4 @@ def deactivate_user(
     return DeactivateUserResponse(
         message="User deactivated", user=UserResponse.from_orm_object(user)
     )
+

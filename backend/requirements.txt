@@ -1,3 +1,8 @@
+# ============================================================
+# MIRA - National Unified Material Master Framework
+# Backend dependencies
+# ============================================================
+
 # --- Web framework ---
 fastapi>=0.115,<1.0
 uvicorn[standard]>=0.30

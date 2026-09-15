@@ -1,5 +1,4 @@
-"""
-Step 4 - INT8 quantization of the fine-tuned Qwen model.
+"""Step 4 - INT8 quantization of the fine-tuned Qwen model.
 
     models/qwen_finetuned/ (~500MB fp32)  ->  models/qwen_quantized/ (~125MB)
 
@@ -49,6 +48,7 @@ def quantize(
     size_before = _dir_size_mb(input_dir)
     print(f"Full-precision size: {size_before:.1f} MB")
 
+    # Dynamic INT8 quantization on all Linear layers (CPU-friendly).
     model = torch.quantization.quantize_dynamic(
         model, {torch.nn.Linear}, dtype=torch.qint8
     )
@@ -97,3 +97,4 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+

@@ -1,5 +1,4 @@
-"""
-Step 5 - Evaluate baseline vs fine-tuned vs INT8 on the same frozen split.
+"""Step 5 - Evaluate baseline vs fine-tuned vs INT8 on the same frozen split.
 
 Reports precision / recall / F1 / accuracy for each checkpoint on a
 HOLD-OUT validation set, plus the MIRA accuracy rules:
@@ -80,6 +79,8 @@ class _Embedder:
         except Exception:
             self._available = False
         if not self._available:
+            # Deterministic fallback so the script still runs end-to-end
+            # in a CPU-only / no-torch environment (reporting that fact).
             from app.services.matching_engine.qwen_embedding import HashingEmbedder
 
             self._numpy_fallback = HashingEmbedder(settings.EMBEDDING_DIM)
@@ -239,3 +240,4 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+

@@ -20,6 +20,9 @@ from app.config import settings
 
 logger = logging.getLogger("mira.vector_db")
 
+# ---------------------------------------------------------------------- #
+# In-memory fallback store
+# ---------------------------------------------------------------------- #
 
 
 class InMemoryVectorStore:
@@ -95,6 +98,9 @@ class InMemoryVectorStore:
         return {"backend": "in_memory", "status": "healthy"}
 
 
+# ---------------------------------------------------------------------- #
+# Milvus store
+# ---------------------------------------------------------------------- #
 
 
 class MilvusVectorStore:
@@ -249,6 +255,9 @@ class MilvusVectorStore:
         return {"backend": "milvus", "status": "healthy" if self._available else "unavailable"}
 
 
+# ---------------------------------------------------------------------- #
+# Facade with automatic fallback
+# ---------------------------------------------------------------------- #
 
 
 class VectorSearch:
@@ -331,3 +340,4 @@ def get_vector_store() -> VectorSearch:
             if _vector_store is None:
                 _vector_store = VectorSearch()
     return _vector_store
+

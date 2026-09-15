@@ -1,3 +1,15 @@
+"""Qwen-1B-Embedding inference service (1536-dim output, INT8-ready).
+
+Model strategy (per MIRA spec):
+    1. Fine-tuned INT8 checkpoint   -> models/qwen_quantized/  (production/demo)
+    2. Fine-tuned full precision    -> models/qwen_finetuned/
+    3. Untrained Qwen-1B-Embedding  -> HF cache (baseline)
+    4. Deterministic hashing embedder -> always available fallback
+
+The fallback keeps the whole pipeline (and the test suite) runnable on a
+laptop without torch/transformers/GPU. ``EMBEDDING_BACKEND`` controls
+auto/qwen/hashing behaviour.
+"""
 from __future__ import annotations
 
 import hashlib
@@ -11,6 +23,9 @@ from app.config import settings
 
 logger = logging.getLogger("mira.embedding")
 
+# ---------------------------------------------------------------------- #
+# Deterministic fallback embedder (no dependencies, reproducible)
+# ---------------------------------------------------------------------- #
 
 
 class HashingEmbedder:
@@ -39,6 +54,7 @@ class HashingEmbedder:
         vectors = []
         for text in texts:
             tokens = [tok for tok in (text or "").lower().split() if tok]
+            # add bigrams for a little n-gram signal
             tokens += [f"{a}_{b}" for a, b in zip(tokens, tokens[1:])]
             vector = self._token_vector(tokens)
             norm = float(np.linalg.norm(vector))
@@ -46,6 +62,9 @@ class HashingEmbedder:
         return np.vstack(vectors) if vectors else np.zeros((0, self.dim), dtype=np.float32)
 
 
+# ---------------------------------------------------------------------- #
+# Qwen service
+# ---------------------------------------------------------------------- #
 
 
 class QwenEmbeddingService:
@@ -69,6 +88,7 @@ class QwenEmbeddingService:
         self._fallback = HashingEmbedder(self.dim)
         self._load()
 
+    # ---------------- model loading ---------------- #
 
     def _candidate_paths(self) -> List[str]:
         candidates = []
@@ -99,6 +119,8 @@ class QwenEmbeddingService:
                 self._tokenizer = AutoTokenizer.from_pretrained(path)
                 self._model = AutoModel.from_pretrained(path)
                 self._model.eval()
+                # INT8 dynamic quantization when torch is present (Qwen-1B
+                # ~500MB fp32 -> ~125MB int8 on CPU).
                 try:
                     import torch
 
@@ -154,6 +176,7 @@ class QwenEmbeddingService:
                 self.dim,
             )
 
+    # ---------------- inference ---------------- #
 
     def _qwen_embed(self, texts: List[str]) -> np.ndarray:
         import torch
@@ -171,12 +194,14 @@ class QwenEmbeddingService:
                     return_tensors="pt",
                 )
                 output = self._model(**encoded)
+                # Last-token pooling (standard for Qwen embedding models).
                 last_hidden = output.last_hidden_state
                 attention_mask = encoded["attention_mask"]
                 mask_idx = (attention_mask.cumsum(dim=1) == attention_mask.sum(dim=1, keepdim=True))
                 pooled = last_hidden.masked_select(mask_idx).reshape(
                     len(batch), last_hidden.size(-1)
                 )
+                # Project to frozen dim if the head is wider/narrower.
                 pooled = pooled.cpu().numpy().astype(np.float32)
                 if pooled.shape[1] != self.dim:
                     pooled = pooled[:, : self.dim]
@@ -214,3 +239,4 @@ def get_embedding_service() -> QwenEmbeddingService:
             if _embedding_service is None:
                 _embedding_service = QwenEmbeddingService()
     return _embedding_service
+

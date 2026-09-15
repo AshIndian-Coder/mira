@@ -1,3 +1,12 @@
+"""FastAPI application entry point.
+
+Run locally:
+    uvicorn app.main:app --reload --port 8000
+
+    * /docs            - interactive API docs (Swagger UI)
+    * /health          - liveness + component health
+    * /api/v1/...      - all business endpoints
+"""
 from __future__ import annotations
 
 import time
@@ -18,6 +27,7 @@ from app.db.vector_db import get_vector_store
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    """Startup: logging, schema, seed data. (DB outages are logged, not fatal.)"""
     setup_logging()
     logger = get_logger("mira.main")
     logger.info("Starting %s v%s (%s)", settings.APP_NAME, settings.VERSION, settings.ENVIRONMENT)
@@ -31,6 +41,7 @@ async def lifespan(app: FastAPI):
     except Exception as exc:
         logger.error("seed_default_data failed: %s", exc)
 
+    # Warm the vector store connection in the background of startup.
     try:
         get_vector_store().ensure_connected()
     except Exception as exc:
@@ -58,8 +69,14 @@ app.add_middleware(
 )
 
 
+# ---------------------------------------------------------------------- #
+# Middleware / error handling
+# ---------------------------------------------------------------------- #
+
+
 @app.middleware("http")
 async def request_logging(request: Request, call_next):
+    """Request timing + logging (skip noise paths)."""
     start = time.perf_counter()
     response = await call_next(request)
     elapsed_ms = (time.perf_counter() - start) * 1000
@@ -88,11 +105,15 @@ async def unhandled_exception_handler(request: Request, exc: Exception):
     )
 
 
+# ---------------------------------------------------------------------- #
+# Routes
+# ---------------------------------------------------------------------- #
 app.include_router(api_router, prefix=settings.API_V1_PREFIX)
 
 
 @app.get("/health", tags=["health"])
 def health():
+    """Liveness + component health (used by Docker HEALTHCHECK & demos)."""
     db_ok = check_db_connection()
     vector = get_vector_store().health()
     embedding_backend = None
@@ -126,3 +147,4 @@ def root():
         "health": "/health",
         "api": settings.API_V1_PREFIX,
     }
+

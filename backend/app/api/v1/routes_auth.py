@@ -1,159 +1,94 @@
-"""Authentication routes.
+"""Authentication endpoints: login, token refresh, current user, logout.
 
-Handles user login, logout, token refresh, password reset, and OTP verification.
+    POST /api/v1/auth/login     -> {access_token, token_type, expires_in, user}
+    POST /api/v1/auth/refresh   -> new token from a still-valid token
+    GET  /api/v1/auth/me        -> current user profile
+    POST /api/v1/auth/logout    -> audit-logged client-side logout
 """
-
-from datetime import datetime, timedelta, timezone
-from typing import Any
+from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from fastapi.responses import JSONResponse
+from sqlalchemy.orm import Session
 
+from app.config import settings
+from app.core.rbac import require_permission
 from app.core.security import (
-    authenticate_user,
     create_access_token,
     decode_token,
-    get_password_hash,
+    get_current_user,
+    hash_password,
     verify_password,
 )
-from app.core.rbac import require_role
 from app.db.postgres import get_db
 from app.models.user import User
 from app.schemas.user_schema import (
-    LoginRequest,
-    LoginResponse,
     RefreshRequest,
     TokenResponse,
-    UserCreate,
+    UserLogin,
     UserResponse,
-    UserUpdate,
 )
+from app.services.audit.audit_service import log_action
+from app.utils.constants import AUDIT_LOGIN, AUDIT_LOGOUT
+from app.utils.helpers import utcnow
 
-router = APIRouter()
-
-
-@router.post("/auth/login", response_model=LoginResponse)
-async def login(request: LoginRequest) -> LoginResponse:
-    """Authenticate user and return access token."""
-    db = next(get_db())
-    try:
-        user = authenticate_user(db, request.email, request.password)
-        if not user:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Invalid email or password",
-                headers={"WWW-Authenticate": "Bearer"},
-            )
-
-        access_token = create_access_token(
-            data={"sub": user.email, "role": user.role, "user_id": str(user.id)}
-        )
-
-        return LoginResponse(
-            access_token=access_token,
-            token_type="bearer",
-            user=UserResponse.model_validate(user),
-        )
-    finally:
-        db.close()
+router = APIRouter(prefix="/auth", tags=["auth"])
 
 
-@router.post("/auth/refresh", response_model=TokenResponse)
-async def refresh_token(request: RefreshRequest) -> TokenResponse:
-    """Refresh access token using refresh token."""
-    payload = decode_token(request.refresh_token)
-    if payload is None:
+@router.post("/login", response_model=TokenResponse)
+def login(payload: UserLogin, db: Session = Depends(get_db)):
+    """Issue a JWT for valid credentials (JWT is stateless)."""
+    user = db.query(User).filter(User.email == payload.email.lower()).first()
+    if user is None or not verify_password(payload.password, user.password_hash):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid or expired refresh token",
+            detail="Incorrect email or password",
         )
-
-    db = next(get_db())
-    try:
-        user = db.query(User).filter(User.email == payload["sub"]).first()
-        if not user:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="User not found",
-            )
-
-        access_token = create_access_token(
-            data={
-                "sub": user.email,
-                "role": user.role,
-                "user_id": str(user.id),
-            }
+    if not user.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="User account is deactivated",
         )
-
-        return TokenResponse(access_token=access_token, token_type="bearer")
-    finally:
-        db.close()
-
-
-@router.get("/auth/me", response_model=UserResponse)
-async def get_current_user(
-    current_user: User = Depends(require_role(["admin", "data_steward", "reviewer", "auditor"])),
-) -> UserResponse:
-    """Get current authenticated user information."""
-    return UserResponse.model_validate(current_user)
+    user.last_login = utcnow()
+    token = create_access_token(user)
+    log_action(db, user, AUDIT_LOGIN, entity_type="user", entity_id=user.id, commit=True)
+    return TokenResponse(
+        access_token=token,
+        expires_in=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+        user=UserResponse.from_orm_object(user),
+    )
 
 
-@router.post("/auth/logout")
-async def logout() -> dict[str, str]:
-    """Logout user. In a production system, this would invalidate the token."""
-    return {"message": "Successfully logged out"}
-
-
-@router.post("/auth/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
-async def register(user_data: UserCreate) -> UserResponse:
-    """Register a new user (admin only)."""
-    db = next(get_db())
-    try:
-        existing_user = db.query(User).filter(User.email == user_data.email).first()
-        if existing_user:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Email already registered",
-            )
-
-        user = User(
-            email=user_data.email,
-            hashed_password=get_password_hash(user_data.password),
-            full_name=user_data.full_name,
-            role=user_data.role,
-            is_active=True,
+@router.post("/refresh", response_model=TokenResponse)
+def refresh(payload: RefreshRequest, db: Session = Depends(get_db)):
+    """Exchange a valid (non-expired) token for a fresh one."""
+    token_data = decode_token(payload.access_token)
+    user = db.query(User).filter(User.id == int(token_data["sub"])).first()
+    if user is None or not user.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="User no longer exists or is deactivated",
         )
-        db.add(user)
-        db.commit()
-        db.refresh(user)
-        return UserResponse.model_validate(user)
-    finally:
-        db.close()
+    token = create_access_token(user)
+    return TokenResponse(
+        access_token=token,
+        expires_in=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+        user=UserResponse.from_orm_object(user),
+    )
 
 
-@router.put("/auth/password", status_code=status.HTTP_200_OK)
-async def change_password(
-    current_user: User = Depends(require_role(["admin", "data_steward", "reviewer", "auditor"])),
-) -> dict[str, str]:
-    """Change current user's password."""
-    return {"message": "Password change endpoint - implement with proper validation"}
+@router.get("/me", response_model=UserResponse)
+def me(user: User = Depends(get_current_user)):
+    """Current user profile (drives role-based UI visibility)."""
+    return UserResponse.from_orm_object(user)
 
 
-@router.post("/auth/reset-password", status_code=status.HTTP_200_OK)
-async def request_password_reset(email: str) -> dict[str, str]:
-    """Request password reset for a user."""
-    db = next(get_db())
-    try:
-        user = db.query(User).filter(User.email == email).first()
-        if not user:
-            return {"message": "If the email exists, a reset link will be sent"}
+@router.post("/logout")
+def logout(user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """Client-side logout: the JWT is stateless, so we audit + confirm.
 
-        return {"message": "If the email exists, a reset link will be sent"}
-    finally:
-        db.close()
+    The client discards the token; the token itself stays cryptographically
+    valid until expiry (standard stateless-JWT behaviour).
+    """
+    log_action(db, user, AUDIT_LOGOUT, entity_type="user", entity_id=user.id, commit=True)
+    return {"message": "Logged out", "user_id": user.id}
 
-
-@router.post("/auth/verify-otp", status_code=status.HTTP_200_OK)
-async def verify_otp(code: str) -> dict[str, str]:
-    """Verify OTP for password reset or other verification flows."""
-    return {"message": "OTP verification endpoint - implement with proper validation"}

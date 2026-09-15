@@ -1,5 +1,4 @@
-"""
-Unit of Measure (UOM) standardization.
+"""Unit of Measure (UOM) standardization.
 
 "KG / Kilogram / Kgs / KGM" -> "KG",  "MTR / Meter / M" -> "MTR",
 "NOS / Numbers / Pcs" -> "NOS", etc.
@@ -13,21 +12,25 @@ import re
 from typing import Dict, Optional
 
 UOM_MAP: Dict[str, str] = {
+    # Count
     "NOS": "NOS", "NO": "NOS", "NUM": "NOS", "NUMS": "NOS", "NUMBER": "NOS",
     "NUMBERS": "NOS", "PCS": "NOS", "PC": "NOS", "PIECE": "NOS",
     "PIECES": "NOS", "EA": "NOS", "EACH": "NOS", "ITEM": "NOS", "ITEMS": "NOS",
+    # Mass
     "KG": "KG", "KGS": "KG", "KGM": "KG", "KLO": "KG", "KILO": "KG",
     "KILOGRAM": "KG", "KILOGRAMS": "KG", "K": "KG", "KGS.": "KG",
     "MT": "MT", "METRIC TONNE": "MT", "MTS": "MT",
     "TNE": "TNE", "TNE.": "TNE", "TON": "TNE", "TONNE": "TNE", "TONNES": "TNE",
     "QT": "QT", "QUINTAL": "QT", "QUINTALS": "QT",
     "GM": "GM", "G": "GM", "GRAM": "GM", "GRAMS": "GM",
+    # Length
     "MTR": "MTR", "MTRS": "MTR", "M": "MTR", "METER": "MTR", "METERS": "MTR",
     "METRE": "MTR", "METRES": "MTR", "LTH": "MTR",
     "FT": "FT", "Ft": "FT", "FOOT": "FT", "FEET": "FT",
     "INCH": "INCH", "IN": "INCH", "INS": "INCH",
     "CM": "CM", "CENTIMETER": "CM", "CENTIMETRE": "CM",
     "MM": "MM", "MILLIMETER": "MM", "MILLIMETRE": "MM",
+    # Area / volume
     "SQR MTR": "SQR MTR", "SQM": "SQR MTR", "SQ M": "SQR MTR",
     "SQ.M": "SQR MTR", "M2": "SQR MTR", "SQMT": "SQR MTR",
     "SQR MTRS": "SQR MTR", "SQMTR": "SQR MTR",
@@ -35,10 +38,12 @@ UOM_MAP: Dict[str, str] = {
     "CUBIC METER": "CBM", "CUBIC METRE": "CBM", "CFT": "CBM", "CUBIC FT": "CBM",
     "L": "L", "LTR": "L", "LITRE": "L", "LITRES": "L", "LITER": "L",
     "LITERS": "L", "LT": "L",
+    # Group units
     "SET": "SET", "SET.": "SET", "SET OF": "SET",
     "PAIR": "PAIR", "PAIRS": "PAIR",
     "DOZEN": "DOZEN", "DOZ": "DOZEN", "DZN": "DOZEN",
     "LOT": "LOT", "LTH SET": "SET",
+    # Packaging
     "BAG": "BAG", "BAGS": "BAG", "PKT": "PACKET", "PACK": "PACKET",
     "PACKS": "PACKET", "PACKET": "PACKET", "PACKETS": "PACKET",
     "DRUM": "DRUM", "DRM": "DRUM", "CAN": "CAN", "CANS": "CAN",
@@ -46,10 +51,12 @@ UOM_MAP: Dict[str, str] = {
     "ROLL": "ROLL", "ROLLS": "ROLL", "BALE": "BALE", "BLS": "BALE",
     "UNIT": "UNIT", "UNITS": "UNIT", "RIM": "RIM",
     "BOLTING": "KG",  # rod sold by weight
+    # Time / energy / electrical
     "HR": "HR", "HOUR": "HR", "HOURS": "HR", "HRS": "HR",
     "DAY": "DAY", "DAYS": "DAY",
     "KW": "KW", "KVA": "KVA", "KV": "KV", "KWH": "KWH", "AMP": "AMP",
     "AMPERE": "AMP", "A": "AMP",
+    # Pressure / flow / misc
     "PSI": "PSI", "BAR": "BAR", "PN": "PN",
     "LPM": "LPM", "GPM": "GPM", "GSM": "GSM",
     "BOTTLE": "BOTTLE", "JT": "SET", "JOINT": "SET",
@@ -75,6 +82,7 @@ def normalize_uom(raw: Optional[str]) -> Optional[str]:
         return None
     if text in UOM_MAP:
         return UOM_MAP[text]
+    # Try without trailing punctuation/periods already handled; last resort:
     return text
 
 
@@ -87,3 +95,4 @@ def is_known_uom(uom: Optional[str]) -> bool:
 
 def get_uom_map() -> Dict[str, str]:
     return dict(UOM_MAP)
+

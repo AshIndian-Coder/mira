@@ -62,6 +62,7 @@ def format_inr(amount: float) -> str:
         grouped = f"{amount:,.2f}"
         body = grouped
     else:
+        # Indian grouping: last three digits, then pairs.
         integer_part = int(amount)
         cents = round((amount - integer_part) * 100)
         if cents == 100:
@@ -150,3 +151,4 @@ def group_count(values: Iterable[Any]) -> "Counter":
     from collections import Counter
 
     return Counter(value for value in values if value is not None)
+

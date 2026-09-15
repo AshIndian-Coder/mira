@@ -1,3 +1,9 @@
+"""JWT authentication & password hashing.
+
+Endpoints use two FastAPI dependencies:
+    get_current_user        -> any valid (non-expired) token
+    get_current_active_user -> additionally requires users.is_active = True
+"""
 from __future__ import annotations
 
 from datetime import timedelta
@@ -13,7 +19,9 @@ from app.config import settings
 from app.db.postgres import get_db
 from app.models.user import User
 
-
+# ---------------------------------------------------------------------- #
+# Password hashing (bcrypt)
+# ---------------------------------------------------------------------- #
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 
@@ -28,6 +36,9 @@ def verify_password(plain_password: str, password_hash: str) -> bool:
         return False
 
 
+# ---------------------------------------------------------------------- #
+# JWT
+# ---------------------------------------------------------------------- #
 oauth2_scheme = OAuth2PasswordBearer(
     tokenUrl=f"{settings.API_V1_PREFIX}/auth/login", auto_error=False
 )
@@ -69,6 +80,9 @@ def decode_token(token: str) -> Dict[str, Any]:
         raise credentials_error
 
 
+# ---------------------------------------------------------------------- #
+# FastAPI dependencies
+# ---------------------------------------------------------------------- #
 
 
 def get_current_user(
@@ -101,3 +115,4 @@ def get_current_active_user(user: User = Depends(get_current_user)) -> User:
             detail="User account is deactivated",
         )
     return user
+

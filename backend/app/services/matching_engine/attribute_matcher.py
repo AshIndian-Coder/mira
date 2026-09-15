@@ -1,357 +1,167 @@
-"""
-Attribute-level comparison (specification, grade, other attributes).
+"""Attribute comparison: specification, material-grade and other similarity.
 
-Implements the 0.35 / 0.15 / 0.10 components of the MIRA hybrid score and
-the deterministic critical gates required by the MIRA specification.
+These three components carry the 0.35 / 0.15 / 0.10 weights in the frozen
+MIRA hybrid score. Comparisons are field-wise and conservative:
 
-Critical fields are category-specific and frozen:
-  * FASTENER                -> material_grade, dimensions
-  * VALVE                   -> pressure_rating, dimensions
-  * PIPE                    -> pressure_rating, dimensions
-  * ELECTRICAL CONNECTOR    -> voltage_class, dimensions
-  * default                 -> dimensions
+  * both fields present and equal      -> 1.0   (match)
+  * both present and conflicting       -> 0.0   (hard conflict)
+  * one side missing                   -> 0.5   (neutral - cannot verify)
+  * both missing                       -> 1.0   (no conflicting information;
+                                                absent on both sides, so it
+                                                neither supports nor breaks
+                                                the match - the critical gates
+                                                still route such pairs to REVIEW)
 
-Missing applicable critical field   -> UNKNOWN  -> REVIEW
-Conflicting critical field          -> CONFLICT -> REVIEW
-Category mismatch                   -> CONFLICT -> REVIEW
+Material-grade additionally understands metallurgical families
+(Carbon Steel vs Mild Steel -> compatible, Carbon Steel vs Stainless -> 0).
 """
 from __future__ import annotations
 
-import re
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, Optional, Tuple
 
-from app.utils.constants import (
-    CRITICAL_FIELDS,
-    DEFAULT_CRITICAL_FIELDS,
-    GATE_CATEGORY_MISMATCH,
-    GATE_CONFLICT,
-    GATE_PASS,
-    GATE_UNKNOWN,
-    WEIGHT_MATERIAL_GRADE,
-    WEIGHT_OTHER_ATTRIBUTES,
-    WEIGHT_SPECIFICATION,
+from app.services.ner_extraction.attribute_extractor import grade_family
+
+# Field weights inside the specification similarity component.
+_SPEC_FIELD_WEIGHTS: Dict[str, float] = {
+    "dimensions": 0.45,
+    "subtype": 0.15,
+    "pressure_rating": 0.15,
+    "voltage_class": 0.10,
+    "standard": 0.10,
+    "seal": 0.05,
+}
+
+# Fields that fall under "other attributes" (type-level + residuals).
+_OTHER_FIELDS: Tuple[str, ...] = (
+    "type",
+    "size",
+    "bore",
+    "length",
+    "thread",
 )
 
-_TOKEN_RE = re.compile(r"[^\w]+")
 
-
-def _norm_tokens(value: Any) -> List[str]:
-    if value is None:
-        return []
-    text = str(value).upper().strip()
-    return [t for t in _TOKEN_RE.split(text) if t]
-
-
-def _norm_num(value: Any) -> Optional[float]:
+def _normalize_value(value: Any) -> Optional[str]:
+    """Normalize a field value for comparison (case/punctuation safe)."""
     if value is None:
         return None
-    text = str(value).strip()
-    text = _TOKEN_RE.sub("", text)
+    text = str(value).strip().upper()
     if not text:
         return None
-    try:
-        return float(text)
-    except ValueError:
-        return None
-
-
-def _num_match(a: Optional[float], b: Optional[float]) -> Optional[float]:
-    if a is None and b is None:
-        return 1.0
-    if a is None or b is None:
-        return 0.0
-    if a == b:
-        return 1.0
-    if a == 0 or b == 0:
-        return 0.0
-    ratio = a / b if a > b else b / a
-    if ratio >= 0.95:
-        return 1.0
-    if ratio >= 0.8:
-        return 0.5
-    return 0.0
-
-
-def _norm_set(value: Any) -> set:
-    if value is None:
-        return set()
-    text = str(value).upper().strip()
-    if not text:
-        return set()
-    return {t for t in _TOKEN_RE.split(text) if t}
-
-
-
-
-_spec_field_weights: Dict[str, float] = {
-    "dimensions": 0.30,
-    "pressure_rating": 0.20,
-    "voltage_class": 0.20,
-    "size": 0.15,
-    "standard": 0.05,
-    "material": 0.05,
-    "color": 0.02,
-    "finish": 0.02,
-    "length": 0.01,
-}
-
-
-def compute_specification_similarity(attrs1: Dict[str, Any], attrs2: Dict[str, Any]) -> Dict[str, Any]:
-    """Compute specification similarity + per-field breakdown."""
-    detail: Dict[str, Any] = {}
-    weighted_sum = 0.0
-    weight_total = 0.0
-
-    for field, weight in _spec_field_weights.items():
-        v1 = attrs1.get(field)
-        v2 = attrs2.get(field)
-        score = _field_similarity(field, v1, v2)
-        detail[field] = {"score": score, "value_1": v1, "value_2": v2}
-        weighted_sum += score * weight
-        weight_total += weight
-
-    overall = weighted_sum / weight_total if weight_total > 0 else 0.0
-    return {
-        "specification_similarity": overall,
-        "detail": detail,
-    }
-
-
-def _field_similarity(field: str, v1: Any, v2: Any) -> float:
-    if v1 is None and v2 is None:
-        return 1.0
-    if v1 is None or v2 is None:
-        return 0.0
-
-    if field in ("dimensions", "pressure_rating", "voltage_class", "size", "length"):
-        return float(_num_match(_norm_num(v1), _norm_num(v2)))
-
-    if field in ("standard", "material", "color", "finish"):
-        return float(len(_norm_set(v1) & _norm_set(v2)) / max(1, len(_norm_set(v1) | _norm_set(v2))))
-
-    t1, t2 = _norm_tokens(v1), _norm_tokens(v2)
-    if not t1 and not t2:
-        return 1.0
-    return float(len(set(t1) & set(t2)) / max(1, len(set(t1) | set(t2))))
-
-
-
-
-_GRADE_LEVELS = {
-    "mild steel": 1,
-    "carbon steel": 2,
-    "stainless steel": 3,
-    "alloy steel": 4,
-    "tool steel": 5,
-    "aluminium": 6,
-    "brass": 7,
-    "bronze": 8,
-    "copper": 9,
-    "plastic": 10,
-    "rubber": 11,
-    "ptfe": 12,
-}
-
-_GRADE_PATTERNS = [
-    (r"\b(8\.8|10\.9|12\.9)\b", 10),
-    (r"\b(70|80|100)\b", 5),
-    (r"\b(a2|304|316|316l)\b", 3),
-    (r"\b(cs|ms|carbon)\b", 2),
-    (r"\b(ms|mild)\b", 1),
-]
-
-
-def compute_material_grade_similarity(attrs1: Dict[str, Any], attrs2: Dict[str, Any]) -> Dict[str, Any]:
-    """Material grade similarity (0..1)."""
-    g1 = _normalize_grade(attrs1.get("material_grade") or attrs1.get("material") or "")
-    g2 = _normalize_grade(attrs2.get("material_grade") or attrs2.get("material") or "")
-    return {
-        "material_grade_similarity": _grade_distance(g1, g2),
-        "detail": {"grade_1": g1, "grade_2": g2},
-    }
-
-
-def _normalize_grade(value: Any) -> str:
-    if not value:
-        return ""
-    text = str(value).upper()
-    for pattern, _ in _GRADE_PATTERNS:
-        if re.search(pattern, text):
-            return text
+    # "DN150" == "150 DN" == "150" for pipe-like dimensions
+    text = text.replace(" ", "")
     return text
 
 
-def _grade_distance(g1: str, g2: str) -> float:
-    if not g1 and not g2:
-        return 1.0
-    if not g1 or not g2:
-        return 0.0
-    if g1 == g2:
-        return 1.0
-    l1 = _grade_level(g1)
-    l2 = _grade_level(g2)
-    if l1 is None or l2 is None:
-        return 0.0
-    if l1 == l2:
-        return 0.8
-    return 0.0
-
-
-def _grade_level(grade: str) -> Optional[int]:
-    text = grade.upper()
-    if "STAINLESS" in text:
-        return _GRADE_LEVELS["stainless steel"]
-    if "ALLOY" in text:
-        return _GRADE_LEVELS["alloy steel"]
-    if "TOOL" in text:
-        return _GRADE_LEVELS["tool steel"]
-    if "CARBON" in text:
-        return _GRADE_LEVELS["carbon steel"]
-    if "MILD" in text:
-        return _GRADE_LEVELS["mild steel"]
-    if "ALUMINIUM" in text:
-        return _GRADE_LEVELS["aluminium"]
-    if "BRASS" in text:
-        return _GRADE_LEVELS["brass"]
-    if "BRONZE" in text:
-        return _GRADE_LEVELS["bronze"]
-    if "COPPER" in text:
-        return _GRADE_LEVELS["copper"]
-    for pattern, level in _GRADE_PATTERNS:
-        if re.search(pattern, text):
-            return level
-    return None
-
-
-
-
-_OTHER_FIELD_WEIGHTS: Dict[str, float] = {
-    "seal_type": 0.25,
-    "bearing_type": 0.20,
-    "bearing_seal": 0.15,
-    "bearing_lubrication": 0.10,
-    "connection_type": 0.10,
-    "number_of_poles": 0.05,
-    "phase": 0.05,
-    "frequency": 0.05,
-    "brand": 0.05,
-}
-
-
-def compute_other_attributes_similarity(attrs1: Dict[str, Any], attrs2: Dict[str, Any]) -> Dict[str, Any]:
-    """Similarity over non-critical-but-relevant attributes."""
-    detail: Dict[str, Any] = {}
-    weighted_sum = 0.0
-    weight_total = 0.0
-
-    for field, weight in _OTHER_FIELD_WEIGHTS.items():
-        v1 = attrs1.get(field)
-        v2 = attrs2.get(field)
-        score = _other_field_similarity(field, v1, v2)
-        detail[field] = {"score": score, "value_1": v1, "value_2": v2}
-        weighted_sum += score * weight
-        weight_total += weight
-
-    overall = weighted_sum / weight_total if weight_total > 0 else 0.0
-    return {
-        "other_attributes_similarity": overall,
-        "detail": detail,
-    }
-
-
-def _other_field_similarity(field: str, v1: Any, v2: Any) -> float:
+def compare_field(value_1: Any, value_2: Any) -> Tuple[float, str]:
+    """Compare two field values -> (score, status)."""
+    v1, v2 = _normalize_value(value_1), _normalize_value(value_2)
     if v1 is None and v2 is None:
+        return 1.0, "no_info"
+    if (v1 is None) != (v2 is None):
+        return 0.5, "unknown"
+    if v1 == v2:
+        return 1.0, "match"
+    # Near-equal tolerances for numeric-ish values ("150MM" vs "150.0MM")
+    try:
+        n1 = float("".join(ch for ch in v1 if ch.isdigit() or ch == ".") or "nan")
+        n2 = float("".join(ch for ch in v2 if ch.isdigit() or ch == ".") or "nan")
+        if n1 == n1 and n2 == n2 and n1 > 0 and n2 > 0:
+            if abs(n1 - n2) / max(n1, n2) < 0.001:
+                return 1.0, "match"
+    except ValueError:
+        pass
+    return 0.0, "conflict"
+
+
+def _weighted_average(detail: Dict[str, Dict[str, Any]]) -> float:
+    """Weighted mean over spec fields (weights renormalized to present set)."""
+    total_weight = 0.0
+    weighted = 0.0
+    for field, entry in detail.items():
+        weight = _SPEC_FIELD_WEIGHTS.get(field, 1.0 / max(len(detail), 1))
+        weighted += weight * float(entry.get("score", 1.0))
+        total_weight += weight
+    if total_weight == 0:
         return 1.0
-    if v1 is None or v2 is None:
-        return 0.0
-    t1, t2 = _norm_tokens(v1), _norm_tokens(v2)
-    if not t1 and not t2:
-        return 1.0
-    return float(len(set(t1) & set(t2)) / max(1, len(set(t1) | set(t2))))
+    return weighted / total_weight
 
 
+def compare_material_grades(grade_1: Any, grade_2: Any) -> Tuple[float, str]:
+    """Grade similarity with metallurgical-family awareness."""
+    g1 = str(grade_1).strip().upper() if grade_1 is not None else None
+    g2 = str(grade_2).strip().upper() if grade_2 is not None else None
+    if g1 is None and g2 is None:
+        return 1.0, "no_info"
+    if (g1 is None) != (g2 is None):
+        return 0.5, "unknown"
+    # compact form for equality ("CARBONSTEEL"), spaced form for family lookup
+    c1, c2 = g1.replace(" ", ""), g2.replace(" ", "")
+    if c1 == c2:
+        return 1.0, "match"
+    family_1 = grade_family(g1.title()) or grade_family(g1)
+    family_2 = grade_family(g2.title()) or grade_family(g2)
+    if family_1 and family_1 == family_2:
+        return 0.7, "compatible"
+    return 0.0, "conflict"
 
 
-def compute_attribute_scores(
-    attrs1: Dict[str, Any],
-    attrs2: Dict[str, Any],
-) -> Dict[str, Any]:
-    """Combine specification / grade / other into the attribute component."""
-    spec = compute_specification_similarity(attrs1, attrs2)
-    grade = compute_material_grade_similarity(attrs1, attrs2)
-    other = compute_other_attributes_similarity(attrs1, attrs2)
+def compute_attribute_scores(attrs_1: Dict[str, Any], attrs_2: Dict[str, Any]) -> Dict[str, Any]:
+    """Compute the three attribute-based MIRA components.
 
-    combined = (
-        WEIGHT_SPECIFICATION * spec["specification_similarity"]
-        + WEIGHT_MATERIAL_GRADE * grade["material_grade_similarity"]
-        + WEIGHT_OTHER_ATTRIBUTES * other["other_attributes_similarity"]
+    Returns:
+        {
+          "specification_similarity": 0.0-1.0,
+          "material_grade_similarity": 0.0-1.0,
+          "other_attributes_similarity": 0.0-1.0,
+          "detail": {field: {"v1":..., "v2":..., "score":..., "status":...}},
+        }
+    """
+    attrs_1 = attrs_1 or {}
+    attrs_2 = attrs_2 or {}
+
+    # --- specification similarity ---
+    spec_detail: Dict[str, Dict[str, Any]] = {}
+    for field in _SPEC_FIELD_WEIGHTS:
+        v1 = attrs_1.get(field)
+        v2 = attrs_2.get(field)
+        score, status = compare_field(v1, v2)
+        spec_detail[field] = {"v1": v1, "v2": v2, "score": score, "status": status}
+    specification_similarity = _weighted_average(spec_detail)
+
+    # --- material grade similarity ---
+    grade_score, grade_status = compare_material_grades(
+        attrs_1.get("material_grade"), attrs_2.get("material_grade")
     )
 
-    detail = {}
-    detail.update(spec["detail"])
-    detail.update(grade["detail"])
-    detail.update(other["detail"])
+    # --- other attributes similarity ---
+    other_detail: Dict[str, Dict[str, Any]] = {}
+    other_pairs: Dict[str, Tuple[float, str]] = {}
+    for field in _OTHER_FIELDS:
+        v1 = attrs_1.get(field)
+        v2 = attrs_2.get(field)
+        score, status = compare_field(v1, v2)
+        other_detail[field] = {"v1": v1, "v2": v2, "score": score, "status": status}
+        other_pairs[field] = (score, status)
+    if other_pairs:
+        n = len(other_pairs)
+        other_score = sum(score for score, _ in other_pairs.values()) / n
+    else:
+        other_score = 0.5
 
     return {
-        "specification_similarity": spec["specification_similarity"],
-        "material_grade_similarity": grade["material_grade_similarity"],
-        "other_attributes_similarity": other["other_attributes_similarity"],
-        "attribute_similarity": combined,
-        "detail": detail,
+        "specification_similarity": round(specification_similarity, 4),
+        "material_grade_similarity": round(grade_score, 4),
+        "other_attributes_similarity": round(other_score, 4),
+        "detail": {
+            "specification": spec_detail,
+            "material_grade": {
+                "v1": attrs_1.get("material_grade"),
+                "v2": attrs_2.get("material_grade"),
+                "score": grade_score,
+                "status": grade_status,
+            },
+            "other_attributes": other_detail,
+        },
     }
 
-
-
-
-def apply_critical_gates(
-    attrs1: Dict[str, Any],
-    attrs2: Dict[str, Any],
-    category1: Optional[str],
-    category2: Optional[str],
-) -> Tuple[bool, List[str]]:
-    """Apply deterministic MIRA critical gates.
-
-    Returns (gates_pass, reasons).
-    """
-    reasons: List[str] = []
-
-    cat1 = (category1 or "").upper().strip()
-    cat2 = (category2 or "").upper().strip()
-
-    if cat1 and cat2 and cat1 != cat2:
-        reasons.append("CATEGORY_MISMATCH")
-        return False, reasons
-
-    critical_fields = _critical_fields_for(cat1 or cat2 or "")
-    for field in critical_fields:
-        v1 = attrs1.get(field)
-        v2 = attrs2.get(field)
-        if v1 is None and v2 is None:
-            reasons.append(f"MISSING:{field}")
-            continue
-        if v1 is None or v2 is None:
-            reasons.append(f"MISSING:{field}")
-            continue
-        if not _critical_field_match(field, v1, v2):
-            reasons.append(f"CONFLICT:{field}")
-
-    gates_pass = len(reasons) == 0
-    return gates_pass, reasons
-
-
-def _critical_fields_for(category: str) -> List[str]:
-    upper = category.upper().strip()
-    for key, fields in CRITICAL_FIELDS.items():
-        if key.upper() == upper:
-            return list(fields)
-    return list(DEFAULT_CRITICAL_FIELDS)
-
-
-def _critical_field_match(field: str, v1: Any, v2: Any) -> bool:
-    if field == "dimensions":
-        return _num_match(_norm_num(v1), _norm_num(v2)) >= 0.95
-    if field in ("pressure_rating", "voltage_class"):
-        return _num_match(_norm_num(v1), _norm_num(v2)) == 1.0
-    if field == "material_grade":
-        return _grade_distance(_normalize_grade(v1), _normalize_grade(v2)) >= 0.8
-    return _norm_tokens(v1) == _norm_tokens(v2)

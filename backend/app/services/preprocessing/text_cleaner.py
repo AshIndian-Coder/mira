@@ -1,11 +1,21 @@
+"""Text preprocessing: noise removal, case normalization, spacing.
+
+Material descriptions come from a dozen+ ERP systems with wildly
+inconsistent formatting. This module produces a canonical form:
+uppercase, single-spaced, ASCII, no bracket/typography noise - while
+preserving technical characters that carry meaning (- / . digits units).
+"""
 from __future__ import annotations
 
 import re
 
-_KEEP_CHARS = re.compile(r"[^A-Z0-9 \-/.\\*]+")
+# Characters that are safe to keep in a canonical description.
+# (parentheses are treated as noise and stripped)
+_KEEP_CHARS = re.compile(r"[^A-Z0-9 \-/.\*]+")
 _MULTIPLE_SPACES = re.compile(r"\s{2,}")
 _DANGLING_DASH = re.compile(r"^-|-$")
 
+# Common look-alike characters -> ASCII equivalents
 _TRANSLATE_TABLE = str.maketrans({
     "\u00d7": "X",   # multiplication sign in dimensions
     "\u2013": "-",   # en dash
@@ -46,3 +56,4 @@ def clean_description(text: str) -> str:
     text = remove_special_chars(text)
     text = remove_extra_spaces(text)
     return text
+

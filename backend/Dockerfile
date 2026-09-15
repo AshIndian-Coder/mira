@@ -1,7 +1,8 @@
+# ============================================================
 # MIRA Backend - Docker image
 # Build:  docker build -t mira-backend .
 # Run:    docker run -p 8000:8000 --env-file .env mira-backend
-
+# ============================================================
 FROM python:3.11-slim
 
 # Prevent Python from writing pyc files and buffering stdout

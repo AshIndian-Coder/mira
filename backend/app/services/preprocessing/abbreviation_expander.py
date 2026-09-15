@@ -1,9 +1,20 @@
+"""Domain-specific abbreviation expansion for material descriptions.
+
+Critical for cross-CPSE matching: IOCL writes "BRG", BPCL writes "BEARING".
+Expansion is word-boundary safe (never touches tokens like "6205" or seal
+codes like "2RS") and is a curated, extendable dictionary.
+
+    expand_abbreviations("BRG BALL 6205 2RS") -> "BEARING BALL 6205 2RS"
+"""
 from __future__ import annotations
 
 import re
 from typing import Dict, List, Tuple
 
+# abbreviation -> full term (all keys uppercase; longer keys are applied
+# first so "BEAR" would win over "B" style conflicts).
 ABBREVIATION_MAP: Dict[str, str] = {
+    # --- Material types ---
     "BRG": "BEARING",
     "VLV": "VALVE",
     "PPL": "PIPE",
@@ -39,6 +50,7 @@ ABBREVIATION_MAP: Dict[str, str] = {
     "PTFE": "PTFE",    # polymer name - intentionally kept
     "EPDM": "EPDM",    # polymer name - intentionally kept
 
+    # --- Metals / grades (word-boundary only) ---
     "CS": "CARBON STEEL",
     "MS": "MILD STEEL",
     "SS": "STAINLESS STEEL",
@@ -52,12 +64,14 @@ ABBREVIATION_MAP: Dict[str, str] = {
     "CI": "CAST IRON",
     "GI": "GALVANIZED IRON",
 
+    # --- Fasteners ---
     "SCRW": "SCREW",
     "HEX": "HEXAGON",
     "LG": "LOCK",
     "RVT": "RIVET",
     "ANCHR": "ANCHOR",
 
+    # --- Standards / dimension prefixes (kept as-is, listed for clarity) ---
     "DN": "DN",        # nominal diameter - parsed by attribute extractor
     "NB": "NB",        # nominal bore - parsed by attribute extractor
     "ISO": "ISO",
@@ -114,3 +128,4 @@ def add_abbreviation(abbr: str, full_term: str) -> None:
 
 
 _rebuild_patterns()
+
