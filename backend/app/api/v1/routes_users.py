@@ -71,7 +71,6 @@ def create_user(
     current_user: User = Depends(require_permission("manage_users")),
 ):
     """Create a new user (admin only)."""
-    payload.validate_role()
     if payload.cpse_id is not None:
         cpse = db.query(Cpse).filter(Cpse.id == payload.cpse_id).first()
         if cpse is None:

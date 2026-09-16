@@ -1,0 +1,528 @@
+[
+  {
+    "name": "root",
+    "method": "GET",
+    "url": "/",
+    "expected": 200,
+    "actual": 200,
+    "ok": true,
+    "extra": "",
+    "body": "{\"name\": \"MIRA Backend\", \"version\": \"1.0.0\", \"docs\": \"/docs\", \"health\": \"/health\", \"api\": \"/api/v1\"}"
+  },
+  {
+    "name": "health",
+    "method": "GET",
+    "url": "/health",
+    "expected": 200,
+    "actual": 200,
+    "ok": true,
+    "extra": "",
+    "body": "{\"status\": \"ok\", \"app\": \"MIRA Backend\", \"version\": \"1.0.0\", \"environment\": \"development\", \"components\": {\"postgres\": \"up\", \"vector_store\": {\"backend\": \"in_memor"
+  },
+  {
+    "name": "auth/login wrong password -> 401",
+    "method": "POST",
+    "url": "/api/v1/auth/login",
+    "expected": 401,
+    "actual": 401,
+    "ok": true,
+    "extra": "",
+    "body": "{\"detail\": \"Incorrect email or password\"}"
+  },
+  {
+    "name": "auth/me without token -> 401",
+    "method": "GET",
+    "url": "/api/v1/auth/me",
+    "expected": 401,
+    "actual": 401,
+    "ok": true,
+    "extra": "",
+    "body": "{\"detail\": \"Not authenticated\"}"
+  },
+  {
+    "name": "auth/login (admin)",
+    "method": "POST",
+    "url": "/api/v1/auth/login",
+    "expected": 200,
+    "actual": 200,
+    "ok": true,
+    "extra": "",
+    "body": "{\"access_token\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxIiwiZW1haWwiOiJhZG1pbkBtaXJhLmdvdi5pbiIsInJvbGUiOiJhZG1pbiIsImNwc2VfaWQiOm51bGwsInR5cGUiOiJhY"
+  },
+  {
+    "name": "auth/me",
+    "method": "GET",
+    "url": "/api/v1/auth/me",
+    "expected": 200,
+    "actual": 200,
+    "ok": true,
+    "extra": "",
+    "body": "{\"id\": 1, \"email\": \"admin@mira.gov.in\", \"full_name\": \"MIRA Administrator\", \"role\": \"admin\", \"cpse_id\": null, \"cpse_short_code\": null, \"is_active\": true, \"create"
+  },
+  {
+    "name": "auth/refresh",
+    "method": "POST",
+    "url": "/api/v1/auth/refresh",
+    "expected": 200,
+    "actual": 200,
+    "ok": true,
+    "extra": "",
+    "body": "{\"access_token\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxIiwiZW1haWwiOiJhZG1pbkBtaXJhLmdvdi5pbiIsInJvbGUiOiJhZG1pbiIsImNwc2VfaWQiOm51bGwsInR5cGUiOiJhY"
+  },
+  {
+    "name": "users list",
+    "method": "GET",
+    "url": "/api/v1/users",
+    "expected": 200,
+    "actual": 200,
+    "ok": true,
+    "extra": "",
+    "body": "{\"items\": [{\"id\": 2, \"email\": \"reviewer.test@mira.gov.in\", \"full_name\": \"Test Reviewer (updated)\", \"role\": \"data_steward\", \"cpse_id\": 1, \"cpse_short_code\": \"IOC"
+  },
+  {
+    "name": "users create (reviewer)",
+    "method": "POST",
+    "url": "/api/v1/users",
+    "expected": [
+      201,
+      409
+    ],
+    "actual": 409,
+    "ok": true,
+    "extra": "(409 = already exists from a previous run, OK)",
+    "body": "{\"detail\": \"Email already registered\"}"
+  },
+  {
+    "name": "users update",
+    "method": "PUT",
+    "url": "/api/v1/users/2",
+    "expected": 200,
+    "actual": 200,
+    "ok": true,
+    "extra": "",
+    "body": "{\"id\": 2, \"email\": \"reviewer.test@mira.gov.in\", \"full_name\": \"Test Reviewer (updated)\", \"role\": \"data_steward\", \"cpse_id\": 1, \"cpse_short_code\": \"IOCL\", \"is_act"
+  },
+  {
+    "name": "users deactivate",
+    "method": "DELETE",
+    "url": "/api/v1/users/2",
+    "expected": 200,
+    "actual": 200,
+    "ok": true,
+    "extra": "",
+    "body": "{\"message\": \"User deactivated\", \"user\": {\"id\": 2, \"email\": \"reviewer.test@mira.gov.in\", \"full_name\": \"Test Reviewer (updated)\", \"role\": \"data_steward\", \"cpse_id"
+  },
+  {
+    "name": "ingestion/upload iocl_materials.csv (cpse 1)",
+    "method": "POST",
+    "url": "/api/v1/ingestion/upload",
+    "expected": 200,
+    "actual": 200,
+    "ok": true,
+    "extra": "",
+    "body": "{\"upload_id\": 1, \"cpse_id\": 1, \"filename\": \"iocl_materials.csv\", \"total_rows\": 5, \"inserted\": 5, \"updated\": 0, \"skipped\": 0, \"avg_quality_score\": 100.0, \"embedd"
+  },
+  {
+    "name": "ingestion/upload bpcl_materials.csv (cpse 2)",
+    "method": "POST",
+    "url": "/api/v1/ingestion/upload",
+    "expected": 200,
+    "actual": 200,
+    "ok": true,
+    "extra": "",
+    "body": "{\"upload_id\": 2, \"cpse_id\": 2, \"filename\": \"bpcl_materials.csv\", \"total_rows\": 5, \"inserted\": 5, \"updated\": 0, \"skipped\": 0, \"avg_quality_score\": 100.0, \"embedd"
+  },
+  {
+    "name": "ingestion/upload bad file type -> 400",
+    "method": "POST",
+    "url": "/api/v1/ingestion/upload",
+    "expected": 400,
+    "actual": 400,
+    "ok": true,
+    "extra": "",
+    "body": "{\"detail\": \"Unsupported file type (use .csv, .xlsx or .xls)\"}"
+  },
+  {
+    "name": "ingestion/history",
+    "method": "GET",
+    "url": "/api/v1/ingestion/history",
+    "expected": 200,
+    "actual": 200,
+    "ok": true,
+    "extra": "",
+    "body": "{\"items\": [{\"id\": 2, \"cpse_id\": 2, \"uploaded_by\": 1, \"uploader_email\": \"admin@mira.gov.in\", \"filename\": \"bpcl_materials.csv\", \"file_size_bytes\": 600, \"total_rec"
+  },
+  {
+    "name": "ingestion/quality-report",
+    "method": "GET",
+    "url": "/api/v1/ingestion/quality-report/1",
+    "expected": 200,
+    "actual": 200,
+    "ok": true,
+    "extra": "",
+    "body": "{\"upload_id\": 1, \"cpse_id\": 1, \"filename\": \"iocl_materials.csv\", \"total_records\": 5, \"successful_records\": 5, \"failed_records\": 0, \"avg_quality_score\": 100.0, \""
+  },
+  {
+    "name": "ingestion/quality-report 404",
+    "method": "GET",
+    "url": "/api/v1/ingestion/quality-report/99999",
+    "expected": 404,
+    "actual": 404,
+    "ok": true,
+    "extra": "",
+    "body": "{\"detail\": \"Upload batch not found\"}"
+  },
+  {
+    "name": "ingestion/materials",
+    "method": "GET",
+    "url": "/api/v1/ingestion/materials",
+    "expected": 200,
+    "actual": 200,
+    "ok": true,
+    "extra": "",
+    "body": "{\"items\": [{\"id\": 10, \"cpse_id\": 2, \"material_code\": \"BPCL-2005\", \"description\": \"3-phase induction motor 3.7 kW 1440 rpm TEFC IE3\", \"cleaned_description\": \"3-P"
+  },
+  {
+    "name": "matching/run (all materials)",
+    "method": "POST",
+    "url": "/api/v1/matching/run",
+    "expected": 200,
+    "actual": 200,
+    "ok": true,
+    "extra": "",
+    "body": "{\"processed\": 10, \"candidates_evaluated\": 18, \"suggestions_created\": 9, \"suggestions_existing\": 9, \"by_decision\": {\"HIGH_CONFIDENCE\": 2, \"REVIEW\": 7, \"DIFFERENT"
+  },
+  {
+    "name": "matching/suggestions",
+    "method": "GET",
+    "url": "/api/v1/matching/suggestions",
+    "expected": 200,
+    "actual": 200,
+    "ok": true,
+    "extra": "",
+    "body": "{\"items\": [{\"id\": 1, \"material_1_id\": 1, \"material_2_id\": 6, \"semantic_similarity\": 81.41, \"fuzzy_similarity\": 70.1, \"attribute_similarity\": 100.0, \"final_confi"
+  },
+  {
+    "name": "matching/suggestions/{id} detail",
+    "method": "GET",
+    "url": "/api/v1/matching/suggestions/1",
+    "expected": 200,
+    "actual": 200,
+    "ok": true,
+    "extra": "",
+    "body": "{\"id\": 1, \"material_1_id\": 1, \"material_2_id\": 6, \"semantic_similarity\": 81.41, \"fuzzy_similarity\": 70.1, \"attribute_similarity\": 100.0, \"final_confidence\": 90."
+  },
+  {
+    "name": "matching/suggestions 404",
+    "method": "GET",
+    "url": "/api/v1/matching/suggestions/999999",
+    "expected": 404,
+    "actual": 404,
+    "ok": true,
+    "extra": "",
+    "body": "{\"detail\": \"Match suggestion not found\"}"
+  },
+  {
+    "name": "matching/bulk-match without ids -> 400",
+    "method": "POST",
+    "url": "/api/v1/matching/bulk-match",
+    "expected": 400,
+    "actual": 400,
+    "ok": true,
+    "extra": "",
+    "body": "{\"detail\": \"material_ids is required for bulk-match\"}"
+  },
+  {
+    "name": "matching/bulk-match (explicit ids)",
+    "method": "POST",
+    "url": "/api/v1/matching/bulk-match",
+    "expected": 200,
+    "actual": 200,
+    "ok": true,
+    "extra": "",
+    "body": "{\"processed\": 2, \"candidates_evaluated\": 4, \"suggestions_created\": 0, \"suggestions_existing\": 4, \"by_decision\": {\"HIGH_CONFIDENCE\": 0, \"REVIEW\": 0, \"DIFFERENT\":"
+  },
+  {
+    "name": "review/queue",
+    "method": "GET",
+    "url": "/api/v1/review/queue",
+    "expected": 200,
+    "actual": 200,
+    "ok": true,
+    "extra": "",
+    "body": "{\"items\": [{\"id\": 1, \"material_1_id\": 1, \"material_2_id\": 6, \"semantic_similarity\": 81.41, \"fuzzy_similarity\": 70.1, \"attribute_similarity\": 100.0, \"final_confi"
+  },
+  {
+    "name": "review/approve",
+    "method": "POST",
+    "url": "/api/v1/review/approve/1",
+    "expected": 200,
+    "actual": 200,
+    "ok": true,
+    "extra": "",
+    "body": "{\"match_id\": 1, \"status\": \"approved\", \"cnmc_code\": \"CNMC-000001\", \"mapping_ids\": [1, 2], \"reason\": \"Confirmed identical part by specs\", \"message\": \"Match approv"
+  },
+  {
+    "name": "review/approve twice -> 409",
+    "method": "POST",
+    "url": "/api/v1/review/approve/1",
+    "expected": 409,
+    "actual": 409,
+    "ok": true,
+    "extra": "",
+    "body": "{\"detail\": \"Suggestion is already approved\"}"
+  },
+  {
+    "name": "review/reject",
+    "method": "POST",
+    "url": "/api/v1/review/reject/4",
+    "expected": 200,
+    "actual": 200,
+    "ok": true,
+    "extra": "",
+    "body": "{\"match_id\": 4, \"status\": \"rejected\", \"cnmc_code\": null, \"mapping_ids\": [], \"reason\": \"Different bore size\", \"message\": \"Match rejected (fed into active learnin"
+  },
+  {
+    "name": "review/bulk-approve",
+    "method": "POST",
+    "url": "/api/v1/review/bulk-approve",
+    "expected": 200,
+    "actual": 200,
+    "ok": true,
+    "extra": "",
+    "body": "{\"approved\": 2, \"rejected\": 0, \"failed\": 0, \"errors\": []}"
+  },
+  {
+    "name": "cnmc registry",
+    "method": "GET",
+    "url": "/api/v1/cnmc",
+    "expected": 200,
+    "actual": 200,
+    "ok": true,
+    "extra": "",
+    "body": "{\"items\": [{\"id\": 3, \"cnmc_code\": \"CNMC-000003\", \"standardized_description\": \"GATE VALVE DN 150 150 CARBON STEEL FLANGED WCB BODY\", \"category\": \"Valve\", \"unspsc"
+  },
+  {
+    "name": "cnmc detail",
+    "method": "GET",
+    "url": "/api/v1/cnmc/3",
+    "expected": 200,
+    "actual": 200,
+    "ok": true,
+    "extra": "",
+    "body": "{\"id\": 3, \"cnmc_code\": \"CNMC-000003\", \"standardized_description\": \"GATE VALVE DN 150 150 CARBON STEEL FLANGED WCB BODY\", \"category\": \"Valve\", \"unspsc_code\": \"40"
+  },
+  {
+    "name": "cnmc update",
+    "method": "PUT",
+    "url": "/api/v1/cnmc/3",
+    "expected": 200,
+    "actual": 200,
+    "ok": true,
+    "extra": "",
+    "body": "{\"id\": 3, \"cnmc_code\": \"CNMC-000003\", \"standardized_description\": \"Deep groove ball bearing 6205 ZZ C3 (national standard)\", \"category\": \"Valve\", \"unspsc_code\":"
+  },
+  {
+    "name": "cnmc detail 404",
+    "method": "GET",
+    "url": "/api/v1/cnmc/999999",
+    "expected": 404,
+    "actual": 404,
+    "ok": true,
+    "extra": "",
+    "body": "{\"detail\": \"CNMC not found\"}"
+  },
+  {
+    "name": "cnmc/generate (manual cluster)",
+    "method": "POST",
+    "url": "/api/v1/cnmc/generate",
+    "expected": 200,
+    "actual": 200,
+    "ok": true,
+    "extra": "",
+    "body": "{\"id\": 4, \"cnmc_code\": \"CNMC-000004\", \"standardized_description\": \"SEAMLESS MILD STEEL PIPE DN50 SCH 40 ASTM A106 GRB\", \"category\": \"Fasteners\", \"unspsc_code\": "
+  },
+  {
+    "name": "cnmc/generate <2 materials -> 400/422",
+    "method": "POST",
+    "url": "/api/v1/cnmc/generate",
+    "expected": [
+      400,
+      422
+    ],
+    "actual": 422,
+    "ok": true,
+    "extra": "",
+    "body": "{\"detail\": [{\"type\": \"too_short\", \"loc\": [\"body\", \"material_ids\"], \"msg\": \"List should have at least 2 items after validation, not 1\", \"input\": [10], \"ctx\": {\"f"
+  },
+  {
+    "name": "mapping/cpse/1",
+    "method": "GET",
+    "url": "/api/v1/mapping/cpse/1",
+    "expected": 200,
+    "actual": 200,
+    "ok": true,
+    "extra": "",
+    "body": "{\"items\": [{\"id\": 5, \"material_id\": 2, \"cnmc_id\": 3, \"cnmc_code\": \"CNMC-000003\", \"confidence_score\": 100.0, \"mapping_type\": \"ai_suggested\", \"approved_by\": 1, \"a"
+  },
+  {
+    "name": "mapping/material/{id}",
+    "method": "GET",
+    "url": "/api/v1/mapping/material/10",
+    "expected": 200,
+    "actual": 200,
+    "ok": true,
+    "extra": "",
+    "body": "{\"material_id\": 10, \"material_code\": \"BPCL-2005\", \"cpse_id\": 2, \"mapped\": true, \"mapping\": {\"id\": 4, \"material_id\": 10, \"cnmc_id\": 2, \"cnmc_code\": \"CNMC-000002\""
+  },
+  {
+    "name": "mapping/material 404",
+    "method": "GET",
+    "url": "/api/v1/mapping/material/999999",
+    "expected": 404,
+    "actual": 404,
+    "ok": true,
+    "extra": "",
+    "body": "{\"detail\": \"Material not found\"}"
+  },
+  {
+    "name": "mapping/create",
+    "method": "POST",
+    "url": "/api/v1/mapping/create",
+    "expected": 200,
+    "actual": 200,
+    "ok": true,
+    "extra": "",
+    "body": "{\"id\": 9, \"material_id\": 4, \"cnmc_id\": 3, \"cnmc_code\": \"CNMC-000003\", \"confidence_score\": 95.0, \"mapping_type\": \"manual\", \"approved_by\": 1, \"approved_at\": \"2026"
+  },
+  {
+    "name": "mapping/migration-status",
+    "method": "GET",
+    "url": "/api/v1/mapping/migration-status",
+    "expected": 200,
+    "actual": 200,
+    "ok": true,
+    "extra": "",
+    "body": "{\"cpse_id\": null, \"total_materials\": 10, \"mapped_materials\": 9, \"unmapped_materials\": 1, \"pending_matches\": 5, \"active_cnmc_count\": 4, \"progress_percent\": 90.0}"
+  },
+  {
+    "name": "dashboard stats",
+    "method": "GET",
+    "url": "/api/v1/dashboard/stats",
+    "expected": 200,
+    "actual": 200,
+    "ok": true,
+    "extra": "",
+    "body": "{\"total_materials\": 10, \"total_cpse\": 5, \"total_cnmc\": 4, \"total_mappings\": 9, \"pending_matches\": 5, \"approved_matches\": 3, \"rejected_matches\": 1, \"high_confide"
+  },
+  {
+    "name": "dashboard trends",
+    "method": "GET",
+    "url": "/api/v1/dashboard/trends?days=30",
+    "expected": 200,
+    "actual": 200,
+    "ok": true,
+    "extra": "",
+    "body": "{\"days\": 30, \"series\": [{\"date\": \"2026-09-16\", \"created\": 0, \"approved\": 3, \"rejected\": 1, \"pending\": 5}]}"
+  },
+  {
+    "name": "dashboard category-heatmap",
+    "method": "GET",
+    "url": "/api/v1/dashboard/category-heatmap",
+    "expected": 200,
+    "actual": 200,
+    "ok": true,
+    "extra": "",
+    "body": "{\"items\": [{\"category\": \"Electrical\", \"materials\": 2, \"duplicate_pairs\": 3}, {\"category\": \"Bearing\", \"materials\": 2, \"duplicate_pairs\": 2}, {\"category\": \"Fasten"
+  },
+  {
+    "name": "dashboard cpse-comparison",
+    "method": "GET",
+    "url": "/api/v1/dashboard/cpse-comparison",
+    "expected": 200,
+    "actual": 200,
+    "ok": true,
+    "extra": "",
+    "body": "{\"items\": [{\"cpse_id\": 2, \"name\": \"Bharat Petroleum Corporation Limited\", \"short_code\": \"BPCL\", \"materials\": 5, \"mapped\": 5, \"pending_matches\": 5, \"avg_data_qua"
+  },
+  {
+    "name": "roi/savings",
+    "method": "GET",
+    "url": "/api/v1/roi/savings",
+    "expected": 200,
+    "actual": 200,
+    "ok": true,
+    "extra": "",
+    "body": "{\"mode\": \"approved_mappings\", \"cluster_count\": 4, \"clusters\": [{\"name\": \"CNMC-000001\", \"member_count\": 2, \"sku_reduction\": 1, \"annual_spend_before\": 238500.0, \""
+  },
+  {
+    "name": "roi/summary",
+    "method": "GET",
+    "url": "/api/v1/roi/summary",
+    "expected": 200,
+    "actual": 200,
+    "ok": true,
+    "extra": "",
+    "body": "{\"realized\": {\"total_savings\": 1297924.32, \"total_savings_inr\": \"\\u20b912,97,924.32\", \"cluster_count\": 4, \"sku_reduction\": 5}, \"potential\": {\"total_savings\": 12"
+  },
+  {
+    "name": "audit/trail",
+    "method": "GET",
+    "url": "/api/v1/audit/trail",
+    "expected": 200,
+    "actual": 200,
+    "ok": true,
+    "extra": "",
+    "body": "{\"items\": [{\"id\": 18, \"user_id\": 1, \"user_email\": \"admin@mira.gov.in\", \"action\": \"create_mapping\", \"entity_type\": \"mapping\", \"entity_id\": 9, \"changes\": {\"cnmc_i"
+  },
+  {
+    "name": "audit/verify (hash chain)",
+    "method": "GET",
+    "url": "/api/v1/audit/verify",
+    "expected": 200,
+    "actual": 200,
+    "ok": true,
+    "extra": "",
+    "body": "{\"valid\": true, \"total\": 18, \"first_invalid_id\": null}"
+  },
+  {
+    "name": "sap/status",
+    "method": "GET",
+    "url": "/api/v1/sap/status",
+    "expected": 200,
+    "actual": 200,
+    "ok": true,
+    "extra": "",
+    "body": "{\"mode\": \"simulated\", \"simulate\": true, \"items\": [{\"cpse_id\": 2, \"name\": \"Bharat Petroleum Corporation Limited\", \"short_code\": \"BPCL\", \"sap_url\": null, \"last_sy"
+  },
+  {
+    "name": "sap/sync CPCL (simulated)",
+    "method": "POST",
+    "url": "/api/v1/sap/sync",
+    "expected": 200,
+    "actual": 200,
+    "ok": true,
+    "extra": "",
+    "body": "{\"results\": [{\"cpse_id\": 3, \"short_code\": \"CPCL\", \"status\": \"success\", \"inserted\": 13, \"updated\": 0, \"error\": null, \"mode\": \"simulated\"}]}"
+  },
+  {
+    "name": "sap/push-cnmc cpse 1",
+    "method": "POST",
+    "url": "/api/v1/sap/push-cnmc",
+    "expected": 200,
+    "actual": 200,
+    "ok": true,
+    "extra": "",
+    "body": "{\"cpse_id\": 1, \"status\": \"pushed_simulated\", \"count\": 4, \"message\": \"Simulated push of 4 mapping(s) to IOCL SAP (demo mode)\", \"error\": null}"
+  },
+  {
+    "name": "auth/logout",
+    "method": "POST",
+    "url": "/api/v1/auth/logout",
+    "expected": 200,
+    "actual": 200,
+    "ok": true,
+    "extra": "",
+    "body": "{\"message\": \"Logged out\", \"user_id\": 1}"
+  }
+]

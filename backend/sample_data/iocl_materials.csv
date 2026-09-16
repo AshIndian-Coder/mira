@@ -1,0 +1,6 @@
+material_code,description,uom,category,specifications,last_purchase_price,avg_annual_quantity
+IOCL-1001,"Deep groove ball bearing 6205 ZZ C3, SKF make",NOS,Bearing,"ID 25mm, OD 52mm, Width 15mm, chrome steel",850,120
+IOCL-1002,"Gate valve 150mm class 150 carbon steel flanged",NOS,Valve,"DN 150, PN 16, WCB body, rising stem",18500,24
+IOCL-1003,"Hex bolt M12x60 grade 8.8 zinc plated",NOS,Fasteners,"IS 1364, full thread",45,5000
+IOCL-1004,"MS pipe 50mm NB schedule 40 seamless",MTR,Pipes,"DN 50, ASTM A106 Gr B",620,300
+IOCL-1005,"Induction motor 5HP 3-phase 1440 RPM TEFC",NOS,Electrical,"415V, IE3, B3 mounting, frame 112M",14200,15

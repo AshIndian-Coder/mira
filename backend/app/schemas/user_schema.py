@@ -4,7 +4,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Optional
 
-from pydantic import BaseModel, ConfigDict, EmailStr, Field
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 
 from app.utils.constants import ROLES
 
@@ -21,9 +21,12 @@ class UserCreate(BaseModel):
     role: str = Field(default="reviewer", description="One of: " + ", ".join(ROLES))
     cpse_id: Optional[int] = Field(default=None, description="NULL for national-level admins")
 
-    def validate_role(self) -> None:
-        if self.role not in ROLES:
+    @field_validator("role")
+    @classmethod
+    def validate_role(cls, v: str) -> str:
+        if v not in ROLES:
             raise ValueError(f"role must be one of: {', '.join(ROLES)}")
+        return v
 
 
 class UserUpdate(BaseModel):
@@ -83,4 +86,3 @@ class UserListResponse(BaseModel):
 class DeactivateUserResponse(BaseModel):
     message: str
     user: UserResponse
-

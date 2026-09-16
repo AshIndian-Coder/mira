@@ -162,7 +162,7 @@ def _sync_one(db: Session, cpse: Cpse, user: User) -> dict:
 @router.get("/status")
 def sap_status(
     db: Session = Depends(get_db),
-    user: User = Depends(get_current_active_user),
+    user: User = Depends(require_permission("view_sap")),
 ):
     """SAP sync status per CPSE + connector mode (SAPIntegrationStatus page)."""
     connector = get_sap_connector()

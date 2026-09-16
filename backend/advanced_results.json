@@ -1,0 +1,185 @@
+[
+  {
+    "name": "reviewer: create user -> 403 (manage_users=admin)",
+    "actual": 403,
+    "expected": 403,
+    "ok": true
+  },
+  {
+    "name": "reviewer: run matching -> 403",
+    "actual": 403,
+    "expected": 403,
+    "ok": true
+  },
+  {
+    "name": "reviewer: upload data -> 403",
+    "actual": 403,
+    "expected": 403,
+    "ok": true
+  },
+  {
+    "name": "reviewer: audit trail -> 403 (view_audit)",
+    "actual": 403,
+    "expected": 403,
+    "ok": true
+  },
+  {
+    "name": "reviewer: sap status -> 403 (view_sap)",
+    "actual": 403,
+    "expected": 403,
+    "ok": true
+  },
+  {
+    "name": "reviewer: review queue -> 200 (view_matches)",
+    "actual": 200,
+    "expected": 200,
+    "ok": true
+  },
+  {
+    "name": "reviewer: cnmc generate -> 403",
+    "actual": 403,
+    "expected": 403,
+    "ok": true
+  },
+  {
+    "name": "reviewer: approve match -> 200 (POSITIVE RBAC)",
+    "actual": 200,
+    "expected": 200,
+    "ok": true
+  },
+  {
+    "name": "auditor: audit trail -> 200 (POSITIVE RBAC)",
+    "actual": 200,
+    "expected": 200,
+    "ok": true
+  },
+  {
+    "name": "auditor: audit verify -> 200",
+    "actual": 200,
+    "expected": 200,
+    "ok": true
+  },
+  {
+    "name": "auditor: sap status -> 200",
+    "actual": 200,
+    "expected": 200,
+    "ok": true
+  },
+  {
+    "name": "auditor: run matching -> 403",
+    "actual": 403,
+    "expected": 403,
+    "ok": true
+  },
+  {
+    "name": "auditor: approve match -> 403 (cannot review)",
+    "actual": 403,
+    "expected": [
+      403,
+      409
+    ],
+    "ok": true
+  },
+  {
+    "name": "data_steward: run matching -> 200 (POSITIVE RBAC)",
+    "actual": 200,
+    "expected": 200,
+    "ok": true
+  },
+  {
+    "name": "data_steward: EXCEL upload -> 200",
+    "actual": 200,
+    "expected": 200,
+    "ok": true
+  },
+  {
+    "name": "data_steward: create user -> 403 (manage_users=admin)",
+    "actual": 403,
+    "expected": 403,
+    "ok": true
+  },
+  {
+    "name": "data_steward: approve match -> 403/409 (cannot review)",
+    "actual": 403,
+    "expected": [
+      403,
+      409
+    ],
+    "ok": true
+  },
+  {
+    "name": "admin: deactivate auditor",
+    "actual": 200,
+    "expected": 200,
+    "ok": true
+  },
+  {
+    "name": "deactivated user login -> 403",
+    "actual": 403,
+    "expected": 403,
+    "ok": true
+  },
+  {
+    "name": "user create: short password -> 422",
+    "actual": 422,
+    "expected": 422,
+    "ok": true
+  },
+  {
+    "name": "user create: invalid role -> 4xx (was 500 before fix)",
+    "actual": 422,
+    "expected": [
+      400,
+      422
+    ],
+    "ok": true
+  },
+  {
+    "name": "approve nonexistent -> 404",
+    "actual": 404,
+    "expected": 404,
+    "ok": true
+  },
+  {
+    "name": "mapping create: bad material -> 404",
+    "actual": 404,
+    "expected": 404,
+    "ok": true
+  },
+  {
+    "name": "materials: page_size=2",
+    "actual": 200,
+    "expected": 200,
+    "ok": true
+  },
+  {
+    "name": "suggestions: decision=REVIEW & min_confidence=50",
+    "actual": 200,
+    "expected": 200,
+    "ok": true
+  },
+  {
+    "name": "cnmc: search=CNMC-",
+    "actual": 200,
+    "expected": 200,
+    "ok": true
+  },
+  {
+    "name": "audit: action=approve_match filter",
+    "actual": 200,
+    "expected": 200,
+    "ok": true
+  },
+  {
+    "name": "roi: mode=potential",
+    "actual": 200,
+    "expected": 200,
+    "ok": true
+  },
+  {
+    "name": "roi: bad mode -> 422",
+    "actual": 422,
+    "expected": 422,
+    "ok": true
+  }
+]

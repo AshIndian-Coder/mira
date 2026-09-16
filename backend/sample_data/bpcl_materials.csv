@@ -1,0 +1,6 @@
+material_code,description,uom,category,specifications,last_purchase_price,avg_annual_quantity
+BPCL-2001,"Ball bearing 6205 ZZ C3 deep groove SKF",NOS,Bearing,"ID 25 mm OD 52 mm, chrome steel",910,150
+BPCL-2002,"Gate valve DN 150 #150 CS flanged WCB body",NOS,Valve,"Class 150, PN 20, rising stem",19800,30
+BPCL-2003,"Hex head bolt M12x60 Gr 8.8 zinc plated",NOS,Fasteners,"IS 1364-1, zinc plated",48,6000
+BPCL-2004,"Seamless MS pipe DN50 SCH 40 ASTM A106 GrB",MTR,Pipes,"50mm NB",650,250
+BPCL-2005,"3-phase induction motor 3.7 kW 1440 rpm TEFC IE3",NOS,Electrical,"415V B3 frame 112M",13900,18
