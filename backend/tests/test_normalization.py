@@ -27,6 +27,25 @@ def test_safe_abbreviation_expansion():
     assert result == "MFG ASSEMBLY DIAMETER 25 MM"
 
 
+def test_industrial_abbreviation_expansion():
+    result = normalize_material_description(
+        "BRG VLV PPL GSK FLG ELB SHFT CBL RLY"
+    )
+
+    assert result == (
+        "BEARING VALVE PIPE GASKET FLANGE ELBOW "
+        "SHAFT CABLE RELAY"
+    )
+
+
+def test_abbreviation_expansion_does_not_modify_embedded_tokens():
+    result = normalize_material_description(
+        "BEARING 6205 2RS"
+    )
+
+    assert result == "BEARING 6205 2RS"
+
+
 def test_empty_input():
     assert normalize_material_description("") == ""
     assert normalize_material_description(None) == ""
