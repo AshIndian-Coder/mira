@@ -91,13 +91,23 @@ NB_PATTERN = re.compile(
     re.IGNORECASE,
 )
 
+NB_PREFIX_PATTERN = re.compile(
+    r"\bNB\.?\s*[:\-]?\s*(\d+(?:\.\d+)?)(?:\s*MM)?(?!\w)",
+    re.IGNORECASE,
+)
+
 
 # ---------------------------------------------------------
-# METRIC THREAD
+# METRIC THREAD / SCHEDULE
 # ---------------------------------------------------------
 
 METRIC_THREAD_PATTERN = re.compile(
     r"\bM(\d+(?:\.\d+)?)\s*[Xx]\s*(\d+(?:\.\d+)?)\b",
+    re.IGNORECASE,
+)
+
+SCHEDULE_PATTERN = re.compile(
+    r"\b(?:SCHEDULE|SCHED|SCH)\.?\s*[:\-]?\s*(STD|XXS|XS|\d{1,3}(?:[A-Z]{1,2})?)\b",
     re.IGNORECASE,
 )
 
@@ -455,7 +465,18 @@ def extract_nominal_bore(
     text: str,
 ) -> dict[str, Any] | None:
 
-    match = NB_PATTERN.search(text or "")
+    text = text or ""
+
+    # Prefer prefix form: NB 80, NB 200, NB: 25, NB-600, NB80
+    prefix_match = NB_PREFIX_PATTERN.search(text)
+    if prefix_match:
+        return {
+            "value": float(prefix_match.group(1)),
+            "unit": "NB",
+        }
+
+    # Suffix form: 50NB, 50 NB, 25MMNB, 200NBX6.35MM
+    match = NB_PATTERN.search(text)
 
     if not match:
         return None
@@ -464,6 +485,26 @@ def extract_nominal_bore(
         "value": float(match.group(1)),
         "unit": "NB",
     }
+
+
+def extract_schedule(
+    text: str,
+) -> str | None:
+    """
+    Extract pipe schedule specification.
+
+    Examples:
+        SCH40, SCH 40, SCHEDULE 40 -> SCH40
+        SCH80, SCH 80, SCHEDULE 80 -> SCH80
+        SCHXS, SCH XS, SCHEDULE XS -> SCHXS
+    """
+
+    match = SCHEDULE_PATTERN.search(text or "")
+
+    if not match:
+        return None
+
+    return f"SCH{match.group(1).upper()}"
 
 
 def extract_metric_thread(
@@ -677,6 +718,7 @@ def parse_specifications(
         "dimension_tokens": dimension_tokens,
         "dished_end_dimensions": dished_end_dimensions,
         "nominal_bore": extract_nominal_bore(text),
+        "schedule": extract_schedule(text),
         "metric_thread": extract_metric_thread(text),
         "voltage_class": extract_voltage_class(text),
 

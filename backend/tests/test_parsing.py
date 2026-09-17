@@ -8,6 +8,7 @@ from app.services.parsing.service import (
     parse_specifications,
     extract_nominal_bore,
     extract_metric_thread,
+    extract_schedule,
 )
 
 
@@ -197,3 +198,55 @@ def test_ca6nm_grade():
     assert extract_grade(
         "IMPELLER MATERIAL CA6NM"
     ) == "CA6NM"
+
+
+def test_extract_schedule():
+    assert extract_schedule("PIPE SS304 NB 25 (1.0 IN) SCH40") == "SCH40"
+    assert extract_schedule("PIPE SS304 NB 25 (1.0 IN) SCH 40") == "SCH40"
+    assert extract_schedule("PIPE SS316 NB 25 (1.0 IN) SCH80") == "SCH80"
+    assert extract_schedule("PIPE SS316 NB 25 (1.0 IN) SCH 80") == "SCH80"
+    assert extract_schedule("PIPE CS NB 150 (5.9 IN) SCHXS") == "SCHXS"
+    assert extract_schedule("PIPE CS NB 150 (5.9 IN) SCH XS") == "SCHXS"
+    assert extract_schedule("pipe gi nb 15 (0.6 in) schedule 40 make tata") == "SCH40"
+    assert extract_schedule("PIPE CS NB 150 (5.9 IN) SCHEDULE 80") == "SCH80"
+    assert extract_schedule("PIPE CS NB 150 (5.9 IN) SCHEDULE XS MAKE ISMT") == "SCHXS"
+
+
+def test_extract_schedule_absence():
+    assert extract_schedule("GATE VALVE 2 IN 150 LB") is None
+    assert extract_schedule("PIPE 50NB") is None
+    assert extract_schedule("BOLT M45 X 3") is None
+    assert extract_schedule("") is None
+
+
+def test_parse_specifications_schedule():
+    res1 = parse_specifications("PIPE SS304 NB 25 (1.0 IN) SCH 40")
+    assert res1["schedule"] == "SCH40"
+
+    res2 = parse_specifications("PIPE CS NB 150 (5.9 IN) SCHEDULE XS")
+    assert res2["schedule"] == "SCHXS"
+
+    res3 = parse_specifications("GATE VALVE 2 IN 150 LB")
+    assert res3["schedule"] is None
+
+
+def test_nominal_bore_with_material_grade():
+    res1 = parse_specifications("PIPE SS 304 NB 80 (3.1 IN) SCH 80")
+    assert res1["material_grade"] == "SS304"
+    assert res1["nominal_bore"] == {"value": 80.0, "unit": "NB"}
+    assert res1["schedule"] == "SCH80"
+
+    res2 = parse_specifications("PIPE SS304 NB 80 (3.1 IN) SCH80")
+    assert res2["material_grade"] == "SS304"
+    assert res2["nominal_bore"] == {"value": 80.0, "unit": "NB"}
+    assert res2["schedule"] == "SCH80"
+
+    res3 = parse_specifications("PIPE SS 316 NB 200 (7.9 IN) SCH XS")
+    assert res3["material_grade"] == "SS316"
+    assert res3["nominal_bore"] == {"value": 200.0, "unit": "NB"}
+    assert res3["schedule"] == "SCHXS"
+
+    res4 = parse_specifications("PIPE SS304 NB 600 (23.6 IN) SCH 40")
+    assert res4["material_grade"] == "SS304"
+    assert res4["nominal_bore"] == {"value": 600.0, "unit": "NB"}
+    assert res4["schedule"] == "SCH40"
