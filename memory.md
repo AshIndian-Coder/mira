@@ -218,6 +218,35 @@ instead of one combined `OD_THICKNESS` token.
 Known test result:
 **48/48 pytest tests pass.**
 
+### Parser Fix — Nominal Bore + Schedule — 2026-09-17
+
+A real nominal-bore parsing bug was identified during a production-faithful DEV audit.
+
+Problem:
+- `PIPE SS 304 NB 80 ...` was incorrectly parsed as `nominal_bore = 304 NB`.
+- `PIPE SS 316 NB 200 ...` was incorrectly parsed as `316 NB`.
+- `PIPE SS 304 NB 600 ...` was incorrectly parsed as `304 NB`.
+
+Root cause:
+- The existing suffix-form `NB_PATTERN` could match the material-grade number before the `NB` token.
+
+Fix:
+- Added `NB_PREFIX_PATTERN`.
+- Prefix form (`NB 80`, `NB 200`, `NB: 25`, `NB-600`, `NB80`) is now checked before the existing suffix form.
+- Existing suffix forms such as `50NB`, `50 NB`, `25MMNB` remain supported.
+
+Schedule extraction was also added:
+- `SCH40`, `SCH 40`, `SCHEDULE 40` → `SCH40`
+- `SCH80`, `SCH 80`, `SCHEDULE 80` → `SCH80`
+- `SCH XS`, `SCHEDULE XS` → `SCHXS`
+
+Regression validation:
+- Parsing tests: 27 passed.
+- Full backend tests: 72 passed.
+- Direct verification confirmed correct nominal bore and schedule extraction for representative SS304/SS316 pipe descriptions.
+
+No scoring, critical-gate, Qwen/model, CNMC or mapping logic was changed as part of this fix.
+
 ### LLM Fallback
 
 Implemented under `backend/app/services/ingestion/llm/`:
@@ -320,7 +349,7 @@ Verified:
 - SAP integration is not a live connection; current architecture is integration-ready.
 - end-to-end integration tests for `run-batch` should still be added.
 - real tender/BOQ data may require parser/blocking adjustments.
-- dataset-level production-style evaluation remains pending.
+- Production-faithful DEV auditing has now been performed on the exact 5,228 DEV pairs; however, final blind held-out evaluation of the production pipeline remains pending.
 - clustering/conflict detection still needs verification against approved relationships.
 - final NMC/CNMC governance and numbering policy is still a design decision.
 - authentication/user management is not currently part of the active backend contract.
@@ -466,7 +495,78 @@ Current Dataset A evaluator is a **score-only benchmark** because Dataset A reco
 - Production scoring includes `other_attributes_similarity = 1.0` when both sides have no other attributes.
 - Evaluator must remain aligned with production scoring.
 - Weak labels are not ground truth.
-- Final dataset-level production-style evaluation is still pending.
+- Production-faithful DEV auditing has now been performed on the exact 5,228 DEV pairs, but final blind held-out evaluation of the production pipeline remains pending.
+
+### Production-Faithful DEV Audit — 2026-09-17
+
+The exact 5,228 DEV pairs from `Training_Pairs_MIRA_FINAL.csv` were evaluated through the production normalization + parsing + matching path.
+
+After the nominal-bore parser fix:
+- DEV pairs: 5,228
+- Decisions: REVIEW 3,109 / DIFFERENT 2,119
+- Exact `HN_*` subset: 915 pairs
+- HN-FHC @ 0.85: 5 / 915 = 0.55%
+- Negative DEV pairs scoring ≥0.85: 5 / 1,567 = 0.32%
+
+The previously observed high-score negative cases were substantially reduced after correcting nominal-bore extraction.
+
+The remaining five ≥0.85 negatives were inspected individually. Several have descriptions that normalize and parse to effectively identical technical specifications despite being labelled negative, so no production scoring/gate change was made based on these cases.
+
+Important:
+- This production audit is distinct from direct embedding-model evaluation.
+- Do not compare production-classifier HN-FHC directly with embedding-only HN-FHC unless the metric definition and evaluated subset are identical.
+
+### Direct Embedding Baseline — 2026-09-17
+
+`all-MiniLM-L6-v2` was evaluated directly on the exact 5,228 DEV pairs.
+
+Results:
+- DEV threshold: 0.461
+- Precision: 0.8006
+- Recall: 0.9956
+- F1: 0.8875
+- Exact HN-FHC @ 0.85: 28.74% (263 / 915)
+
+This is an embedding-only evaluation and is separate from the production hybrid matcher.
+
+Earlier MiniLM HN-FP figures based on all 1,567 negative DEV pairs should not be treated as the exact HN-FHC metric. The correct HN-FHC calculation uses the 915 `HN_*` DEV pairs.
+
+### Qwen Training / Evaluation — 2026-09-17
+
+Abhishek's Qwen semantic-model training is still running.
+
+Latest reported DEV checkpoint:
+- DEV pairs: 5,228
+- DEV threshold: 0.767
+- DEV F1: 0.9259
+- DEV precision: 0.8673
+- DEV recall: 0.9929
+- HN-FHC @ 0.85: 59.13%
+
+This is a training-time Qwen result reported by the teammate and is not yet the final run.
+
+Do not treat the current checkpoint as final model performance until training finishes and the final checkpoint is evaluated.
+
+Triplet pairs are used for Qwen training; they are not required for the independent MiniLM baseline evaluation.
+
+### Embedding Model Comparison — Current State
+
+Current reported DEV results:
+
+| Metric | Qwen | MiniLM |
+|---|---:|---:|
+| DEV pairs | 5,228 | 5,228 |
+| DEV threshold | 0.767 | 0.461 |
+| Precision | 0.8673 | 0.8006 |
+| Recall | 0.9929 | 0.9956 |
+| F1 | 0.9259 | 0.8875 |
+| HN-FHC @ 0.85 | 59.13% | 28.74% |
+
+Caution:
+- Qwen and MiniLM use the same DEV pair population, but HN-FHC should only be compared if both evaluations use exactly the same `HN_*` subset and metric implementation.
+- Qwen training is not finished.
+- No decision has been made to replace MiniLM with Qwen.
+- A future ensemble of Qwen + MiniLM may be investigated only after final Qwen evaluation.
 
 ### Evaluation Working Tree
 
@@ -496,23 +596,21 @@ Useful unit from tender/BOQ sources is the material/item record, not the tender 
 - public-source collection must respect access controls and applicable terms
 - large local datasets must not be casually committed to Git.
 
-## Git / Repository Status
+## Git / Repository Status — 2026-09-18
 
 Repository:
 - GitHub remote: `https://github.com/AshIndian-Coder/MIRA.git`
-- branch: `main`.
+- branch: `main`
 
-Latest relevant history:
-- `03f40b7` — `polish frontend UI, animations, island frame layout, and chart tooltips`
-- `9c14188` — `Complete frontend integration and cleanup`
-- `8870eb9` — `Refactor schema for cpses, users, and materials tables`
-- `2c178ab` — `project memory`
+Recent commits:
+- `eb77c34` — `Fix nominal bore parsing with material grades`
+- Previous commits remain in history.
 
-Untracked local artifacts remain intentionally outside the frontend commit:
+Current intentional unstaged/untracked local evaluation/data artifacts include:
+- `backend/app/services/evaluation/feature_extraction.py`
+- `Training_Pairs_MIRA_FINAL.csv`
 - `backend/app/services/evaluation/synthetic/`
-- `data/evaluation/*.csv`
-- `data/evaluation/features/`
-- `data/evaluation/synthetic/`
+- `data/evaluation/`
 - `data/processed/`
 - `data/raw/`
 - `data/training/`
@@ -520,11 +618,11 @@ Untracked local artifacts remain intentionally outside the frontend commit:
 - `mara.csv`
 - `mard.csv`
 
-Do **not** use `git add .` until these artifacts have an explicit repository policy.
+Do NOT use `git add .`.
 
-`.gitignore` already covers Python caches, virtual environments, frontend/node build artifacts, local environments, logs, database dumps, model/cache directories and temporary/generated exports.
+`feature_extraction.py` currently contains a separate evaluation-correctness change that applies production normalization before parsing during evaluation. It should be committed separately from the nominal-bore parser fix after its focused tests are verified.
 
-It does not currently ignore all raw/processed/training datasets, so their repository policy needs deliberate treatment.
+The generated datasets and evaluation CSVs are local working artifacts and should not be committed unless repository policy explicitly requires them.
 
 ## Master Training Dataset — 2026-09-15
 
