@@ -11,6 +11,9 @@ from app.services.matching.similarity import (
 from app.services.parsing.service import (
     parse_specifications,
 )
+from app.services.normalization.service import (
+    normalize_material_description,
+)
 
 
 INPUT_FILES = {
@@ -39,12 +42,16 @@ def load_pairs(path):
 
 
 def build_material(description):
-    specs = parse_specifications(
+    normalized_description = normalize_material_description(
         description
     )
 
+    specs = parse_specifications(
+        normalized_description
+    )
+
     return {
-        "normalized_description": description,
+        "normalized_description": normalized_description,
         "parsed_specifications": specs,
         "material_grade": specs.get(
             "material_grade"
