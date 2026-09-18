@@ -1,5 +1,8 @@
 import { Routes, Route, Navigate } from 'react-router-dom'
 
+import AppShell from '../components/Layout/AppShell'
+import ProtectedRoute from '../components/Auth/ProtectedRoute'
+import Login from '../pages/Login/Login'
 import Dashboard from '../pages/Dashboard/Dashboard'
 import Materials from '../pages/Materials'
 import MatchReview from '../pages/MatchReview/MatchReview'
@@ -9,21 +12,135 @@ import ERPIntegration from '../pages/ERPIntegration/ERPIntegration'
 import Analytics from '../pages/Analytics/Analytics'
 import AuditTrail from '../pages/AuditTrail/AuditTrail'
 import Settings from '../pages/Settings'
+import UserManagement from '../pages/UserManagement/UserManagement'
 
 export default function AppRoutes() {
   return (
     <Routes>
-      <Route path="/" element={<Navigate to="/dashboard" replace />} />
+      {/* Public Login Route */}
+      <Route path="/login" element={<Login />} />
 
-      <Route path="/dashboard" element={<Dashboard />} />
-      <Route path="/materials" element={<Materials />} />
-      <Route path="/match-review" element={<MatchReview />} />
-      <Route path="/common-materials" element={<CommonMaterials />} />
-      <Route path="/mappings" element={<Mappings />} />
-      <Route path="/erp-integration" element={<ERPIntegration />} />
-      <Route path="/analytics" element={<Analytics />} />
-      <Route path="/audit-trail" element={<AuditTrail />} />
-      <Route path="/settings" element={<Settings />} />
+      {/* Protected App Workspace Routes */}
+      <Route
+        path="/"
+        element={
+          <ProtectedRoute>
+            <AppShell>
+              <Navigate to="/dashboard" replace />
+            </AppShell>
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/dashboard"
+        element={
+          <ProtectedRoute>
+            <AppShell>
+              <Dashboard />
+            </AppShell>
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/materials"
+        element={
+          <ProtectedRoute>
+            <AppShell>
+              <Materials />
+            </AppShell>
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/match-review"
+        element={
+          <ProtectedRoute>
+            <AppShell>
+              <MatchReview />
+            </AppShell>
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/common-materials"
+        element={
+          <ProtectedRoute>
+            <AppShell>
+              <CommonMaterials />
+            </AppShell>
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/mappings"
+        element={
+          <ProtectedRoute>
+            <AppShell>
+              <Mappings />
+            </AppShell>
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/erp-integration"
+        element={
+          <ProtectedRoute>
+            <AppShell>
+              <ERPIntegration />
+            </AppShell>
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/analytics"
+        element={
+          <ProtectedRoute>
+            <AppShell>
+              <Analytics />
+            </AppShell>
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/audit-trail"
+        element={
+          <ProtectedRoute>
+            <AppShell>
+              <AuditTrail />
+            </AppShell>
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/users"
+        element={
+          <ProtectedRoute requiredRole="admin">
+            <AppShell>
+              <UserManagement />
+            </AppShell>
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/settings"
+        element={
+          <ProtectedRoute>
+            <AppShell>
+              <Settings />
+            </AppShell>
+          </ProtectedRoute>
+        }
+      />
 
       <Route path="*" element={<Navigate to="/dashboard" replace />} />
     </Routes>

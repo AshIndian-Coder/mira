@@ -9,10 +9,13 @@ GET  /api/review/summary            — counts: pending / approved / rejected
 
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
 from app import store
+from app.core.rbac import require_permission
+from app.core.security import get_current_active_user
+from app.models.user import User
 
 router = APIRouter(prefix="/review", tags=["Review Queue"])
 
@@ -20,11 +23,15 @@ router = APIRouter(prefix="/review", tags=["Review Queue"])
 class ReviewActionRequest(BaseModel):
     action: str                         # "APPROVE" or "REJECT"
     reviewer_comments: str | None = None
-    user_id: str = "operator_01"
+    user_id: str | None = None          # Deprecated/optional client identifier
 
 
 @router.get("/queue")
-def get_review_queue(skip: int = 0, limit: int = 50):
+def get_review_queue(
+    skip: int = 0,
+    limit: int = 50,
+    current_user: User = Depends(get_current_active_user),
+):
     """
     Return candidates that the engine flagged as REVIEW and are still PENDING.
     These are the items that need human judgement.
@@ -46,7 +53,10 @@ def get_review_queue(skip: int = 0, limit: int = 50):
 
 
 @router.get("/queue/{candidate_id}")
-def get_review_item(candidate_id: int):
+def get_review_item(
+    candidate_id: int,
+    current_user: User = Depends(get_current_active_user),
+):
     """Retrieve a single review item with full score breakdown and critical checks."""
     for c in store.CANDIDATES:
         if c["id"] == candidate_id:
@@ -55,13 +65,17 @@ def get_review_item(candidate_id: int):
 
 
 @router.post("/queue/{candidate_id}/action")
-def submit_review_action(candidate_id: int, request: ReviewActionRequest):
+def submit_review_action(
+    candidate_id: int,
+    request: ReviewActionRequest,
+    current_user: User = Depends(require_permission("review_match")),
+):
     """
     Human reviewer approves or rejects a candidate pair.
 
     - Sets review_status to APPROVED or REJECTED.
-    - Records reviewer identity and timestamp.
-    - Appends an audit event.
+    - Records reviewer identity from authenticated user and timestamp.
+    - Appends an audit event with real actor.
     - Returns the updated candidate.
     """
     action = request.action.upper()
@@ -83,22 +97,24 @@ def submit_review_action(candidate_id: int, request: ReviewActionRequest):
             detail=f"Candidate already has status '{candidate['review_status']}'",
         )
 
+    actor_identity = current_user.email if (current_user and current_user.email) else (request.user_id or "reviewer")
     now = datetime.now(timezone.utc).isoformat()
     candidate["review_status"] = "APPROVED" if action == "APPROVE" else "REJECTED"
-    candidate["reviewer_id"] = request.user_id
+    candidate["reviewer_id"] = actor_identity
     candidate["reviewer_comments"] = request.reviewer_comments
     candidate["reviewed_at"] = now
 
     # Emit audit event (consumed by /api/audit route)
     from app.api.v1.audit import AUDIT_EVENTS  # local import to avoid circular dep
+    event_type = "MATCH_APPROVED" if action == "APPROVE" else "MATCH_REJECTED"
     AUDIT_EVENTS.append({
-        "event_type": f"MATCH_{action}D",
+        "event_type": event_type,
         "candidate_id": candidate_id,
         "source_code": candidate["source_code"],
         "target_code": candidate["target_code"],
         "source_cpse": candidate["source_cpse"],
         "target_cpse": candidate["target_cpse"],
-        "actor": request.user_id,
+        "actor": actor_identity,
         "comments": request.reviewer_comments,
         "final_score": candidate["scores"].get("final_score"),
         "timestamp": now,
@@ -113,7 +129,7 @@ def submit_review_action(candidate_id: int, request: ReviewActionRequest):
 
 
 @router.get("/summary")
-def review_summary():
+def review_summary(current_user: User = Depends(get_current_active_user)):
     """Counts of review-queue items by status — for the dashboard card."""
     review_candidates = [c for c in store.CANDIDATES if c["engine_decision"] == "REVIEW"]
     pending = sum(1 for c in review_candidates if c["review_status"] == "PENDING")

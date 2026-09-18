@@ -55,6 +55,9 @@ typer==0.27.2
 typing-inspection==0.4.4
 typing_extensions==4.16.0
 python-multipart==0.0.20
+python-jose[cryptography]>=3.3.0
+bcrypt>=4.0.1
+email-validator>=2.1.0
 uvicorn==0.52.4
 uvloop==0.22.1; sys_platform != "win32"
 watchfiles==1.2.0

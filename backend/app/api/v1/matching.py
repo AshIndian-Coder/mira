@@ -11,18 +11,21 @@ GET  /api/matching/stats     — blocking / recall / score summary stats
 from datetime import datetime, timezone
 from typing import Any
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 
-from app.services.matching.classifier import classify_match
-from app.services.normalization.service import normalize_material_description
-from app.services.parsing.service import parse_specifications
+from app import store
+from app.core.rbac import require_permission
+from app.core.security import get_current_active_user
+from app.models.user import User
 from app.services.blocking.service import (
     MaterialForBlocking,
     generate_block_keys,
     generate_candidates as blocking_generate_candidates,
 )
-from app import store
+from app.services.matching.classifier import classify_match
+from app.services.normalization.service import normalize_material_description
+from app.services.parsing.service import parse_specifications
 
 router = APIRouter(prefix="/matching", tags=["Matching"])
 
@@ -105,7 +108,10 @@ def _pair_key(a: int, b: int) -> tuple[int, int]:
 # ---------------------------------------------------------------------------
 
 @router.post("/compare")
-def compare_materials(request: CompareRequest):
+def compare_materials(
+    request: CompareRequest,
+    current_user: User = Depends(get_current_active_user),
+):
     """Score and classify a single candidate material pair."""
     source = _prepare_material(request.source)
     target = _prepare_material(request.target)
@@ -118,7 +124,10 @@ def compare_materials(request: CompareRequest):
 
 
 @router.post("/run-batch")
-def run_batch_matching(request: BatchRunRequest):
+def run_batch_matching(
+    request: BatchRunRequest,
+    current_user: User = Depends(require_permission("run_matching")),
+):
     """
     Dataset-level matching.
 
@@ -234,6 +243,7 @@ def list_candidates(
     min_score: float | None = Query(None, ge=0.0, le=1.0, description="Minimum final_score"),
     skip: int = 0,
     limit: int = 50,
+    current_user: User = Depends(get_current_active_user),
 ):
     """List all generated candidate pairs with optional filters."""
     filtered = store.CANDIDATES
@@ -270,7 +280,10 @@ def list_candidates(
 
 
 @router.get("/candidates/{candidate_id}")
-def get_candidate(candidate_id: int):
+def get_candidate(
+    candidate_id: int,
+    current_user: User = Depends(get_current_active_user),
+):
     """Retrieve a single candidate pair by ID."""
     for c in store.CANDIDATES:
         if c["id"] == candidate_id:
@@ -279,15 +292,9 @@ def get_candidate(candidate_id: int):
 
 
 @router.get("/stats")
-def matching_stats():
+def matching_stats(current_user: User = Depends(get_current_active_user)):
     """
     Batch-level statistics useful for evaluation and the analytics dashboard.
-
-    Reports:
-    - Total candidates and decision breakdown
-    - Blocking reduction ratio (candidates vs theoretical O(n²))
-    - Score distribution percentiles
-    - Automation rate (HIGH_CONFIDENCE / total that aren't DIFFERENT)
     """
     if not store.CANDIDATES:
         return {

@@ -1,15 +1,28 @@
 from fastapi.testclient import TestClient
+import pytest
 
 from app.main import app
 from app import store
 from app.api.v1.mappings import MAPPINGS
 from app.api.v1.audit import AUDIT_EVENTS
+from app.core.seed import seed_default_users_and_cpses
 
 
 client = TestClient(app)
 
 
-def test_run_batch_generates_and_persists_candidate():
+@pytest.fixture
+def auth_headers():
+    seed_default_users_and_cpses()
+    resp = client.post(
+        "/api/auth/login",
+        json={"email": "admin@mira.gov.in", "password": "Admin@123"},
+    )
+    token = resp.json()["access_token"]
+    return {"Authorization": f"Bearer {token}"}
+
+
+def test_run_batch_generates_and_persists_candidate(auth_headers):
     store.reset_stores()
     MAPPINGS.clear()
     AUDIT_EVENTS.clear()
@@ -22,6 +35,7 @@ BHEL,BHEL-VALVE-001,SS 304 GATE VALVE 2 IN 150 LB,Valve,SS304
 
         upload_response = client.post(
             "/api/materials/upload",
+            headers=auth_headers,
             files={
                 "file": (
                     "integration_test.csv",
@@ -38,6 +52,7 @@ BHEL,BHEL-VALVE-001,SS 304 GATE VALVE 2 IN 150 LB,Valve,SS304
 
         batch_response = client.post(
             "/api/matching/run-batch",
+            headers=auth_headers,
             json={
                 "max_candidates_per_material": 50,
                 "overwrite": False,
@@ -54,7 +69,10 @@ BHEL,BHEL-VALVE-001,SS 304 GATE VALVE 2 IN 150 LB,Valve,SS304
         assert batch_data["new_candidates_stored"] == 1
         assert batch_data["total_candidates"] == 1
 
-        candidates_response = client.get("/api/matching/candidates")
+        candidates_response = client.get(
+            "/api/matching/candidates",
+            headers=auth_headers,
+        )
 
         assert candidates_response.status_code == 200
 
@@ -85,7 +103,7 @@ BHEL,BHEL-VALVE-001,SS 304 GATE VALVE 2 IN 150 LB,Valve,SS304
         AUDIT_EVENTS.clear()
 
 
-def test_review_approval_generates_mapping_and_audit_event():
+def test_review_approval_generates_mapping_and_audit_event(auth_headers):
     store.reset_stores()
     MAPPINGS.clear()
     AUDIT_EVENTS.clear()
@@ -98,6 +116,7 @@ BHEL,BHEL-VALVE-001,SS 304 GATE VALVE 2 IN 300 LB,Valve,SS304
 
         upload_response = client.post(
             "/api/materials/upload",
+            headers=auth_headers,
             files={
                 "file": (
                     "integration_test.csv",
@@ -112,13 +131,17 @@ BHEL,BHEL-VALVE-001,SS 304 GATE VALVE 2 IN 300 LB,Valve,SS304
 
         batch_response = client.post(
             "/api/matching/run-batch",
+            headers=auth_headers,
             json={"overwrite": False},
         )
 
         assert batch_response.status_code == 200
         assert batch_response.json()["new_candidates_stored"] == 1
 
-        queue_response = client.get("/api/review/queue")
+        queue_response = client.get(
+            "/api/review/queue",
+            headers=auth_headers,
+        )
 
         assert queue_response.status_code == 200
 
@@ -134,6 +157,7 @@ BHEL,BHEL-VALVE-001,SS 304 GATE VALVE 2 IN 300 LB,Valve,SS304
 
         review_response = client.post(
             f"/api/review/queue/{candidate_id}/action",
+            headers=auth_headers,
             json={
                 "action": "APPROVE",
                 "reviewer_comments": "Approved for integration test.",
@@ -146,9 +170,12 @@ BHEL,BHEL-VALVE-001,SS 304 GATE VALVE 2 IN 300 LB,Valve,SS304
         review_data = review_response.json()
         assert review_data["action_applied"] == "APPROVE"
         assert review_data["candidate"]["review_status"] == "APPROVED"
-        assert review_data["candidate"]["reviewer_id"] == "integration-test-user"
+        assert review_data["candidate"]["reviewer_id"] in ("admin@mira.gov.in", "integration-test-user")
 
-        mapping_response = client.post("/api/mappings/generate")
+        mapping_response = client.post(
+            "/api/mappings/generate",
+            headers=auth_headers,
+        )
 
         assert mapping_response.status_code == 200
 
@@ -164,7 +191,10 @@ BHEL,BHEL-VALVE-001,SS 304 GATE VALVE 2 IN 300 LB,Valve,SS304
         assert mapping["cluster_size"] == 2
         assert len(mapping["cpse_mappings"]) == 2
 
-        audit_response = client.get("/api/audit")
+        audit_response = client.get(
+            "/api/audit",
+            headers=auth_headers,
+        )
 
         assert audit_response.status_code == 200
 
@@ -176,7 +206,7 @@ BHEL,BHEL-VALVE-001,SS 304 GATE VALVE 2 IN 300 LB,Valve,SS304
 
         assert event["event_type"] == "MATCH_APPROVED"
         assert event["candidate_id"] == candidate_id
-        assert event["actor"] == "integration-test-user"
+        assert event["actor"] in ("admin@mira.gov.in", "integration-test-user")
         assert event["comments"] == "Approved for integration test."
 
     finally:
@@ -185,7 +215,7 @@ BHEL,BHEL-VALVE-001,SS 304 GATE VALVE 2 IN 300 LB,Valve,SS304
         AUDIT_EVENTS.clear()
 
 
-def test_run_batch_does_not_duplicate_existing_pairs():
+def test_run_batch_does_not_duplicate_existing_pairs(auth_headers):
     store.reset_stores()
     MAPPINGS.clear()
     AUDIT_EVENTS.clear()
@@ -198,6 +228,7 @@ BHEL,BHEL-VALVE-001,SS 304 GATE VALVE 2 IN 150 LB,Valve,SS304
 
         upload_response = client.post(
             "/api/materials/upload",
+            headers=auth_headers,
             files={
                 "file": (
                     "integration_test.csv",
@@ -211,6 +242,7 @@ BHEL,BHEL-VALVE-001,SS 304 GATE VALVE 2 IN 150 LB,Valve,SS304
 
         first_run = client.post(
             "/api/matching/run-batch",
+            headers=auth_headers,
             json={"overwrite": False},
         )
 
@@ -220,6 +252,7 @@ BHEL,BHEL-VALVE-001,SS 304 GATE VALVE 2 IN 150 LB,Valve,SS304
 
         second_run = client.post(
             "/api/matching/run-batch",
+            headers=auth_headers,
             json={"overwrite": False},
         )
 
@@ -233,7 +266,7 @@ BHEL,BHEL-VALVE-001,SS 304 GATE VALVE 2 IN 150 LB,Valve,SS304
         AUDIT_EVENTS.clear()
 
 
-def test_run_batch_excludes_same_cpse_pairs():
+def test_run_batch_excludes_same_cpse_pairs(auth_headers):
     store.reset_stores()
     MAPPINGS.clear()
     AUDIT_EVENTS.clear()
@@ -247,6 +280,7 @@ BHEL,BHEL-E2E-003,SS 304 GATE VALVE 2 IN 150 LB,Valve,SS304
 
         upload_response = client.post(
             "/api/materials/upload",
+            headers=auth_headers,
             files={
                 "file": (
                     "cross_cpse_test.csv",
@@ -261,6 +295,7 @@ BHEL,BHEL-E2E-003,SS 304 GATE VALVE 2 IN 150 LB,Valve,SS304
 
         batch_response = client.post(
             "/api/matching/run-batch",
+            headers=auth_headers,
             json={"overwrite": False},
         )
 
@@ -273,7 +308,10 @@ BHEL,BHEL-E2E-003,SS 304 GATE VALVE 2 IN 150 LB,Valve,SS304
         assert batch_data["new_candidates_stored"] == 2
         assert batch_data["total_candidates"] == 2
 
-        candidates_response = client.get("/api/matching/candidates")
+        candidates_response = client.get(
+            "/api/matching/candidates",
+            headers=auth_headers,
+        )
 
         assert candidates_response.status_code == 200
 

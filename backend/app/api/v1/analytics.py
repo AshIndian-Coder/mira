@@ -7,15 +7,17 @@ GET /api/analytics/categories  — category distribution
 GET /api/analytics/scores      — score histogram buckets
 """
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 
 from app import store
+from app.core.security import get_current_active_user
+from app.models.user import User
 
 router = APIRouter(prefix="/analytics", tags=["Analytics"])
 
 
 @router.get("/overview")
-def analytics_overview():
+def analytics_overview(current_user: User = Depends(get_current_active_user)):
     """High-level KPIs for the dashboard header cards."""
     total_materials = len(store.MATERIALS)
     total_candidates = len(store.CANDIDATES)
@@ -55,7 +57,7 @@ def analytics_overview():
 
 
 @router.get("/by-cpse")
-def analytics_by_cpse():
+def analytics_by_cpse(current_user: User = Depends(get_current_active_user)):
     """Per-CPSE breakdown: material count and involvement in candidate pairs."""
     cpse_materials: dict[str, int] = {}
     for m in store.MATERIALS:
@@ -78,7 +80,7 @@ def analytics_by_cpse():
 
 
 @router.get("/categories")
-def analytics_categories():
+def analytics_categories(current_user: User = Depends(get_current_active_user)):
     """Category distribution of ingested materials."""
     counts: dict[str, int] = {}
     for m in store.MATERIALS:
@@ -94,7 +96,7 @@ def analytics_categories():
 
 
 @router.get("/scores")
-def analytics_score_distribution():
+def analytics_score_distribution(current_user: User = Depends(get_current_active_user)):
     """
     Final-score histogram in 0.1-wide buckets.
     Useful for tuning thresholds and spotting score distribution shape.

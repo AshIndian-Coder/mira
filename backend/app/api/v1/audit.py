@@ -7,9 +7,12 @@ GET /api/audit/export   — full audit log as JSON (for governance/export)
 
 from typing import Any
 
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Depends, Query
 
+from app.core.rbac import require_permission
+from app.core.security import get_current_active_user
 from app.db_adapter import PersistentList, audit_logs_table
+from app.models.user import User
 
 router = APIRouter(prefix="/audit", tags=["Audit"])
 
@@ -23,6 +26,7 @@ def list_audit_events(
     actor: str | None = Query(None, description="Filter by reviewer user_id"),
     skip: int = 0,
     limit: int = 100,
+    current_user: User = Depends(require_permission("view_audit")),
 ):
     """Paginated audit log in reverse-chronological order."""
     filtered = list(reversed(AUDIT_EVENTS))
@@ -45,7 +49,7 @@ def list_audit_events(
 
 
 @router.get("/export")
-def export_audit_log():
+def export_audit_log(current_user: User = Depends(require_permission("view_audit"))):
     """Full audit log — all events, oldest first. For governance / download."""
     return {
         "total": len(AUDIT_EVENTS),

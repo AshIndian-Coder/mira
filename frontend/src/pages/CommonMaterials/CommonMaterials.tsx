@@ -215,18 +215,23 @@ export default function CommonMaterials() {
       {selected && (
         <div className="common-detail-overlay" onClick={() => setSelected(null)}>
           <div className="common-detail-modal" onClick={(event) => event.stopPropagation()}>
-            <div className="common-detail-panel">
-              <div className="common-detail-header">
-                <div>
-                  <div className="eyebrow">COMMON MATERIAL</div>
-                  <h2>{selected.nmc}</h2>
-                  <p>{selected.description}</p>
-                </div>
-                <button className="common-close-button" onClick={() => setSelected(null)}>
-                  ×
-                </button>
+            <div className="common-detail-header">
+              <div>
+                <div className="eyebrow">COMMON MATERIAL</div>
+                <h2>{selected.nmc}</h2>
+                <p>{selected.description}</p>
               </div>
+              <button
+                type="button"
+                className="common-close-button"
+                onClick={() => setSelected(null)}
+                title="Close modal"
+              >
+                ×
+              </button>
+            </div>
 
+            <div className="common-detail-body">
               <div className="common-detail-section">
                 <h3>Canonical Technical Attributes</h3>
                 <div className="common-source-list">

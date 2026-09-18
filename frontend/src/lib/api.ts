@@ -1,15 +1,33 @@
 const API_BASE = import.meta.env.VITE_API_URL ?? ''
 
+export const AUTH_TOKEN_KEY = 'mira_auth_token'
+
+export function getAuthToken(): string | null {
+  return localStorage.getItem(AUTH_TOKEN_KEY)
+}
+
+export function setAuthToken(token: string | null): void {
+  if (token) {
+    localStorage.setItem(AUTH_TOKEN_KEY, token)
+  } else {
+    localStorage.removeItem(AUTH_TOKEN_KEY)
+  }
+}
+
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
+  const token = getAuthToken()
+  const headers: Record<string, string> = {
+    Accept: 'application/json',
+    ...(options?.body instanceof FormData
+      ? {}
+      : { 'Content-Type': 'application/json' }),
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    ...(options?.headers as Record<string, string> | undefined),
+  }
+
   const response = await fetch(`${API_BASE}${path}`, {
-    headers: {
-      Accept: 'application/json',
-      ...(options?.body instanceof FormData
-        ? {}
-        : { 'Content-Type': 'application/json' }),
-      ...options?.headers,
-    },
     ...options,
+    headers,
   })
 
   if (!response.ok) {
@@ -23,6 +41,12 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
     } catch {
       // ignore parse errors
     }
+
+    if (response.status === 401 && !path.startsWith('/api/auth/login')) {
+      // Clean invalid or expired token
+      setAuthToken(null)
+    }
+
     throw new Error(detail || `Request failed (${response.status})`)
   }
 
@@ -31,6 +55,32 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
   }
 
   return response.json() as Promise<T>
+}
+
+export type UserRole = 'admin' | 'data_steward' | 'reviewer' | 'auditor' | string
+
+export type User = {
+  id: number
+  email: string
+  full_name?: string | null
+  role: UserRole
+  cpse_id?: number | null
+  cpse_short_code?: string | null
+  is_active: boolean
+  created_at?: string | null
+}
+
+export type TokenResponse = {
+  access_token: string
+  token_type: string
+  expires_in: number
+  user: User
+}
+
+export type CpseOption = {
+  id: number
+  name: string
+  short_code: string
 }
 
 export type Material = {
@@ -165,6 +215,72 @@ export type Mapping = {
 }
 
 export const api = {
+  // Auth endpoints
+  login: (credentials: { email: string; password: string }) =>
+    request<TokenResponse>('/api/auth/login', {
+      method: 'POST',
+      body: JSON.stringify(credentials),
+    }),
+
+  getMe: () => request<User>('/api/auth/me'),
+
+  refresh: (token: string) =>
+    request<TokenResponse>('/api/auth/refresh', {
+      method: 'POST',
+      body: JSON.stringify({ access_token: token }),
+    }),
+
+  logout: () =>
+    request<{ message: string; user_id: number }>('/api/auth/logout', {
+      method: 'POST',
+    }),
+
+  // User management (Admin)
+  listUsers: (page = 1, pageSize = 50, role?: string) => {
+    const params = new URLSearchParams({ page: String(page), page_size: String(pageSize) })
+    if (role && role !== 'all') params.set('role', role)
+    return request<{ items: User[]; total: number; page: number; page_size: number }>(
+      `/api/users?${params.toString()}`,
+    )
+  },
+
+  createUser: (payload: {
+    email: string
+    password: string
+    full_name?: string
+    role: string
+    cpse_id?: number | null
+  }) =>
+    request<User>('/api/users', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+
+  getUser: (id: number) => request<User>(`/api/users/${id}`),
+
+  updateUser: (
+    id: number,
+    payload: {
+      full_name?: string
+      role?: string
+      cpse_id?: number | null
+      password?: string
+      is_active?: boolean
+    },
+  ) =>
+    request<User>(`/api/users/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(payload),
+    }),
+
+  deactivateUser: (id: number) =>
+    request<User>(`/api/users/${id}`, {
+      method: 'DELETE',
+    }),
+
+  listCpses: () => request<CpseOption[]>('/api/users/cpses'),
+
+  // Core endpoints
   health: () => request<{ status: string; service: string }>('/health'),
 
   uploadMaterials: (file: File) => {
@@ -253,7 +369,6 @@ export const api = {
         body: JSON.stringify({
           action,
           reviewer_comments: comments ?? null,
-          user_id: 'operator_01',
         }),
       },
     ),

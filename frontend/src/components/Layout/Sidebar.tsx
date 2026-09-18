@@ -9,7 +9,9 @@ import {
   LayoutDashboard,
   Link2,
   Settings,
+  Users,
 } from "lucide-react";
+import { useAuth } from "../../context/AuthContext";
 
 const navigation = [
   {
@@ -55,6 +57,8 @@ const navigation = [
 ];
 
 function Sidebar() {
+  const { isAdmin } = useAuth();
+
   return (
     <aside className="sidebar">
       <div className="brand">
@@ -81,6 +85,23 @@ function Sidebar() {
             <span>{label}</span>
           </NavLink>
         ))}
+
+        {isAdmin && (
+          <>
+            <span className="nav-heading" style={{ marginTop: "12px" }}>
+              ADMINISTRATION
+            </span>
+            <NavLink
+              to="/users"
+              className={({ isActive }) =>
+                `nav-item ${isActive ? "active" : ""}`
+              }
+            >
+              <Users size={18} />
+              <span>User Directory</span>
+            </NavLink>
+          </>
+        )}
       </nav>
 
       <div className="sidebar-bottom">

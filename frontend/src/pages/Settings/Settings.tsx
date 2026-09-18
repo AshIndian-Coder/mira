@@ -1,6 +1,40 @@
-import { CheckCircle2, CircleOff } from 'lucide-react'
+import { CheckCircle2, CircleOff, Users } from 'lucide-react'
+import { Link } from 'react-router-dom'
+import { useAuth } from '../../context/AuthContext'
+
+function formatRoleName(role?: string): string {
+  switch (role) {
+    case 'admin':
+      return 'System Administrator'
+    case 'data_steward':
+      return 'Master Data Steward'
+    case 'reviewer':
+      return 'Technical Reviewer'
+    case 'auditor':
+      return 'Governance Auditor'
+    default:
+      return role || 'Operator'
+  }
+}
+
+function getAccessLevelDescription(role?: string): string {
+  switch (role) {
+    case 'admin':
+      return 'Full Administrative & User Management Access'
+    case 'data_steward':
+      return 'Ingestion, Harmonization & Mapping Access'
+    case 'reviewer':
+      return 'Match Review & Validation Access'
+    case 'auditor':
+      return 'Governance & Audit Trail Inspection Access'
+    default:
+      return 'Standard Access'
+  }
+}
 
 export default function Settings() {
+  const { user, isAdmin } = useAuth()
+
   return (
     <div className="page">
       <div className="page-header settings-header">
@@ -8,7 +42,7 @@ export default function Settings() {
           <div className="eyebrow">SYSTEM CONFIGURATION</div>
           <h1>Settings</h1>
           <p>
-            Review MIRA governance, matching and integration configuration.
+            Review MIRA governance, security credentials, and matching configuration.
           </p>
         </div>
       </div>
@@ -18,36 +52,70 @@ export default function Settings() {
           <section className="settings-card">
             <div className="settings-card-header">
               <div>
-                <h2>Data Steward Profile</h2>
-                <p>Current prototype operator context.</p>
+                <h2>Authenticated User Profile</h2>
+                <p>Current active session identity and authorization scope.</p>
               </div>
             </div>
 
             <div className="settings-grid">
               <div className="settings-field">
                 <label>Name</label>
-                <div className="settings-value">Data Steward</div>
+                <div className="settings-value">{user?.full_name || 'System Operator'}</div>
+              </div>
+
+              <div className="settings-field">
+                <label>Official Email</label>
+                <div className="settings-value">{user?.email || '—'}</div>
               </div>
 
               <div className="settings-field">
                 <label>Role</label>
-                <div className="settings-value">Master Data Steward</div>
+                <div className="settings-value">{formatRoleName(user?.role)}</div>
               </div>
 
               <div className="settings-field">
                 <label>Access level</label>
-                <div className="settings-value">Governance & Review</div>
+                <div className="settings-value">{getAccessLevelDescription(user?.role)}</div>
               </div>
 
               <div className="settings-field">
-                <label>Environment</label>
+                <label>Assigned CPSE</label>
+                <div className="settings-value">
+                  {user?.cpse_short_code || 'All CPSEs (National Level)'}
+                </div>
+              </div>
+
+              <div className="settings-field">
+                <label>Account Status</label>
                 <div className="settings-value">
                   <span className="status-dot" />
-                  Prototype Environment
+                  {user?.is_active ? 'Active & Authorized' : 'Suspended'}
                 </div>
               </div>
             </div>
           </section>
+
+          {isAdmin && (
+            <section className="settings-card">
+              <div className="settings-card-header">
+                <div>
+                  <h2>User Administration</h2>
+                  <p>Provision and configure CPSE access roles.</p>
+                </div>
+                <Link
+                  to="/users"
+                  className="user-action-btn edit-btn"
+                  style={{ padding: '6px 12px', textDecoration: 'none' }}
+                >
+                  <Users size={14} />
+                  <span>Open User Directory</span>
+                </Link>
+              </div>
+              <p style={{ fontSize: '12.5px', color: 'var(--text-muted)' }}>
+                You have administrative privileges to provision new accounts, assign CPSE organizational scopes, update access roles, and deactivate personnel.
+              </p>
+            </section>
+          )}
 
           <section className="settings-card">
             <div className="settings-card-header">
@@ -85,30 +153,15 @@ export default function Settings() {
             </div>
 
             <CapabilityRow
-              title="Audit trail"
-              description="Material decisions and governance actions are recorded by the backend audit service."
+              title="Audit trail & RBAC attribution"
+              description="Material decisions and review approvals record real authenticated reviewer identity in audit_logs."
               enabled
             />
 
             <CapabilityRow
-              title="Steward notifications"
-              description="Dedicated notification delivery is not configured in the current prototype."
-              enabled={false}
-            />
-          </section>
-
-          <section className="settings-card">
-            <div className="settings-card-header">
-              <div>
-                <h2>System Preferences</h2>
-                <p>Application capabilities available in this prototype.</p>
-              </div>
-            </div>
-
-            <CapabilityRow
-              title="Automatic data refresh"
-              description="Automatic background refresh is not configured; workspace pages load current data when opened or refreshed."
-              enabled={false}
+              title="JWT Stateless Authentication"
+              description="Secure token-based session handling with role-based API authorization."
+              enabled
             />
           </section>
         </main>
@@ -127,20 +180,18 @@ export default function Settings() {
             <InfoRow label="Material master" value="National" />
             <InfoRow label="Matching engine" value="AI-assisted" />
             <InfoRow label="Database" value="PostgreSQL" />
-            <InfoRow label="Integration" value="Integration ready" />
+            <InfoRow label="Auth & RBAC" value="Active (JWT / Bcrypt)" />
           </section>
 
           <section className="settings-card environment-card">
             <div className="environment-indicator">
               <span className="status-dot" />
-              <strong>Prototype Environment</strong>
+              <strong>Enterprise Mode</strong>
             </div>
 
             <p>
-              MIRA currently supports material ingestion, candidate matching,
-              human review, harmonization mappings, audit tracking and mapping
-              export. Live ERP/SAP synchronization and production user
-              management are not configured in this prototype.
+              MIRA enforces role-based access control across material ingestion, candidate matching,
+              human review queues, harmonization mappings, and audit tracking.
             </p>
           </section>
         </aside>

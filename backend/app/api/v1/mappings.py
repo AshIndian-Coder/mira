@@ -11,10 +11,13 @@ This route provides the API surface so the frontend can connect now.
 
 from typing import Any
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 
 from app import store
+from app.core.rbac import require_permission
+from app.core.security import get_current_active_user
 from app.db_adapter import PersistentList, mappings_table, next_id
+from app.models.user import User
 from app.services.clustering.service import cluster_approved_pairs
 from app.services.harmonization.service import build_common_material_record
 
@@ -26,17 +29,12 @@ MAPPINGS = PersistentList(mappings_table)
 
 
 def _next_mapping_id() -> int:
-    # Safe to query fresh each call: each mapping is appended immediately
-    # after its id is generated (see generate_mappings() below), so the
-    # DB always reflects prior mappings before the next id is requested.
     return next_id(mappings_table)
 
 
 def _make_nmc(mapping_id: int) -> str:
     """
     Provisional NMC format: NMC-YYYYMM-NNNNNN
-    Exact syntax is our team's design decision (see memory.md).
-    Person 5 / harmonization phase will refine the canonical form.
     """
     from datetime import datetime, timezone
     ym = datetime.now(timezone.utc).strftime("%Y%m")
@@ -44,7 +42,11 @@ def _make_nmc(mapping_id: int) -> str:
 
 
 @router.get("")
-def list_mappings(skip: int = 0, limit: int = 100):
+def list_mappings(
+    skip: int = 0,
+    limit: int = 100,
+    current_user: User = Depends(get_current_active_user),
+):
     """Return all generated CPSE → NMC mappings."""
     total = len(MAPPINGS)
     return {
@@ -56,7 +58,7 @@ def list_mappings(skip: int = 0, limit: int = 100):
 
 
 @router.post("/generate")
-def generate_mappings():
+def generate_mappings(current_user: User = Depends(require_permission("create_mapping"))):
     """
     Build CPSE→NMC mapping suggestions from APPROVED candidate pairs.
 
@@ -147,7 +149,10 @@ def generate_mappings():
 
 
 @router.get("/{mapping_id}")
-def get_mapping(mapping_id: int):
+def get_mapping(
+    mapping_id: int,
+    current_user: User = Depends(get_current_active_user),
+):
     for m in MAPPINGS:
         if m["id"] == mapping_id:
             return m
@@ -155,7 +160,7 @@ def get_mapping(mapping_id: int):
 
 
 @router.get("/export/flat")
-def export_mappings_flat():
+def export_mappings_flat(current_user: User = Depends(get_current_active_user)):
     """
     Flat row-per-CPSE-code export.
     Format: cpse, material_code, nmc, category

@@ -14,10 +14,11 @@ type AuditEntry = {
 }
 
 function mapAuditEvent(event: AuditEvent, index: number): AuditEntry {
+  const normType = (event.event_type || '').toUpperCase().trim()
   const action =
-    event.event_type === 'MATCH_APPROVED'
+    normType === 'MATCH_APPROVED' || normType === 'APPROVED'
       ? 'Approved'
-      : event.event_type === 'MATCH_REJECTED'
+      : normType === 'MATCH_REJECTED' || normType === 'MATCH_REJECTD' || normType === 'REJECTED'
         ? 'Rejected'
         : event.event_type.replace(/_/g, ' ')
 

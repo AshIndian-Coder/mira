@@ -2,8 +2,11 @@ import csv
 import io
 from typing import Any
 
-from fastapi import APIRouter, File, HTTPException, Query, UploadFile
+from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
 
+from app.core.rbac import require_permission
+from app.core.security import get_current_active_user
+from app.models.user import User
 from app.services.normalization.service import normalize_material_description
 from app.services.parsing.service import parse_specifications
 from app import store
@@ -12,7 +15,10 @@ router = APIRouter(prefix="/materials", tags=["Materials"])
 
 
 @router.post("/upload")
-async def upload_materials_csv(file: UploadFile = File(...)):
+async def upload_materials_csv(
+    file: UploadFile = File(...),
+    current_user: User = Depends(require_permission("upload_data")),
+):
     """Upload CSV containing CPSE material master records."""
     if not file.filename or not file.filename.endswith(".csv"):
         raise HTTPException(status_code=400, detail="File must be a CSV format")
@@ -73,6 +79,7 @@ def list_materials(
     category: str | None = Query(None, description="Filter by category"),
     skip: int = 0,
     limit: int = 50,
+    current_user: User = Depends(get_current_active_user),
 ):
     """List ingested material records with optional filtering and pagination."""
     filtered = store.MATERIALS
@@ -104,7 +111,7 @@ def list_materials(
 
 
 @router.get("/stats")
-def materials_stats():
+def materials_stats(current_user: User = Depends(get_current_active_user)):
     """Summary counts for the dashboard / analytics panels."""
     cpse_set = {m["cpse"] for m in store.MATERIALS}
     category_counts: dict[str, int] = {}
@@ -121,7 +128,10 @@ def materials_stats():
 
 
 @router.get("/{material_id}")
-def get_material(material_id: int):
+def get_material(
+    material_id: int,
+    current_user: User = Depends(get_current_active_user),
+):
     """Retrieve a single material record by ID."""
     for item in store.MATERIALS:
         if item["id"] == material_id:

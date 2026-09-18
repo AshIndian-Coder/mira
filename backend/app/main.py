@@ -1,15 +1,25 @@
+from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse
 
 from app.api.v1.router import api_router
 from app.core.config import settings
+from app.core.seed import seed_default_users_and_cpses
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Seed default CPSEs and demonstration users on startup
+    seed_default_users_and_cpses()
+    yield
 
 
 app = FastAPI(
     title=settings.app_name,
     version="0.1.0",
     description="AI-driven cross-CPSE material harmonization backend",
+    lifespan=lifespan,
 )
 
 # Enable CORS for React Vite frontend

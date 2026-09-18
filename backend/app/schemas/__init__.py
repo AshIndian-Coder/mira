@@ -9,6 +9,16 @@ from app.schemas.match import (
     MatchResponse,
     MatchScores,
 )
+from app.schemas.user import (
+    UserLogin,
+    UserCreate,
+    UserUpdate,
+    UserResponse,
+    TokenResponse,
+    RefreshRequest,
+    UserListResponse,
+    CpseOption,
+)
 
 __all__ = [
     "MaterialBase",
@@ -18,4 +28,12 @@ __all__ = [
     "MatchScores",
     "CriticalCheck",
     "MatchResponse",
+    "UserLogin",
+    "UserCreate",
+    "UserUpdate",
+    "UserResponse",
+    "TokenResponse",
+    "RefreshRequest",
+    "UserListResponse",
+    "CpseOption",
 ]
