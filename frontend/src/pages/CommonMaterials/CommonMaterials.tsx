@@ -62,7 +62,7 @@ function mappingToCommonMaterial(mapping: Mapping): CommonMaterial {
   const technicalAttributes = cmr.canonical_technical_attributes ?? {}
 
   return {
-    nmc: mapping.nmc,
+    nmc: mapping.cnmc || mapping.nmc || '—',
     description: cmr.canonical_description,
     category: cmr.category,
     material: formatAttributeValue(technicalAttributes.material_grade),
@@ -107,12 +107,12 @@ export default function CommonMaterials() {
     if (!query) return materials
     return materials.filter(
       (material) =>
-        material.nmc.toLowerCase().includes(query) ||
-        material.description.toLowerCase().includes(query) ||
+        (material.nmc || '').toLowerCase().includes(query) ||
+        (material.description || '').toLowerCase().includes(query) ||
         material.sources.some(
           (source) =>
-            source.code.toLowerCase().includes(query) ||
-            source.cpse.toLowerCase().includes(query),
+            (source.code || '').toLowerCase().includes(query) ||
+            (source.cpse || '').toLowerCase().includes(query),
         ),
     )
   }, [materials, search])
@@ -155,7 +155,7 @@ export default function CommonMaterials() {
           <input
             className="common-search"
             type="text"
-            placeholder="Search NMC, description, material code or CPSE…"
+            placeholder="Search CNMC, description, material code or CPSE…"
             value={search}
             onChange={(event) => setSearch(event.target.value)}
           />
@@ -165,7 +165,7 @@ export default function CommonMaterials() {
           <table className="common-table">
             <thead>
               <tr>
-                <th>Common National Code</th>
+                <th>Common National Code (CNMC)</th>
                 <th>Canonical Description</th>
                 <th>Category</th>
                 <th>Material / Grade</th>

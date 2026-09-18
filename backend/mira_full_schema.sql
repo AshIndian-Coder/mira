@@ -56,15 +56,22 @@ CREATE TABLE upload_batches (
 ALTER TABLE materials ADD FOREIGN KEY (upload_batch_id) REFERENCES upload_batches(id);
 
 CREATE TABLE cnmc (
- id SERIAL PRIMARY KEY,
- cnmc_code VARCHAR(50) UNIQUE NOT NULL, 
- standardized_description TEXT NOT NULL,
- category VARCHAR(100),
- unspsc_code VARCHAR(20),
- created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
- approved_by INTEGER,
- FOREIGN KEY (approved_by) REFERENCES users(id)
+	id SERIAL PRIMARY KEY,
+	cnmc_code VARCHAR(50) UNIQUE NOT NULL,
+	identity_hash VARCHAR(64) UNIQUE,
+	global_id INTEGER UNIQUE,
+	material_type VARCHAR(50),
+	standardized_description TEXT NOT NULL,
+	category VARCHAR(100),
+	unspsc_code VARCHAR(20),
+	canonical_material_record JSONB,
+	status VARCHAR(50) DEFAULT 'ACTIVE',
+	created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+	approved_by INTEGER,
+	FOREIGN KEY (approved_by) REFERENCES users(id)
 );
+CREATE INDEX idx_cnmc_identity_hash ON cnmc(identity_hash);
+CREATE INDEX idx_cnmc_global_id ON cnmc(global_id);
 
 CREATE TABLE mappings (
  id BIGSERIAL PRIMARY KEY,

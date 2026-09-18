@@ -41,6 +41,7 @@ materials_table = Table("materials", metadata, autoload_with=engine)
 match_suggestions_table = Table("match_suggestions", metadata, autoload_with=engine)
 mappings_table = Table("mappings", metadata, autoload_with=engine)
 audit_logs_table = Table("audit_logs", metadata, autoload_with=engine)
+cnmc_table = Table("cnmc", metadata, autoload_with=engine)
 
 
 def _coerce_for_column(table: Table, key: str, value: Any) -> Any:
@@ -146,3 +147,16 @@ def next_id(table: Table) -> int:
             select(func.coalesce(func.max(table.c.id), 0))
         ).scalar()
     return (current_max or 0) + 1
+
+
+def next_global_id() -> int:
+    """Monotonically increasing global sequence for CNMC across all categories."""
+    from sqlalchemy import text
+    with engine.begin() as conn:
+        try:
+            return conn.execute(text("SELECT nextval('cnmc_global_id_seq')")).scalar()
+        except Exception:
+            current_max = conn.execute(
+                select(func.coalesce(func.max(cnmc_table.c.global_id), 0))
+            ).scalar()
+            return (current_max or 0) + 1

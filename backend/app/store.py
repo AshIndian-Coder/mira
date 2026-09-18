@@ -9,7 +9,13 @@ in-place dict mutation (`c["review_status"] = "APPROVED"`) all still
 work. No route file needs to change how it uses these.
 """
 
-from app.db_adapter import PersistentList, materials_table, match_suggestions_table, next_id
+from app.db_adapter import (
+    PersistentList,
+    cnmc_table,
+    materials_table,
+    match_suggestions_table,
+    next_id,
+)
 
 # ---------------------------------------------------------------------------
 # Material master (populated by POST /api/materials/upload)
@@ -20,6 +26,11 @@ MATERIALS = PersistentList(materials_table)
 # Match candidates (populated by POST /api/matching/run-batch)
 # ---------------------------------------------------------------------------
 CANDIDATES = PersistentList(match_suggestions_table)
+
+# ---------------------------------------------------------------------------
+# CNMC Master Registry
+# ---------------------------------------------------------------------------
+CNMC_REGISTRY = PersistentList(cnmc_table)
 
 # ---------------------------------------------------------------------------
 # Candidate ID generation.
@@ -51,4 +62,13 @@ def reset_stores() -> None:
     # must be deleted BEFORE materials or Postgres raises ForeignKeyViolation.
     CANDIDATES.clear()
     MATERIALS.clear()
+    CNMC_REGISTRY.clear()
     _candidate_id_cache = None
+    from sqlalchemy import text
+    from app.core.database import engine
+    with engine.begin() as conn:
+        try:
+            conn.execute(text("ALTER SEQUENCE IF EXISTS cnmc_global_id_seq RESTART WITH 1;"))
+            conn.execute(text("ALTER SEQUENCE IF EXISTS cnmc_id_seq RESTART WITH 1;"))
+        except Exception:
+            pass

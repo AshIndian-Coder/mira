@@ -43,16 +43,19 @@ export default function ERPIntegration() {
         )
         setPendingReview(overview.review_pending)
         const mappingStatusByNmc = new Map(
-          mappingsRes.mappings.map((mapping) => [mapping.nmc, mapping.status]),
+          mappingsRes.mappings.map((mapping) => [mapping.cnmc || mapping.nmc, mapping.status]),
         )
 
         setExportRows(
-          exportRes.rows.map((row) => ({
-            cpse: row.cpse,
-            code: row.cpse_material_code,
-            nmc: row.nmc,
-            status: mappingStatusByNmc.get(row.nmc) ?? 'UNKNOWN',
-          })),
+          exportRes.rows.map((row) => {
+            const code = row.cnmc || row.nmc || '—'
+            return {
+              cpse: row.cpse,
+              code: row.cpse_material_code,
+              nmc: code,
+              status: mappingStatusByNmc.get(code) ?? 'UNKNOWN',
+            }
+          }),
         )
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to load ERP data')
@@ -201,7 +204,7 @@ export default function ERPIntegration() {
               <tr>
                 <th>CPSE</th>
                 <th>Original Material Code</th>
-                <th>Common National Code</th>
+                <th>Common National Code (CNMC)</th>
                 <th>Status</th>
               </tr>
             </thead>

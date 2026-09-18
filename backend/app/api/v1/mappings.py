@@ -19,6 +19,7 @@ from app.core.security import get_current_active_user
 from app.db_adapter import PersistentList, mappings_table, next_id
 from app.models.user import User
 from app.services.clustering.service import cluster_approved_pairs
+from app.services.cnmc.service import generate_or_get_cnmc
 from app.services.harmonization.service import build_common_material_record
 
 router = APIRouter(prefix="/mappings", tags=["Mappings"])
@@ -31,14 +32,6 @@ MAPPINGS = PersistentList(mappings_table)
 def _next_mapping_id() -> int:
     return next_id(mappings_table)
 
-
-def _make_nmc(mapping_id: int) -> str:
-    """
-    Provisional NMC format: NMC-YYYYMM-NNNNNN
-    """
-    from datetime import datetime, timezone
-    ym = datetime.now(timezone.utc).strftime("%Y%m")
-    return f"NMC-{ym}-{mapping_id:06d}"
 
 
 @router.get("")
@@ -97,9 +90,6 @@ def generate_mappings(current_user: User = Depends(require_permission("create_ma
         if cluster_set in existing_ids:
             continue
 
-        mapping_id = _next_mapping_id()
-        nmc = _make_nmc(mapping_id)
-
         cluster_materials = [
             mat_index[mid]
             for mid in sorted(cluster_ids)
@@ -112,6 +102,15 @@ def generate_mappings(current_user: User = Depends(require_permission("create_ma
         common_material_record = build_common_material_record(
             cluster_materials
         )
+
+        user_db_id = getattr(current_user, "id", None) if current_user else None
+        cnmc_info = generate_or_get_cnmc(
+            materials=cluster_materials,
+            cmr=common_material_record,
+            approved_by=user_db_id,
+        )
+        cnmc_code = cnmc_info["cnmc_code"]
+        mapping_id = _next_mapping_id()
 
         cpse_entries = []
         for mid in sorted(cluster_ids):
@@ -129,7 +128,7 @@ def generate_mappings(current_user: User = Depends(require_permission("create_ma
         from datetime import datetime, timezone
         mapping_record: dict[str, Any] = {
             "id": mapping_id,
-            "nmc": nmc,
+            "nmc": cnmc_code,
             "cpse_mappings": cpse_entries,
             "cluster_size": len(cluster_ids),
             "status": "PROVISIONAL",

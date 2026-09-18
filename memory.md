@@ -738,3 +738,27 @@ Conducted a thorough, code-level audit of the current working tree against the o
 
 - **Key Findings:** All 26 core functional requirements are implemented in the working tree, including CPSE ingestion, deterministic normalization, unit standardization, multi-attribute parsing, sentence-transformer semantic matching, multi-key blocking, weighted composite scoring, critical safety gates, tri-state classification, human review queue with audit trail, Common Material Record (CMR) synthesis, National Material Code (NMC) generation, and integration-ready ERP boundaries.
 - **ROI Work Scope Decision:** ROI & financial savings calculator exploration was completed and formally halted per project instructions to prioritize core SIH26099 material standardization and harmonization deliverables.
+
+## Deterministic Common National Material Code (CNMC) System — 2026-09-18 / 2026-09-19
+
+Implemented and verified the production-grade deterministic CNMC generation and registry system adhering to `MIRA-<TYPE>-<CATEGORY>-<GLOBAL_ID>`:
+
+- **Format & Standards:**
+  - Structure: `MIRA-<TYPE>-<CATEGORY>-<GLOBAL_ID>` (e.g. `MIRA-VLV-17-1`, `MIRA-PIP-23-2`, `MIRA-BRG-08-3`).
+  - No artificial fixed-width zero padding on global sequence numbers.
+- **Deterministic Taxonomy & Type Resolution:**
+  - Package: [`backend/app/services/cnmc/taxonomy.py`](file:///home/shikhar/Desktop/mira/backend/app/services/cnmc/taxonomy.py).
+  - Short deterministic type codes (`VLV`, `PIP`, `BRG`, `FST`, `ELC`, `GSK`, `CBL`, `FLG`, `PMP`, `GEN`) with stable category numbers and regex inference fallback.
+- **Category-Specific Canonicalization & SHA-256 Fingerprinting:**
+  - Package: [`backend/app/services/cnmc/canonicalization.py`](file:///home/shikhar/Desktop/mira/backend/app/services/cnmc/canonicalization.py).
+  - Technical attribute selection, unit normalization, explicit missing-value (`UNKNOWN`) handling, and SHA-256 machine identity hashing.
+- **Registry & Monotonic Global Sequence Allocation:**
+  - Package: [`backend/app/services/cnmc/service.py`](file:///home/shikhar/Desktop/mira/backend/app/services/cnmc/service.py).
+  - Backed by Postgres `cnmc` table with database sequence `cnmc_global_id_seq` in [`backend/app/db_adapter.py`](file:///home/shikhar/Desktop/mira/backend/app/db_adapter.py) and [`backend/app/store.py`](file:///home/shikhar/Desktop/mira/backend/app/store.py).
+  - Single monotonic sequence across all categories with concurrency/race-condition safety and deduplication of matching canonical identities.
+- **Workflow & Frontend Integration:**
+  - Integrated into [`backend/app/api/v1/mappings.py`](file:///home/shikhar/Desktop/mira/backend/app/api/v1/mappings.py) `POST /api/mappings/generate` and `GET /api/mappings/export/flat`.
+  - Frontend views ([`frontend/src/pages/Mappings/Mappings.tsx`](file:///home/shikhar/Desktop/mira/frontend/src/pages/Mappings/Mappings.tsx), [`frontend/src/pages/CommonMaterials/CommonMaterials.tsx`](file:///home/shikhar/Desktop/mira/frontend/src/pages/CommonMaterials/CommonMaterials.tsx), [`frontend/src/pages/ERPIntegration/ERPIntegration.tsx`](file:///home/shikhar/Desktop/mira/frontend/src/pages/ERPIntegration/ERPIntegration.tsx)) clearly display CNMC with explicit headers, search placeholders, and null-safe fallbacks.
+- **Testing & Verification:**
+  - Added [`backend/tests/test_cnmc.py`](file:///home/shikhar/Desktop/mira/backend/tests/test_cnmc.py) (9 unit/concurrency tests) and [`backend/tests/test_e2e_cnmc_workflow.py`](file:///home/shikhar/Desktop/mira/backend/tests/test_e2e_cnmc_workflow.py) (cross-CPSE end-to-end integration test).
+  - All 94 backend tests pass; frontend TypeScript build passes with zero errors.

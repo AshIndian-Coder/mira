@@ -81,7 +81,7 @@ export default function Mappings() {
           cpse: entry.cpse,
           materialCode: entry.material_code,
           originalDescription: entry.description,
-          nmc: mapping.nmc,
+          nmc: mapping.cnmc || mapping.nmc || '—',
           category: entry.category ?? 'General',
           status: mapping.status,
         })
@@ -95,10 +95,10 @@ export default function Mappings() {
     if (!query) return flatRows
     return flatRows.filter(
       (row) =>
-        row.cpse.toLowerCase().includes(query) ||
-        row.materialCode.toLowerCase().includes(query) ||
-        row.nmc.toLowerCase().includes(query) ||
-        row.originalDescription.toLowerCase().includes(query),
+        (row.cpse || '').toLowerCase().includes(query) ||
+        (row.materialCode || '').toLowerCase().includes(query) ||
+        (row.nmc || '').toLowerCase().includes(query) ||
+        (row.originalDescription || '').toLowerCase().includes(query),
     )
   }, [flatRows, search])
 
@@ -243,7 +243,7 @@ export default function Mappings() {
           <input
             className="mapping-search"
             type="text"
-            placeholder="Search CPSE, material code, description or NMC…"
+            placeholder="Search CPSE, material code, description or CNMC…"
             value={search}
             onChange={(event) => setSearch(event.target.value)}
           />
@@ -256,7 +256,7 @@ export default function Mappings() {
                 <th>CPSE</th>
                 <th>Original Material Code</th>
                 <th>Original Description</th>
-                <th>Common National Code</th>
+                <th>Common National Code (CNMC)</th>
                 <th>Category</th>
                 <th>Status</th>
               </tr>

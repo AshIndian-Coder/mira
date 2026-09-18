@@ -207,6 +207,7 @@ export type CommonMaterialRecord = {
 export type Mapping = {
   id: number
   nmc: string
+  cnmc?: string
   cpse_mappings: MappingEntry[]
   cluster_size: number
   status: string
@@ -406,6 +407,7 @@ export const api = {
       total_rows: number
       rows: Array<{
         nmc: string
+        cnmc?: string
         cpse: string
         cpse_material_code: string
         description: string
