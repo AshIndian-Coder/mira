@@ -4,8 +4,11 @@
 build_pair_manifest.py — build Training_Pairs_Final.csv from Final_Master_Material_Records.csv
 
 Pair mix (170,000 total):
-  POS         85,000   same true_match_key group (cross-CPSE renderings, typos,
-                       trunc40, UOM conflicts, missing-attr rows vs canonical)
+  POS         85,000   same true_match_key group, sampled CPSE-DIVERSE:
+                       pairs cover the company grid (A-B, A-C, B-C, ...) so a
+                       material held by 3+ CPSEs is compared across ALL of
+                       them (3-CPSE comparison, not just A-vs-B);
+                       typos, trunc40, UOM conflicts, canonical variants
   HN_CORRUPT  45,000   WRONG_SPEC (#CORRUPT) row vs clean sibling of SAME base group
                        -> text nearly identical, one critical value differs, label 0
   HN_SIBLING  25,000   same category, same digit-template, different group
@@ -18,7 +21,9 @@ easy negatives are only built between groups of the same split.
 
 Output columns:
 pair_id, split, pair_type, label, desc_a, desc_b, tmk_a, tmk_b, cpse_a, cpse_b,
-material_code_a, material_code_b, category
+cpse_span, material_code_a, material_code_b, category
+cpse_span = number of distinct CPSEs holding that material (national footprint,
+1 = intra-CPSE duplicate only). METADATA, never a model feature.
 
 METADATA RULE (AI-Model-Training PDF §5): model input = desc_a/desc_b ONLY.
 material_code_a/b, cpse_a/b, tmk_*, split, category are METADATA for
@@ -48,7 +53,7 @@ OUT_PAIRS = REPO / "Training_Pairs_Final.csv"
 OUT_REPORT = REPO / "pairs_report.json"
 
 PAIR_FIELDS = ["pair_id", "split", "pair_type", "label", "desc_a", "desc_b",
-               "tmk_a", "tmk_b", "cpse_a", "cpse_b",
+               "tmk_a", "tmk_b", "cpse_a", "cpse_b", "cpse_span",
                "material_code_a", "material_code_b", "category"]
 
 BUDGETS = {"POS": 85000, "HN_CORRUPT": 45000, "HN_SIBLING": 25000,
@@ -115,6 +120,10 @@ def main():
     sc = Counter(gsplit.values())
     print(f"split sizes (groups): {dict(sc)}")
 
+    # group -> set of CPSEs holding it (for cpse_span + CPSE-diverse sampling)
+    gcpse = {b: frozenset(r[1] for r in groups[b]["rows"]) for b in groups}
+    gcpse_count = {b: len(s) for b, s in gcpse.items()}
+
     # ------------------------------------------------- 1) POS pairs
     print("building POS pairs ...")
     multi = [b for b, g in groups.items() if len(g["rows"]) >= 2]
@@ -122,19 +131,43 @@ def main():
     print(f"  multi-row groups: {len(multi)} | singletons: {len(singles)} (excluded from POS)")
 
     def cap_pos(g, budget):
-        """sample up to budget positive pairs from group g (list of (desc,cpse))."""
+        """CPSE-diverse positive sampling (3-CPSE comparison requirement).
+
+        Prefers pairs across DIFFERENT CPSEs, round-robin over all company
+        pairs so a group held by k CPSEs yields pairs covering the k-grid
+        (A-B, A-C, B-C, ...). Falls back to intra-CPSE pairs only when the
+        group holds duplicates within a single company (intra-CPSE dedup).
+        """
         rows = g["rows"]
+        by_cpse = defaultdict(list)
+        for r in rows:
+            by_cpse[r[1]].append(r)
+        cpses = sorted(by_cpse)                  # sorted -> deterministic
         pairs = set()
-        tries = 0
-        need = min(budget, len(rows) * (len(rows) - 1) // 2)
-        while len(pairs) < need and tries < need * 30:
-            a, b = rng.sample(range(len(rows)), 2)
-            da, db = rows[a], rows[b]
-            if da[0] == db[0]:
+        if len(cpses) >= 2:
+            combos = [(cpses[i], cpses[j]) for i in range(len(cpses))
+                      for j in range(i + 1, len(cpses))]
+            for _pass in range(30):
+                if len(pairs) >= budget:
+                    break
+                rng.shuffle(combos)
+                for ca, cb in combos:
+                    if len(pairs) >= budget:
+                        break
+                    a, b = rng.choice(by_cpse[ca]), rng.choice(by_cpse[cb])
+                    if a[0] == b[0]:
+                        continue
+                    pairs.add((min(a, b), max(a, b)))
+        # intra-CPSE top-up: same company, different codes -> internal duplicates
+        if len(pairs) < budget:
+            multi_cpse = [c for c in cpses if len(by_cpse[c]) >= 2]
+            tries = 0
+            while len(pairs) < budget and multi_cpse and tries < budget * 20:
+                c = rng.choice(multi_cpse)
+                a, b = rng.sample(by_cpse[c], 2)
+                if a[0] != b[0]:
+                    pairs.add((min(a, b), max(a, b)))
                 tries += 1
-                continue
-            pairs.add((min(da, db), max(da, db)))
-            tries += 1
         return list(pairs)
 
     pos_pairs = []  # (split, base, (da, ca), (db, cb))
@@ -174,6 +207,11 @@ def main():
         while len(done) < need and tries < need * 30 + 30:
             c = rng.choice(g["corrupt"])
             cl = rng.choice(g["rows"])
+            # prefer cross-CPSE corrupt-vs-clean (company A's typo vs company B)
+            rerolls = 0
+            while c[1] == cl[1] and rerolls < 5 and gcpse_count[b] >= 2:
+                cl = rng.choice(g["rows"])
+                rerolls += 1
             if c[0] == cl[0] or c[0].strip().lower() == cl[0].strip().lower():
                 tries += 1
                 continue
@@ -303,29 +341,29 @@ def main():
     pid = 0
     counts = Counter()
 
-    def emit(split, ptype, label, ra, rb, t1, t2, cat):
+    def emit(split, ptype, label, ra, rb, t1, t2, cat, span):
         nonlocal pid
         pid += 1
         wr.writerow({
             "pair_id": f"P{pid:07d}", "split": split, "pair_type": ptype,
             "label": label, "desc_a": ra[0], "desc_b": rb[0],
             "tmk_a": t1, "tmk_b": t2,
-            "cpse_a": ra[1], "cpse_b": rb[1],
+            "cpse_a": ra[1], "cpse_b": rb[1], "cpse_span": span,
             "material_code_a": ra[2], "material_code_b": rb[2],
             "category": cat})
         counts[(ptype, split, label)] += 1
 
     for split, b, ra, rb in pos_pairs:
-        emit(split, "POS", 1, ra, rb, b, b, groups[b]["cat"])
+        emit(split, "POS", 1, ra, rb, b, b, groups[b]["cat"], gcpse_count[b])
     for split, b, ra, rb in corrupt_pairs:
         emit(split, "HN_CORRUPT", 0, ra, rb,
-             b + "#CORRUPT", b, groups[b]["cat"])
+             b + "#CORRUPT", b, groups[b]["cat"], gcpse_count[b])
     for split, b1, ra, rb, b2 in sibling_pairs:
         emit(split, "HN_SIBLING", 0, ra, rb, b1, b2,
-             groups[b1]["cat"])
+             groups[b1]["cat"], len(gcpse[b1] | gcpse[b2]))
     for split, b1, ra, rb, b2 in easy_pairs:
         emit(split, "NEG_EASY", 0, ra, rb, b1, b2,
-             groups[b1]["cat"])
+             groups[b1]["cat"], len(gcpse[b1] | gcpse[b2]))
     w.close()
 
     # ------------------------------------------------- validation
@@ -333,9 +371,17 @@ def main():
     errors = {"pair_spans_splits": 0, "corrupt_as_positive": 0,
               "identical_desc_pos": 0, "same_group_negative": 0,
               "corrupt_text_identical": 0, "missing_material_code": 0}
+    pos_cpse_by_group = defaultdict(set)
+    pos_cross = pos_total = 0
     with open(OUT_PAIRS, encoding="utf-8", newline="") as f:
         r = csv.DictReader(f)
         for row in r:
+            if row["pair_type"] == "POS":
+                pos_total += 1
+                pos_cpse_by_group[row["tmk_a"]].add(row["cpse_a"])
+                pos_cpse_by_group[row["tmk_a"]].add(row["cpse_b"])
+                if row["cpse_a"] != row["cpse_b"]:
+                    pos_cross += 1
             if row["tmk_a"].split("#")[0] != row["tmk_b"].split("#")[0]:
                 # negatives may pair different groups; POS/CORRUPT must share base
                 if row["pair_type"] in ("POS", "HN_CORRUPT"):
@@ -374,6 +420,13 @@ def main():
         "groups_singletons": len(singles),
         "groups_with_corrupt": len(corrupt_groups),
         "sibling_templates": len(sibling_buckets),
+        "cpse_diversity": {
+            "pos_cross_cpse_pairs": pos_cross,
+            "pos_total_pairs": pos_total,
+            "groups_with_3plus_cpse_paired": sum(1 for s in pos_cpse_by_group.values() if len(s) >= 3),
+            "groups_with_3plus_cpse_total": sum(1 for b in multi if gcpse_count[b] >= 3),
+            "note": "CPSE-diverse sampling: group pairs cover the company grid (A-B, A-C, B-C); intra-CPSE pairs kept only for single-CPSE duplicate groups",
+        },
         "validation": errors,
         "label_only_note": "model input = desc_a/desc_b only; material_code_a/b, cpse_a/b, tmk_*, split, category are metadata (PDF §5: material codes never a matching feature)",
         "runtime_seconds": round(time.time() - t0, 1),

@@ -135,7 +135,7 @@ generated/
 # ------------------------------------------------------------
 # ML / embedding cache
 # ------------------------------------------------------------
-/models/
+models/
 model_cache/
 huggingface_cache/
 
@@ -145,4 +145,45 @@ huggingface_cache/
 *.local
 # Freebuff local tooling metadata
 .freebuff/
+.venv/
+venv/
+venv-ml/
 
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+.env
+.env.*
+!.env.example
+
+backend/app/ml_pipeline/qwen_models/
+backend/app/ml_pipeline/results/
+backend/app/ml_pipeline/train_data/
+
+*.pt
+*.pth
+*.safetensors
+*.bin
+*.ckpt
+*.onnx
+*.gguf
+*.npy
+*.npz
+*.parquet
+
+*.log
+*.tmp
+*.temp
+
+.DS_Store
+Thumbs.db
+
+Training_Pairs_Final.csv
+memory.md
+pairs_report.json
+dataset_audit_report.csv
+dataset_manifest.json
+dataset_validation_report.csv
