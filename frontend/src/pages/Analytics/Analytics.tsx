@@ -76,6 +76,7 @@ export default function Analytics() {
   const [cpseData, setCpseData] = useState<CpseBreakdown[]>([])
   const [categoryData, setCategoryData] = useState<CategoryDistribution[]>([])
   const [scoreData, setScoreData] = useState<ScoreBucket[]>([])
+  const [qualityData, setQualityData] = useState<import('../../lib/api').DataQualityMetrics | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -84,16 +85,18 @@ export default function Analytics() {
       try {
         setLoading(true)
         setError(null)
-        const [overviewRes, cpseRes, categoryRes, scoreRes] = await Promise.all([
+        const [overviewRes, cpseRes, categoryRes, scoreRes, qualityRes] = await Promise.all([
           api.analyticsOverview(),
           api.analyticsByCpse(),
           api.analyticsCategories(),
           api.analyticsScores(),
+          api.analyticsDataQuality(),
         ])
         setOverview(overviewRes)
         setCpseData(cpseRes.cpse_breakdown)
         setCategoryData(categoryRes.category_distribution)
         setScoreData(scoreRes.score_histogram)
+        setQualityData(qualityRes)
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to load analytics')
       } finally {
@@ -402,6 +405,101 @@ export default function Analytics() {
               </ResponsiveContainer>
             )}
           </div>
+        </div>
+      </section>
+
+      {/* Data Quality & Master Attribute Completeness */}
+      <section className="analytics-card" style={{ marginTop: '20px' }}>
+        <div className="analytics-card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div>
+            <h2>Data Quality & Attribute Completeness</h2>
+            <p>Specification parsing yield, critical attribute availability, and master data health across CPSEs.</p>
+          </div>
+          {qualityData && (
+            <div style={{ display: 'flex', gap: '12px' }}>
+              <div style={{ padding: '4px 10px', borderRadius: '6px', background: '#f0fdf4', border: '1px solid #bbf7d0', color: '#166534', fontSize: '11.5px', fontWeight: 600 }}>
+                Spec Yield: {formatPercent(qualityData.parsed_specs_rate, 1)}
+              </div>
+              <div style={{ padding: '4px 10px', borderRadius: '6px', background: '#f8fafc', border: '1px solid #e2e8f0', color: '#334155', fontSize: '11.5px', fontWeight: 600 }}>
+                Health Score: {formatPercent(qualityData.completeness_score, 1)}
+              </div>
+            </div>
+          )}
+        </div>
+
+        <div style={{ padding: '16px 22px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '14px', marginBottom: '18px' }}>
+            <div style={{ padding: '12px 14px', borderRadius: '8px', background: '#f8fafc', border: '1px solid #e2e8f0' }}>
+              <span style={{ fontSize: '11px', color: '#64748b', display: 'block' }}>Parsed Specifications</span>
+              <strong style={{ fontSize: '18px', color: '#0f172a', fontWeight: 700 }}>
+                {loading || !qualityData ? '—' : formatNumber(qualityData.with_parsed_specs)}
+              </strong>
+              <small style={{ fontSize: '10.5px', color: '#94a3b8', display: 'block' }}>
+                of {formatNumber(qualityData?.total_materials ?? 0)} records
+              </small>
+            </div>
+            <div style={{ padding: '12px 14px', borderRadius: '8px', background: '#f8fafc', border: '1px solid #e2e8f0' }}>
+              <span style={{ fontSize: '11px', color: '#64748b', display: 'block' }}>Missing Material Grade</span>
+              <strong style={{ fontSize: '18px', color: '#b91c1c', fontWeight: 700 }}>
+                {loading || !qualityData ? '—' : formatNumber(qualityData.missing_material_grade)}
+              </strong>
+              <small style={{ fontSize: '10.5px', color: '#94a3b8', display: 'block' }}>
+                {qualityData && qualityData.total_materials > 0 ? formatPercent(qualityData.missing_material_grade / qualityData.total_materials, 1) : '0%'} unpopulated
+              </small>
+            </div>
+            <div style={{ padding: '12px 14px', borderRadius: '8px', background: '#f8fafc', border: '1px solid #e2e8f0' }}>
+              <span style={{ fontSize: '11px', color: '#64748b', display: 'block' }}>Missing Dimensions</span>
+              <strong style={{ fontSize: '18px', color: '#b91c1c', fontWeight: 700 }}>
+                {loading || !qualityData ? '—' : formatNumber(qualityData.missing_dimensions)}
+              </strong>
+              <small style={{ fontSize: '10.5px', color: '#94a3b8', display: 'block' }}>
+                {qualityData && qualityData.total_materials > 0 ? formatPercent(qualityData.missing_dimensions / qualityData.total_materials, 1) : '0%'} unpopulated
+              </small>
+            </div>
+            <div style={{ padding: '12px 14px', borderRadius: '8px', background: '#f8fafc', border: '1px solid #e2e8f0' }}>
+              <span style={{ fontSize: '11px', color: '#64748b', display: 'block' }}>Missing Pressure Rating</span>
+              <strong style={{ fontSize: '18px', color: '#b91c1c', fontWeight: 700 }}>
+                {loading || !qualityData ? '—' : formatNumber(qualityData.missing_pressure_rating)}
+              </strong>
+              <small style={{ fontSize: '10.5px', color: '#94a3b8', display: 'block' }}>
+                {qualityData && qualityData.total_materials > 0 ? formatPercent(qualityData.missing_pressure_rating / qualityData.total_materials, 1) : '0%'} unpopulated
+              </small>
+            </div>
+          </div>
+
+          {/* Per-CPSE Data Quality Breakdown Table */}
+          {qualityData && qualityData.by_cpse_quality.length > 0 && (
+            <div style={{ overflowX: 'auto', border: '1px solid #e2e8f0', borderRadius: '6px' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px', textAlign: 'left' }}>
+                <thead>
+                  <tr style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0', color: '#475569', fontWeight: 600 }}>
+                    <th style={{ padding: '10px 14px' }}>CPSE Source</th>
+                    <th style={{ padding: '10px 14px' }}>Total Records</th>
+                    <th style={{ padding: '10px 14px' }}>Parsed Specifications</th>
+                    <th style={{ padding: '10px 14px' }}>Spec Yield Rate</th>
+                    <th style={{ padding: '10px 14px' }}>Missing Grade</th>
+                    <th style={{ padding: '10px 14px' }}>Missing Dimensions</th>
+                    <th style={{ padding: '10px 14px' }}>Missing Pressure</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {qualityData.by_cpse_quality.map((row) => (
+                    <tr key={row.cpse} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                      <td style={{ padding: '9px 14px', fontWeight: 600, color: '#0f172a' }}>{row.cpse}</td>
+                      <td style={{ padding: '9px 14px', color: '#334155' }}>{formatNumber(row.total_materials)}</td>
+                      <td style={{ padding: '9px 14px', color: '#334155' }}>{formatNumber(row.with_parsed_specs)}</td>
+                      <td style={{ padding: '9px 14px', fontWeight: 600, color: row.parsed_specs_rate >= 0.5 ? '#166534' : '#b45309' }}>
+                        {formatPercent(row.parsed_specs_rate, 1)}
+                      </td>
+                      <td style={{ padding: '9px 14px', color: '#64748b' }}>{formatNumber(row.missing_grade)}</td>
+                      <td style={{ padding: '9px 14px', color: '#64748b' }}>{formatNumber(row.missing_dimensions)}</td>
+                      <td style={{ padding: '9px 14px', color: '#64748b' }}>{formatNumber(row.missing_pressure)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
       </section>
     </div>

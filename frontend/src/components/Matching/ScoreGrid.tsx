@@ -10,6 +10,7 @@ const SCORE_LABELS: Array<[keyof MatchScores, string]> = [
   ['semantic_similarity', 'Semantic similarity'],
   ['specification_similarity', 'Specification similarity'],
   ['material_grade_similarity', 'Grade similarity'],
+  ['other_attributes_similarity', 'Other attributes'],
 ]
 
 function ScoreGrid({ scores }: ScoreGridProps) {

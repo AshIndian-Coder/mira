@@ -162,6 +162,31 @@ export type ScoreBucket = {
   count: number
 }
 
+export type CpseDataQuality = {
+  cpse: string
+  total_materials: number
+  with_parsed_specs: number
+  parsed_specs_rate: number
+  missing_grade: number
+  missing_dimensions: number
+  missing_pressure: number
+}
+
+export type DataQualityMetrics = {
+  total_materials: number
+  with_parsed_specs: number
+  parsed_specs_rate: number
+  missing_description: number
+  missing_category: number
+  missing_material_grade: number
+  missing_dimensions: number
+  missing_pressure_rating: number
+  parsing_failures: number
+  completeness_score: number
+  by_cpse_quality: CpseDataQuality[]
+}
+
+
 export type AuditEvent = {
   event_type: string
   candidate_id?: number
@@ -389,6 +414,10 @@ export const api = {
     request<{ total_candidates: number; score_histogram: ScoreBucket[] }>(
       '/api/analytics/scores',
     ),
+
+  analyticsDataQuality: () =>
+    request<DataQualityMetrics>('/api/analytics/data-quality'),
+
 
   listMappings: () =>
     request<{ total: number; mappings: Mapping[] }>('/api/mappings'),

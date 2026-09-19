@@ -287,3 +287,116 @@ def test_concurrent_cnmc_generation_unique_ids():
     assert len(cnmc_codes) == len(set(cnmc_codes))
     assert set(global_ids) == set(range(1, 11))
 
+
+def test_conflicting_attributes_resolve_to_unknown_without_invented_consensus():
+    """TEST 5: Conflicting canonical attributes handled according to CMR rules -> UNKNOWN without invented consensus."""
+    mat_a = make_material_record(
+        1, "NTPC", "V-A", "VALVE CS 150 LB",
+        category="Valve",
+        material_grade="CS",
+        pressure_rating={"value": 150.0, "unit": "LB"},
+    )
+    mat_b = make_material_record(
+        2, "BHEL", "V-B", "VALVE SS316 300 LB",
+        category="Valve",
+        material_grade="SS316",
+        pressure_rating={"value": 300.0, "unit": "LB"},
+    )
+
+    cmr = build_common_material_record([mat_a, mat_b])
+    tech = cmr["canonical_technical_attributes"]
+
+    # Material grade conflict
+    assert tech["material_grade"] == "UNKNOWN"
+    # Pressure rating conflict
+    assert tech["pressure_rating"] == "UNKNOWN"
+    # Recorded in unknown list
+    assert "material_grade" in cmr["critical_unknown_fields"]
+    assert "pressure_rating" in cmr["critical_unknown_fields"]
+
+
+def test_concurrent_same_identity_race_returns_single_cnmc():
+    """TEST 7b: Concurrent generation for the exact same canonical identity produces no duplicate global IDs or registrations."""
+    import concurrent.futures
+
+    mat = make_material_record(
+        1, "IOCL", "IOCL-RACE-01", "SEAMLESS PIPE CARBON STEEL SCH 40 2 IN",
+        category="Pipe",
+        material_grade="A106-B",
+        dimensions={"value": 2.0, "unit": "IN"},
+        schedule="40",
+    )
+    cmr = build_common_material_record([mat])
+
+    def request_cnmc(_):
+        return generate_or_get_cnmc([mat], cmr)
+
+    with concurrent.futures.ThreadPoolExecutor(max_workers=8) as executor:
+        results = list(executor.map(request_cnmc, range(10)))
+
+    cnmc_codes = [r["cnmc_code"] for r in results]
+    global_ids = [r["global_id"] for r in results]
+    identity_hashes = [r["identity_hash"] for r in results]
+
+    # Every concurrent request resolved to the EXACT SAME CNMC and global ID
+    assert len(set(cnmc_codes)) == 1
+    assert len(set(global_ids)) == 1
+    assert len(set(identity_hashes)) == 1
+    assert cnmc_codes[0].startswith("MIRA-PIP-23-")
+
+
+def test_cnmc_persistence_and_retrieval_across_sessions():
+    """TEST 8: Generated CNMC remains persisted in database and queryable across sessions."""
+    from sqlalchemy import select
+    from app.core.database import engine
+    from app.db_adapter import cnmc_table
+
+    mat = make_material_record(
+        1, "ONGC", "ONGC-BALL-01", "BALL VALVE 2 IN 600 LB SS316",
+        category="Valve",
+        material_grade="SS316",
+        pressure_rating={"value": 600.0, "unit": "LB"},
+        dimensions={"value": 2.0, "unit": "IN"},
+    )
+    cmr = build_common_material_record([mat])
+    cnmc_info = generate_or_get_cnmc([mat], cmr)
+    assigned_code = cnmc_info["cnmc_code"]
+    assigned_hash = cnmc_info["identity_hash"]
+
+    # Verify directly from Postgres connection (simulating new session/query)
+    with engine.begin() as conn:
+        row = conn.execute(
+            select(cnmc_table).where(cnmc_table.c.identity_hash == assigned_hash)
+        ).mappings().first()
+
+    assert row is not None
+    assert row["cnmc_code"] == assigned_code
+    assert row["global_id"] == cnmc_info["global_id"]
+    assert row["status"] == "ACTIVE"
+
+
+def test_source_provenance_and_traceability_retained():
+    """TEST 9: Source material codes, CPSEs, descriptions, and file locations remain retained in CMR."""
+    mat1 = make_material_record(
+        101, "NTPC", "NTPC-PUMP-99", "CENTRIFUGAL PUMP 50 M3/HR",
+        category="Pump",
+    )
+    mat2 = make_material_record(
+        202, "SAIL", "SAIL-PUMP-88", "CENTRIFUGAL PUMP 50 M3/HR",
+        category="Pump",
+    )
+
+    cmr = build_common_material_record([mat1, mat2])
+    sources = cmr["source_materials"]
+
+    assert len(sources) == 2
+    ntpc_src = next(s for s in sources if s["cpse"] == "NTPC")
+    assert ntpc_src["material_code"] == "NTPC-PUMP-99"
+    assert ntpc_src["description"] == "CENTRIFUGAL PUMP 50 M3/HR"
+    assert ntpc_src["material_id"] == 101
+    assert ntpc_src["source_file"] == "NTPC.csv"
+
+    sail_src = next(s for s in sources if s["cpse"] == "SAIL")
+    assert sail_src["material_code"] == "SAIL-PUMP-88"
+    assert sail_src["description"] == "CENTRIFUGAL PUMP 50 M3/HR"
+    assert sail_src["material_id"] == 202

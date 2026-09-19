@@ -35,7 +35,7 @@ async def upload_materials_csv(
             or row.get("source_material_code")
             or f"MAT-{len(store.MATERIALS) + len(new_records) + 1:05d}"
         )
-        raw_desc = row.get("description") or row.get("material_description") or ""
+        raw_desc = (row.get("description") or row.get("material_description") or "").strip()
 
         if not raw_desc:
             continue

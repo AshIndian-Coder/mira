@@ -132,3 +132,95 @@ BHEL,E2E-BHEL-001,GATE VALVE CS 150 NB 80 SCH 40,Valve,CS
         store.reset_stores()
         MAPPINGS.clear()
         AUDIT_EVENTS.clear()
+
+
+def test_e2e_negative_rejection_workflow(auth_headers):
+    """
+    Negative path validation:
+    1. Upload conflicting/distinct materials across CPSEs.
+    2. Batch matching routes pair to review queue.
+    3. Reviewer explicitly REJECTS the candidate.
+    4. Verify candidate review_status is REJECTED.
+    5. Verify audit trail records MATCH_REJECTED.
+    6. Verify mapping generation ignores rejected candidate and creates NO CNMC/mapping.
+    """
+    store.reset_stores()
+    MAPPINGS.clear()
+    AUDIT_EVENTS.clear()
+
+    try:
+        csv_content = """cpse,material_code,description,category,material_grade
+NTPC,REJ-NTPC-001,GATE VALVE SS304 150 LB,Valve,SS304
+BHEL,REJ-BHEL-001,GATE VALVE SS304 600 LB,Valve,SS304
+"""
+
+        # 1. Ingest materials
+        upload_res = client.post(
+            "/api/materials/upload",
+            headers=auth_headers,
+            files={"file": ("reject_test.csv", csv_content, "text/csv")},
+        )
+        assert upload_res.status_code == 200
+        assert upload_res.json()["records_ingested"] == 2
+
+        # 2. Run batch matching
+        match_res = client.post(
+            "/api/matching/run-batch",
+            headers=auth_headers,
+            json={"overwrite": False},
+        )
+        assert match_res.status_code == 200
+
+        # 3. Retrieve review queue item
+        queue_res = client.get("/api/review/queue", headers=auth_headers)
+        assert queue_res.status_code == 200
+        queue_data = queue_res.json()
+        assert queue_data["total_pending"] == 1
+
+        candidate = queue_data["queue"][0]
+        candidate_id = candidate["id"]
+
+        # 4. Human REJECTION
+        action_res = client.post(
+            f"/api/review/queue/{candidate_id}/action",
+            headers=auth_headers,
+            json={
+                "action": "REJECT",
+                "reviewer_comments": "Rejected due to critical pressure rating mismatch (150 LB vs 600 LB).",
+                "user_id": "chief-safety-officer",
+            },
+        )
+        assert action_res.status_code == 200
+        assert action_res.json()["candidate"]["review_status"] == "REJECTED"
+
+        # 5. Verify audit log records MATCH_REJECTED
+        audit_res = client.get("/api/audit", headers=auth_headers)
+        assert audit_res.status_code == 200
+        audit_events = audit_res.json()["events"]
+        assert any(
+            e["event_type"] == "MATCH_REJECTED"
+            and e["candidate_id"] == candidate_id
+            and e["comments"] == "Rejected due to critical pressure rating mismatch (150 LB vs 600 LB)."
+            for e in audit_events
+        )
+
+        # 6. Verify mapping generation creates NO mappings from rejected pair
+        mapping_res = client.post(
+            "/api/mappings/generate",
+            headers=auth_headers,
+        )
+        assert mapping_res.status_code == 200
+        mapping_data = mapping_res.json()
+        assert mapping_data["status"] == "no_approved_candidates"
+        assert mapping_data["mappings_created"] == 0
+
+        # 7. Verify mapping list and CNMC registry remain empty
+        list_res = client.get("/api/mappings", headers=auth_headers)
+        assert list_res.status_code == 200
+        assert list_res.json()["total"] == 0
+        assert len(store.CNMC_REGISTRY) == 0
+
+    finally:
+        store.reset_stores()
+        MAPPINGS.clear()
+        AUDIT_EVENTS.clear()

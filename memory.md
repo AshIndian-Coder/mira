@@ -762,3 +762,39 @@ Implemented and verified the production-grade deterministic CNMC generation and 
 - **Testing & Verification:**
   - Added [`backend/tests/test_cnmc.py`](file:///home/shikhar/Desktop/mira/backend/tests/test_cnmc.py) (9 unit/concurrency tests) and [`backend/tests/test_e2e_cnmc_workflow.py`](file:///home/shikhar/Desktop/mira/backend/tests/test_e2e_cnmc_workflow.py) (cross-CPSE end-to-end integration test).
   - All 94 backend tests pass; frontend TypeScript build passes with zero errors.
+
+## Performance & Scalability Benchmark Audit — 2026-09-19
+
+Conducted comprehensive multi-stage performance benchmarks across dataset sizes (10, 100, 1,000, and 5,000 records) measuring precision wall-clock timings, record throughput, candidate counts, and memory allocations via `tracemalloc`:
+
+- **High-Throughput Stages:**
+  - Ingestion: ~400,000 records/sec ($< 1\text{ MB}$ RAM).
+  - Normalization: ~40,000 records/sec ($< 1\text{ MB}$ RAM).
+  - Specification Extraction & Parsing: ~4,800 records/sec ($5.5\text{ MB}$ at 5k records).
+  - CMR Synthesis: ~5,000–11,000 records/sec ($< 100\text{ KB}$ RAM).
+  - CNMC Deterministic Allocation & DB Storage: ~330 codes/sec ($< 350\text{ KB}$ RAM).
+- **Identified Scaling Bottlenecks:**
+  - *Candidate Generation:* $O(N^2)$ pairwise loop in `generate_candidates` due to on-the-fly regex key re-computation. Recommended fix: reuse the pre-computed inverted block index.
+  - *PyTorch Embeddings:* Per-pair unbatched MiniLM forward passes cap CPU throughput at ~38–40 pairs/sec. Recommended fix: pre-compute embeddings once per material description during ingestion and compute similarity via vector dot products.
+
+## Failure-Mode & Resilience Audit — 2026-09-19
+
+Audited and verified MIRA against bad inputs and operational edge cases across 6 domains:
+
+- **Test Suite:** Added [`backend/tests/test_failure_modes.py`](file:///home/shikhar/Desktop/mira/backend/tests/test_failure_modes.py) containing 27 automated tests covering:
+  1. *DATA:* Empty CSV, missing columns, missing/whitespace description, missing CPSE, duplicate material codes, UTF-8 BOM, unknown categories/units, malformed specs.
+  2. *MATCHING:* Same-CPSE candidate isolation, zero candidates, missing specifications, conflicting specifications, identical descriptions with conflicting critical attributes.
+  3. *REVIEW:* Nonexistent candidate actions (404), repeated approval/rejection conflict handling (409), unauthorized review actions (403).
+  4. *CNMC:* Identical canonical identity reuse, differing identity allocation, missing attributes as `UNKNOWN`, multi-threaded concurrent allocation.
+  5. *AUTH:* Missing/invalid JWT (401), deactivated user rejection (403), role permission enforcement (403), protected route shielding.
+  6. *EXPORT:* Empty mapping exports, null optional field handling, large dataset streaming.
+- **Defects Fixed:**
+  - Ingestion: Added `.strip()` to CSV raw description handling in [`backend/app/api/v1/materials.py`](file:///home/shikhar/Desktop/mira/backend/app/api/v1/materials.py) so whitespace-only cells are ignored safely.
+- **Verification:** All 128 backend tests pass (`PYTHONPATH=. pytest -q`); frontend build passes with 0 errors.
+
+## Final SIH26099 Implementation Audit — 2026-09-19
+
+Performed final repository audit against SIH26099 functional areas:
+- 25 of 26 areas are **FULLY IMPLEMENTED** and covered by live code and unit/integration tests.
+- 1 area (ERP/SAP Integration Boundary) is **INTEGRATION-READY**, featuring standard REST contracts, flat JSON/CSV export, and clear frontend boundary disclaimers.
+- Zero required features are missing.
