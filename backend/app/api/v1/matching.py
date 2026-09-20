@@ -24,6 +24,11 @@ from app.services.blocking.service import (
     generate_candidates as blocking_generate_candidates,
 )
 from app.services.matching.classifier import classify_match
+from app.services.matching.cnmc_matcher import (
+    compute_cnmc_candidate_margin,
+    find_cnmc_candidates_for_material,
+    match_new_materials_against_cnmcs,
+)
 from app.services.matching.embeddings import precompute_embeddings
 from app.services.normalization.service import normalize_material_description
 from app.services.parsing.service import parse_specifications
@@ -68,6 +73,18 @@ class BatchRunRequest(BaseModel):
         default=False,
         description="If True, clear existing candidates before running.",
     )
+
+
+class CnmcMatchRequest(BaseModel):
+    material: MaterialInput
+    max_candidates: int = Field(default=10, ge=1, le=50)
+    min_score: float = Field(default=0.50, ge=0.0, le=1.0)
+
+
+class CnmcBatchRunRequest(BaseModel):
+    max_candidates_per_material: int = Field(default=5, ge=1, le=50)
+    min_score: float = Field(default=0.65, ge=0.0, le=1.0)
+    create_review_candidates: bool = Field(default=True)
 
 
 # ---------------------------------------------------------------------------
@@ -369,3 +386,52 @@ def matching_stats(current_user: User = Depends(get_current_active_user)):
             "p95": round(p95, 4),
         },
     }
+
+
+@router.post("/cnmc/candidates")
+def find_cnmc_proposals(
+    request: CnmcMatchRequest,
+    current_user: User = Depends(get_current_active_user),
+):
+    """Find and rank plausible existing CNMC candidate proposals for a material."""
+    prepared = _prepare_material(request.material)
+    proposals = find_cnmc_candidates_for_material(
+        prepared,
+        max_candidates=request.max_candidates,
+        min_score=request.min_score,
+    )
+    margin_info = compute_cnmc_candidate_margin(proposals)
+    return {
+        "material": prepared,
+        "total_candidates": len(proposals),
+        "best_score": margin_info["best_score"],
+        "second_best_score": margin_info["second_best_score"],
+        "score_margin": margin_info["score_margin"],
+        "candidates": proposals,
+    }
+
+
+@router.post("/cnmc/run-batch")
+def run_cnmc_batch_matching(
+    request: CnmcBatchRunRequest,
+    current_user: User = Depends(require_permission("run_matching")),
+):
+    """Run existing-CNMC matching across all ingested materials against established CNMCs."""
+    if not store.MATERIALS:
+        raise HTTPException(status_code=400, detail="No materials ingested.")
+    if not store.CNMC_REGISTRY:
+        return {
+            "status": "no_existing_cnmc",
+            "materials_evaluated": len(store.MATERIALS),
+            "proposals_generated": 0,
+            "message": "No existing CNMCs in registry.",
+            "proposals": [],
+        }
+    res = match_new_materials_against_cnmcs(
+        list(store.MATERIALS),
+        max_candidates_per_material=request.max_candidates_per_material,
+        min_score=request.min_score,
+        create_review_candidates=request.create_review_candidates,
+        current_user=current_user,
+    )
+    return res

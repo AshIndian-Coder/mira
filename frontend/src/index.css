@@ -750,6 +750,33 @@ a {
   background: #64748b;
 }
 
+.status-badge.danger {
+  background: var(--danger-bg);
+  color: var(--danger-text);
+  border-color: var(--danger-border);
+}
+.status-badge.danger .status-dot {
+  background: var(--danger);
+}
+
+.status-badge.warning {
+  background: var(--warning-bg);
+  color: var(--warning-text);
+  border-color: var(--warning-border);
+}
+.status-badge.warning .status-dot {
+  background: var(--warning);
+}
+
+.status-badge.info {
+  background: var(--info-bg);
+  color: var(--info-text);
+  border-color: var(--info-border);
+}
+.status-badge.info .status-dot {
+  background: var(--info);
+}
+
 /* Notification Banners */
 .mapping-info-banner,
 .common-info-banner {

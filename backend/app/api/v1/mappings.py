@@ -12,6 +12,7 @@ This route provides the API surface so the frontend can connect now.
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel
 
 from app import store
 from app.core.rbac import require_permission
@@ -21,6 +22,7 @@ from app.models.user import User
 from app.services.clustering.service import cluster_approved_pairs
 from app.services.cnmc.service import generate_or_get_cnmc
 from app.services.harmonization.service import build_common_material_record
+from app.services.matching.cnmc_matcher import attach_material_to_mapping
 
 router = APIRouter(prefix="/mappings", tags=["Mappings"])
 
@@ -180,3 +182,27 @@ def export_mappings_flat(current_user: User = Depends(get_current_active_user)):
         "total_rows": len(rows),
         "rows": rows,
     }
+
+
+class AttachMaterialRequest(BaseModel):
+    material_id: int
+
+
+@router.post("/{mapping_id}/attach")
+def attach_material(
+    mapping_id: int,
+    request: AttachMaterialRequest,
+    current_user: User = Depends(require_permission("create_mapping")),
+):
+    """Attach an approved material to an existing mapping and re-synthesize its CMR."""
+    mat_index = {m["id"]: m for m in store.MATERIALS}
+    mat = mat_index.get(request.material_id)
+    if not mat:
+        raise HTTPException(status_code=404, detail=f"Material {request.material_id} not found")
+
+    user_email = current_user.email if current_user else "reviewer"
+    try:
+        updated = attach_material_to_mapping(mapping_id, mat, actor=user_email)
+        return {"status": "success", "mapping": updated}
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))

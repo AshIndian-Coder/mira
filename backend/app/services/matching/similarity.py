@@ -1,5 +1,19 @@
+import ctypes
 from difflib import SequenceMatcher
+import os
 from typing import Any
+
+# Optional C-accelerated SequenceMatcher loader
+_c_sequence_matcher = None
+try:
+    _lib_path = os.path.join(os.path.dirname(__file__), "_fast_sequence_matcher.so")
+    if os.path.exists(_lib_path):
+        _lib = ctypes.CDLL(_lib_path)
+        _lib.fast_sequence_matcher_ratio.argtypes = [ctypes.c_char_p, ctypes.c_char_p]
+        _lib.fast_sequence_matcher_ratio.restype = ctypes.c_double
+        _c_sequence_matcher = _lib.fast_sequence_matcher_ratio
+except Exception:
+    _c_sequence_matcher = None
 
 
 CATEGORY_SPEC_FIELDS = {
@@ -30,6 +44,12 @@ def text_similarity(left: str, right: str) -> float:
 
     if left == right:
         return 1.0
+
+    if _c_sequence_matcher is not None:
+        try:
+            return float(_c_sequence_matcher(left.encode("utf-8"), right.encode("utf-8")))
+        except Exception:
+            pass
 
     return SequenceMatcher(None, left, right).ratio()
 

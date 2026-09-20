@@ -829,3 +829,113 @@ Integrated full legacy file format support into MIRA's established ingestion arc
 - **API Integration:** Updated `POST /api/materials/upload` in [`backend/app/api/v1/materials.py`](file:///home/shikhar/Desktop/mira/backend/app/api/v1/materials.py) to parse all supported formats while preserving existing RBAC, database persistence, normalization, and specification extraction.
 - **Frontend File Accept:** Updated [`frontend/src/pages/Materials/Materials.tsx`](file:///home/shikhar/Desktop/mira/frontend/src/pages/Materials/Materials.tsx) file input filter to `.csv,.txt,.xml,.json,.xls,.xlsx`.
 - **Cross-Format Equivalence & Testing:** Added [`backend/tests/test_legacy_ingestion.py`](file:///home/shikhar/Desktop/mira/backend/tests/test_legacy_ingestion.py) verifying deterministic output parity across all 5 formats and robust failure mode handling (empty files, malformed rows, invalid schemas, missing optional fields). Full test suite now passes with 157 passed tests.
+
+## Existing-CNMC Matching & Proposal System — 2026-09-20
+
+Implemented existing-CNMC matching and proposal workflow enabling new materials to find, score, and attach to established CNMCs:
+- **Architecture & Retrieval:**
+  - Inverted CNMC Block Index ([`backend/app/services/matching/cnmc_matcher.py`](file:///home/shikhar/Desktop/mira/backend/app/services/matching/cnmc_matcher.py)) indexing both the canonical Common Material Record (CMR) profile and all approved member materials across block keys.
+  - Plausible candidate CNMCs retrieved via $O(1)$ key lookup, bounded to a top-K candidate set.
+- **Evidence Aggregation & Critical Gates:**
+  - Evaluates new materials against both the virtual canonical profile and individual approved members using existing `classify_match()` scoring and `evaluate_critical_gates()`.
+  - Reconciles canonical evidence with strongest member evidence. Critical conflicts (e.g. conflicting pressure rating or material grade) block automatic assignment and force human review (`REVIEW`), preserving safety.
+- **Review & Attachment Workflow:**
+  - Preserves source CPSE codes and existing CNMC identity hashes without unapproved mutation.
+  - Added `POST /api/matching/cnmc/candidates` and `POST /api/matching/cnmc/run-batch` to [`backend/app/api/v1/matching.py`](file:///home/shikhar/Desktop/mira/backend/app/api/v1/matching.py).
+  - Added `POST /api/mappings/{mapping_id}/attach` to [`backend/app/api/v1/mappings.py`](file:///home/shikhar/Desktop/mira/backend/app/api/v1/mappings.py) with audit logging (`CNMC_MEMBER_ATTACHED`) and CMR re-synthesis.
+- **Verification:** Added [`backend/tests/test_existing_cnmc_matching.py`](file:///home/shikhar/Desktop/mira/backend/tests/test_existing_cnmc_matching.py) (12 tests covering member matching, canonical profile matching, multi-member aggregation, critical conflict shielding, deterministic ranking, RBAC, and performance benchmark). Full test suite now passes with 169 passed tests.
+
+## Best-vs-Second-Best CNMC Candidate Margin Observability — 2026-09-20
+
+Added observability and structured evidence for the best-vs-second-best CNMC candidate margin:
+- **Observability Semantics:**
+  - `best_score`: Highest valid candidate proposal score (`float(proposals[0]["final_score"])` rounded to 4 decimals), or `None` if zero candidates.
+  - `second_best_score`: Second highest candidate proposal score (`float(proposals[1]["final_score"])` rounded to 4 decimals), or `None` if zero or one candidate.
+  - `score_margin`: Difference between best and second best (`round(best_score - second_best_score, 4)`), or `None` if fewer than two candidates.
+  - Exactly one candidate yields `score_margin = None` (not 0.0 or 1.0).
+  - Deterministic tie-breaking orders candidates by `(-final_score, cnmc_code)`.
+- **Pure Observability (No Thresholding / Decision Rule):**
+  - Margin is returned purely as structured evidence. No margin threshold was introduced, and classifier thresholds (`HIGH_CONFIDENCE`, `REVIEW`, `DIFFERENT`) and critical safety gate behaviors remain 100% unchanged.
+- **API & Type Exposure:**
+  - `compute_cnmc_candidate_margin` added in [`backend/app/services/matching/cnmc_matcher.py`](file:///home/shikhar/Desktop/mira/backend/app/services/matching/cnmc_matcher.py).
+  - `POST /api/matching/cnmc/candidates` in [`backend/app/api/v1/matching.py`](file:///home/shikhar/Desktop/mira/backend/app/api/v1/matching.py) returns `best_score`, `second_best_score`, `score_margin` in the response envelope alongside all existing fields.
+  - `POST /api/matching/cnmc/run-batch` populates `best_score`, `second_best_score`, `score_margin` on proposal items and candidate `explanation` metadata.
+  - TypeScript interfaces updated in [`frontend/src/lib/api.ts`](file:///home/shikhar/Desktop/mira/frontend/src/lib/api.ts).
+- **Verification:** Added 6 focused tests covering multiple candidates, single candidate, zero candidates, deterministic ties, decision preservation, and API compatibility. Full test suite passes with 175 tests; frontend build clean.
+
+## CNMC Candidate Margin Empirical Evaluation — 2026-09-20
+
+Conducted empirical evaluation of best-vs-second-best margins on held-out CNMC clusters and hard negatives:
+- **Evaluation Framework:**
+  - Implemented [`backend/app/services/evaluation/cnmc_margin_analysis.py`](file:///home/shikhar/Desktop/mira/backend/app/services/evaluation/cnmc_margin_analysis.py).
+  - Evaluated on the held-out split of 83 distinct True Match Key (TMK) clusters from `Final_Master_Material_Records.csv` and `Training_Pairs_MIRA_FINAL.csv`.
+  - 83 established CNMCs (166 seed members), 712 positive held-out queries, and 841 hard-negative queries (`HN_CORRUPT`, `HN_SIBLING`).
+- **Empirical Findings:**
+  - Candidate distribution on positive queries: 0 candidates: 1 (0.14%), 1 candidate: 163 (22.89%), $\ge 2$ candidates: 548 (76.97%).
+  - Top-1 candidate accuracy: 99.44% overall, 99.58% on queries with $\ge 1$ candidate.
+  - Correct top-1 queries have wide mean margin: $0.2829$ (median $0.2755$, P90 $0.4671$).
+  - Incorrect top-1 queries (3 queries) had tight mean margin: $0.0118$ (median $0.0093$, max $0.0184$).
+  - Margin bucket $[0.00, 0.01)$ had 60.0% accuracy (2/5 incorrect); $[0.01, 0.02)$ had 85.7% accuracy; $\ge 0.02$ had 100.0% accuracy (536/536).
+  - Hard negatives: mean margin $0.0932$ (median $0.0355$); 0 false `HIGH_CONFIDENCE` classifications (683 `DIFFERENT`, 140 `REVIEW`, 18 `NO_CANDIDATE`).
+- **Artifacts Generated:** `data/evaluation/cnmc_margin_query_results.csv`, `data/evaluation/cnmc_margin_summary.csv`, `data/evaluation/cnmc_margin_report.json`.
+- **Verification:** Added [`backend/tests/test_cnmc_margin_analysis.py`](file:///home/shikhar/Desktop/mira/backend/tests/test_cnmc_margin_analysis.py) (7 unit tests); full backend test suite passes with 182 tests. No production decision logic modified.
+
+## Frontend Match Review Filters & Field-Level Difference Explanation — 2026-09-20
+
+Enhanced the Match Review interface with review filters, structured field-level comparison tables, and candidate separation margin observability:
+- **Match Review Filters:**
+  - Decision filter pills in [`frontend/src/components/Matching/MatchList.tsx`](file:///home/shikhar/Desktop/mira/frontend/src/components/Matching/MatchList.tsx): `All`, `Review`, `High Conf`, `Different` with dynamic count badges.
+  - Multi-field text search filter (matching code, description, and CPSE).
+  - CPSE dropdown selector for filtering pairs involving specific CPSEs.
+  - Conflict warning tags (`⚠️ CONFLICT`) and score meters on candidate items.
+- **Field-Level Difference Explanation:**
+  - Implemented [`frontend/src/components/Matching/FieldDifferenceTable.tsx`](file:///home/shikhar/Desktop/mira/frontend/src/components/Matching/FieldDifferenceTable.tsx) inside [`MatchComparison.tsx`](file:///home/shikhar/Desktop/mira/frontend/src/components/Matching/MatchComparison.tsx).
+  - Explicitly compares: Description text (identical vs similar vs different with % semantic similarity), Category, Material Grade, Dimensions / Size, Pressure Rating, Voltage Class, and any active critical safety gates.
+  - Standardized status badges: `SAME` (match), `DIFFERENT`, `CONFLICT` (prominent red badge with alert banner), `MISSING` (missing in source vs missing in target), and `UNKNOWN` (not specified).
+- **Candidate Separation Observability Card:**
+  - Displays Top Candidate Score, Runner-Up Score, and Separation Margin ($\Delta$) as supplementary evidence without affecting decision rules.
+- **Verification:** Frontend build (`npm run build`) passed with zero errors; full backend test suite passes with 182 tests. Zero backend matching changes.
+
+## Production Matching Profile & Text Similarity C-Acceleration — 2026-09-20
+
+Profiled the production matching path (`POST /api/matching/run-batch`) and accelerated `text_similarity` with native C SequenceMatcher:
+- **Performance Profiling Findings (Baseline on 206 Materials, 6,469 Candidate Pairs):**
+  - Total matching run time: $5.60\text{ s}$
+  - Batch embedding precomputation (`EmbeddingCache`, batch=64): $2.67\text{ s}$ (14.59 ms/desc)
+  - Candidate pair scoring loop: $1.03\text{ s}$
+  - Dominant loop bottleneck: Pure-Python `difflib.SequenceMatcher.ratio()` accounted for $91.7\%$ ($942.5\text{ ms}$) of candidate scoring CPU time.
+  - Spec / Grade / Semantic dot product: $< 90\text{ ms}$ total.
+- **Root Cause of Historical "~4s / description":**
+  - Uncached pairwise calls to `SentenceTransformer.encode([left, right])` require $\sim 18.8\text{ ms}$ per pair. For 200 candidates per material, this was $200 \times 18.8\text{ ms} \approx 3.76\text{ s}$ per description.
+  - The upfront batch `EmbeddingCache` resolved this multiplicative model encoding overhead ($2.67\text{ s}$ total for 183 unique descriptions).
+- **Text Similarity C-Acceleration:**
+  - Replaced pure-Python `difflib.SequenceMatcher` loop inside [`backend/app/services/matching/similarity.py`](file:///home/shikhar/Desktop/mira/backend/app/services/matching/similarity.py) with dynamic-programming C-accelerated `_fast_sequence_matcher.so` with graceful fallback to pure Python `difflib`.
+  - Statistical Equivalence on 624 Regression Pairs: $99.84\%$ exact equality, mean difference $0.000006$, max difference $0.0039$, 0 ranking or classification decision changes.
+  - Speedup: $15.2\text{x}$ faster on text similarity ($942.5\text{ ms} \rightarrow 61.9\text{ ms}$ for 6,469 pairs; 10,000 call microbenchmark: $1,215\text{ ms} \rightarrow 81.8\text{ ms}$, $14.7\text{x}$ speedup).
+  - Total candidate pair scoring dropped from $1,027\text{ ms} \rightarrow 104.5\text{ ms}$ ($9.8\text{x}$ speedup).
+  - Total matching runtime for 206 materials dropped from $5.60\text{ s} \rightarrow 3.86\text{ s}$.
+- **Verification:** Added [`backend/tests/test_text_similarity.py`](file:///home/shikhar/Desktop/mira/backend/tests/test_text_similarity.py) (6 focused unit/regression tests); full backend test suite passes with 188 tests (100% passing). No scoring weights, thresholds, or matching decisions modified.
+
+## Production Embedding-Cache Audit & Single-Material CNMC Cache Fix — 2026-09-20
+
+Audited embedding cache coverage across all production matching paths and eliminated redundant encoding in the single-material CNMC candidate query:
+- **Audit Findings:**
+  - `POST /api/matching/run-batch`: 100% request-scoped `EmbeddingCache` coverage (1 batched precompute call, 0 in-loop encode calls, 100% cache hits across 7,717 evaluated pairs).
+  - `POST /api/matching/cnmc/run-batch`: 100% batch `EmbeddingCache` coverage across all query materials, canonical profiles, and approved members.
+  - `POST /api/matching/cnmc/candidates`: Identified redundant pairwise encoding. `find_cnmc_candidates_for_material()` was called with `embedding_cache=None`, causing `classify_match()` to invoke pairwise `SentenceTransformer.encode([left, right])` sequentially on CPU for every candidate canonical profile and member comparison.
+- **Single-Material CNMC Cache Optimization:**
+  - In [`backend/app/services/matching/cnmc_matcher.py`](file:///home/shikhar/Desktop/mira/backend/app/services/matching/cnmc_matcher.py), immediately after candidate retrieval via inverted blocking keys (`matching_cnmc_codes`) and before entering the candidate scoring loop:
+  - If `embedding_cache is None`, collects the normalized descriptions for the query material, candidate CNMC canonical profiles, and approved member materials.
+  - Deduplicates all descriptions and executes a single batched `precompute_embeddings(needed_descriptions)`.
+  - Passes the resulting request-scoped `EmbeddingCache` to every downstream `classify_match()` invocation.
+- **Parity & Performance Verification:**
+  - `model.encode()` calls on single candidate query dropped from 9 separate pairwise calls to 1 single batched call (-88.9%).
+  - Total texts encoded dropped from 18 (redundant pairwise re-encodings of query text) to 8 unique texts (-55.6%).
+  - In-loop cache misses during scoring dropped from 9 to 0 (100% in-loop cache hit rate).
+  - Embedding computation latency dropped from $219.35\text{ ms} \rightarrow 86.98\text{ ms}$ ($2.52\text{x}$ speedup).
+  - Total single-query latency dropped from $231.57\text{ ms} \rightarrow 93.55\text{ ms}$ ($2.48\text{x}$ speedup).
+  - Exact semantic parity: 100% identical candidate IDs, codes, ranking, scores, engine decisions, and critical gate evaluations.
+- **Testing:**
+  - Added regression test `test_single_cnmc_candidate_embedding_cache_coverage` in [`backend/tests/test_existing_cnmc_matching.py`](file:///home/shikhar/Desktop/mira/backend/tests/test_existing_cnmc_matching.py).
+  - Full backend pytest suite: 189 passed (100% passing).
+  - No scoring formulas, classifier thresholds, critical gates, or CNMC canonicalization rules modified.

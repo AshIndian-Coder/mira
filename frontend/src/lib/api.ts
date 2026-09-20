@@ -133,6 +133,16 @@ export type Candidate = {
   reviewer_comments?: string | null
   reviewed_at?: string | null
   created_at?: string
+  explanation?: {
+    type?: string
+    cnmc_code?: string
+    canonical_score?: number
+    best_score?: number | null
+    second_best_score?: number | null
+    score_margin?: number | null
+    evaluated_members_count?: number
+    [key: string]: unknown
+  }
 }
 
 export type AnalyticsOverview = {
@@ -452,7 +462,70 @@ export const api = {
 
   exportAudit: () =>
     request<{ total: number; events: AuditEvent[] }>('/api/audit/export'),
+
+  findCnmcCandidates: (material: {
+    id?: number
+    cpse: string
+    material_code: string
+    description: string
+    category?: string
+    unit?: string
+    material_grade?: string
+  }) =>
+    request<{
+      material: Material
+      total_candidates: number
+      best_score?: number | null
+      second_best_score?: number | null
+      score_margin?: number | null
+      candidates: Array<{
+        cnmc_code: string
+        cnmc_id: number
+        mapping_id?: number
+        material_type: string
+        category: string
+        standardized_description: string
+        scores: MatchScores
+        critical_checks: CriticalCheck[]
+        engine_decision: 'HIGH_CONFIDENCE' | 'REVIEW' | 'DIFFERENT'
+        final_score: number
+        canonical_score: number
+        strongest_member_score?: number | null
+        member_count: number
+        best_score?: number | null
+        second_best_score?: number | null
+        score_margin?: number | null
+      }>
+    }>('/api/matching/cnmc/candidates', {
+      method: 'POST',
+      body: JSON.stringify({ material }),
+    }),
+
+  runCnmcBatchMatching: (maxCandidatesPerMaterial = 5, minScore = 0.65) =>
+    request<{
+      status: string
+      materials_evaluated: number
+      proposals_generated: number
+      proposals: any[]
+    }>('/api/matching/cnmc/run-batch', {
+      method: 'POST',
+      body: JSON.stringify({
+        max_candidates_per_material: maxCandidatesPerMaterial,
+        min_score: minScore,
+        create_review_candidates: true,
+      }),
+    }),
+
+  attachMaterialToMapping: (mappingId: number, materialId: number) =>
+    request<{ status: string; mapping: Mapping }>(
+      `/api/mappings/${mappingId}/attach`,
+      {
+        method: 'POST',
+        body: JSON.stringify({ material_id: materialId }),
+      },
+    ),
 }
+
 
 export function formatPercent(value: number, digits = 0): string {
   return `${(value * 100).toFixed(digits)}%`
