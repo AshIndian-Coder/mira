@@ -98,10 +98,10 @@ function Materials() {
 
         <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
           <label className="materials-upload-button">
-            {uploading ? 'Uploading…' : 'Upload CSV'}
+            {uploading ? 'Uploading…' : 'Upload File'}
             <input
               type="file"
-              accept=".csv"
+              accept=".csv,.txt,.xml,.json,.xls,.xlsx"
               hidden
               onChange={handleUpload}
               disabled={uploading}

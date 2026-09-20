@@ -22,6 +22,7 @@ DIFFERENT_SCORE = float(
 def classify_match(
     source: dict[str, Any],
     target: dict[str, Any],
+    embedding_cache: Any = None,
 ) -> dict[str, Any]:
     """
     Score and classify a candidate material pair.
@@ -30,7 +31,11 @@ def classify_match(
     the numerical similarity score is high.
     """
 
-    scores = calculate_match_score(source, target)
+    scores = calculate_match_score(
+        source,
+        target,
+        embedding_cache=embedding_cache,
+    )
 
     critical_checks = evaluate_critical_gates(
         source,

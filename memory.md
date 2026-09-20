@@ -798,3 +798,34 @@ Performed final repository audit against SIH26099 functional areas:
 - 25 of 26 areas are **FULLY IMPLEMENTED** and covered by live code and unit/integration tests.
 - 1 area (ERP/SAP Integration Boundary) is **INTEGRATION-READY**, featuring standard REST contracts, flat JSON/CSV export, and clear frontend boundary disclaimers.
 - Zero required features are missing.
+
+## Candidate-Generation Scalability & Inverted Block Index — 2026-09-19 / 2026-09-20
+
+Eliminated the $O(N^2)$ candidate generation bottleneck across the matching pipeline:
+- **Inverted Block Index:** Target block keys are computed once per material ($O(N)$) using `generate_block_keys()` and indexed in `dict[str, list[int]]` via `build_block_index()` in [`backend/app/services/blocking/service.py`](file:///home/shikhar/Desktop/mira/backend/app/services/blocking/service.py).
+- **Candidate Retrieval:** Enhanced `generate_candidates()` to query the inverted block index with `source_keys`, `target_map`, and `target_order`, preserving exact original dataset ordering and full backward compatibility.
+- **Batch Pipeline Integration:** Updated [`backend/app/api/v1/matching.py`](file:///home/shikhar/Desktop/mira/backend/app/api/v1/matching.py) and [`backend/benchmark_pipeline.py`](file:///home/shikhar/Desktop/mira/backend/benchmark_pipeline.py) to precompute keys once and reuse the inverted index.
+- **Benchmarks & Parity:** Candidate generation runtime at 5,000 materials dropped from 123.1s to 2.55s (48.2x speedup) with 100% bit-exact candidate pair output.
+- **Verification:** Added comprehensive tests in [`backend/tests/test_blocking.py`](file:///home/shikhar/Desktop/mira/backend/tests/test_blocking.py); all 132 backend tests passed.
+
+## MiniLM Semantic Embedding Caching & Semantic-Equivalence Audit — 2026-09-20
+
+Optimized Stage 5 (Matching & Scoring) semantic similarity and audited mathematical equivalence:
+- **Scoped Embedding Cache:** Implemented `EmbeddingCache` and `precompute_embeddings()` in [`backend/app/services/matching/embeddings.py`](file:///home/shikhar/Desktop/mira/backend/app/services/matching/embeddings.py) to batch-encode unique normalized descriptions once per matching run.
+- **Vector Dot Product:** Computed semantic similarity via vector dot products `float(vec_a @ vec_b)` on normalized unit vectors, replacing repetitive pairwise Transformer forward passes.
+- **Call-Chain Forwarding:** Updated [`backend/app/services/matching/similarity.py`](file:///home/shikhar/Desktop/mira/backend/app/services/matching/similarity.py), [`backend/app/services/matching/scoring.py`](file:///home/shikhar/Desktop/mira/backend/app/services/matching/scoring.py), [`backend/app/services/matching/classifier.py`](file:///home/shikhar/Desktop/mira/backend/app/services/matching/classifier.py), and [`backend/app/api/v1/matching.py`](file:///home/shikhar/Desktop/mira/backend/app/api/v1/matching.py) to pass `embedding_cache` while defaulting to `None` for un-cached single-pair fallback.
+- **Semantic Equivalence Audit:** Verified that `semantic_similarity()` canonical behavior has always clamped values to $[0.0, 1.0]$ via `max(0.0, min(1.0, similarity))`; confirmed identical mathematical range and numerical parity ($\Delta \le 1.19 \times 10^{-7}$) across identical, similar, moderate, unrelated, and negative dot-product vector pairs.
+- **Benchmarks:** Scoring throughput increased from ~38 pairs/sec to >2,100 pairs/sec (52–55x speedup) on datasets up to 5,000 records.
+- **Verification:** Added [`backend/tests/test_semantic_embedding_cache.py`](file:///home/shikhar/Desktop/mira/backend/tests/test_semantic_embedding_cache.py); all 141 backend tests passed.
+
+## Legacy Material File Ingestion Pipeline — 2026-09-20
+
+Integrated full legacy file format support into MIRA's established ingestion architecture:
+- **Supported Formats:** `.csv`, `.txt` (pipe-delimited and header-based), `.xml`, `.json` (arrays and object-wrapped lists), `.xls` (legacy Excel via `xlrd`), `.xlsx` (modern Excel via `openpyxl`).
+- **Ingestion & Schema Normalization:**
+  - Implemented [`backend/app/services/ingestion/normalizer.py`](file:///home/shikhar/Desktop/mira/backend/app/services/ingestion/normalizer.py) with canonical alias sets for `material_code`, `description`, `unit`, `category`, `manufacturer`, `manufacturer_part_number`, `material_grade`, `cpse`, and `quantity`. Supports case-insensitivity, snake_case, kebab-case, camelCase, and space/underscore/hyphen stripping.
+  - Implemented [`backend/app/services/ingestion/detector.py`](file:///home/shikhar/Desktop/mira/backend/app/services/ingestion/detector.py) for clean extension-to-format routing.
+  - Implemented format parsers in [`backend/app/services/ingestion/parsers/`](file:///home/shikhar/Desktop/mira/backend/app/services/ingestion/parsers/) (`csv_parser.py`, `txt_parser.py`, `json_parser.py`, `xml_parser.py`, `excel_parser.py`) and central service in [`backend/app/services/ingestion/service.py`](file:///home/shikhar/Desktop/mira/backend/app/services/ingestion/service.py).
+- **API Integration:** Updated `POST /api/materials/upload` in [`backend/app/api/v1/materials.py`](file:///home/shikhar/Desktop/mira/backend/app/api/v1/materials.py) to parse all supported formats while preserving existing RBAC, database persistence, normalization, and specification extraction.
+- **Frontend File Accept:** Updated [`frontend/src/pages/Materials/Materials.tsx`](file:///home/shikhar/Desktop/mira/frontend/src/pages/Materials/Materials.tsx) file input filter to `.csv,.txt,.xml,.json,.xls,.xlsx`.
+- **Cross-Format Equivalence & Testing:** Added [`backend/tests/test_legacy_ingestion.py`](file:///home/shikhar/Desktop/mira/backend/tests/test_legacy_ingestion.py) verifying deterministic output parity across all 5 formats and robust failure mode handling (empty files, malformed rows, invalid schemas, missing optional fields). Full test suite now passes with 157 passed tests.

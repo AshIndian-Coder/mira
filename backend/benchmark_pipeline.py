@@ -20,6 +20,7 @@ from app.services.blocking.service import (
     generate_candidates as blocking_generate_candidates,
 )
 from app.services.matching.classifier import classify_match
+from app.services.matching.embeddings import precompute_embeddings
 from app.services.harmonization.service import build_common_material_record
 from app.services.cnmc.service import generate_or_get_cnmc
 
@@ -146,10 +147,30 @@ def benchmark_dataset(size: int):
     ]
     material_index = {m["id"]: m for m in enriched_materials}
     
+    # Build inverted block index and precompute keys
+    block_index = {}
+    material_block_keys = {}
+    blocker_by_id = {}
+    target_order = {}
+    for idx, bo in enumerate(blocker_objects):
+        blocker_by_id[bo.id] = bo
+        target_order[bo.id] = idx
+        keys = generate_block_keys(bo)
+        material_block_keys[bo.id] = keys
+        for key in keys:
+            block_index.setdefault(key, []).append(bo.id)
+
     seen_pairs = set()
     candidate_pairs = []
     for source_bo in blocker_objects:
-        raw_cands = blocking_generate_candidates(source_bo, blocker_objects)
+        source_keys = material_block_keys[source_bo.id]
+        raw_cands = blocking_generate_candidates(
+            source_bo,
+            block_index=block_index,
+            target_map=blocker_by_id,
+            target_order=target_order,
+            source_keys=source_keys,
+        )
         raw_cands = raw_cands[:50]  # default max_candidates_per_material
         for target_bo in raw_cands:
             source_mat = material_index[source_bo.id]
@@ -179,9 +200,14 @@ def benchmark_dataset(size: int):
     gc.collect()
     tracemalloc.start()
     t0 = time.perf_counter()
+    unique_descriptions = {
+        m.get("normalized_description") or m.get("description", "")
+        for m in enriched_materials
+    }
+    embedding_cache = precompute_embeddings(unique_descriptions)
     scored_candidates = []
     for pair in eval_pairs:
-        res = classify_match(pair[0], pair[1])
+        res = classify_match(pair[0], pair[1], embedding_cache=embedding_cache)
         scored_candidates.append(res)
     t_score = time.perf_counter() - t0
     current_mem, peak_mem = tracemalloc.get_traced_memory()

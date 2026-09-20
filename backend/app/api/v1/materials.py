@@ -7,6 +7,7 @@ from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
 from app.core.rbac import require_permission
 from app.core.security import get_current_active_user
 from app.models.user import User
+from app.services.ingestion.service import parse_legacy_file
 from app.services.normalization.service import normalize_material_description
 from app.services.parsing.service import parse_specifications
 from app import store
@@ -19,16 +20,19 @@ async def upload_materials_csv(
     file: UploadFile = File(...),
     current_user: User = Depends(require_permission("upload_data")),
 ):
-    """Upload CSV containing CPSE material master records."""
-    if not file.filename or not file.filename.endswith(".csv"):
-        raise HTTPException(status_code=400, detail="File must be a CSV format")
+    """Upload material master records in legacy formats (CSV, TXT, XML, JSON, XLS, XLSX)."""
+    if not file.filename:
+        raise HTTPException(status_code=400, detail="Filename must be provided")
 
     content = await file.read()
-    decoded = content.decode("utf-8-sig")
-    reader = csv.DictReader(io.StringIO(decoded))
+
+    try:
+        raw_rows = parse_legacy_file(content, file.filename)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
 
     new_records: list[dict[str, Any]] = []
-    for row in reader:
+    for row in raw_rows:
         cpse = row.get("cpse") or row.get("source_org") or "CPSE_GENERIC"
         code = (
             row.get("material_code")
@@ -58,7 +62,7 @@ async def upload_materials_csv(
             "parsed_specifications": {
                 k: v for k, v in parsed.items() if v is not None
             },
-            "other_attributes": {},
+            "other_attributes": row.get("other_attributes") or {},
         }
         new_records.append(record)
 

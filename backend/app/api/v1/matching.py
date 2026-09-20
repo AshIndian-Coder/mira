@@ -24,6 +24,7 @@ from app.services.blocking.service import (
     generate_candidates as blocking_generate_candidates,
 )
 from app.services.matching.classifier import classify_match
+from app.services.matching.embeddings import precompute_embeddings
 from app.services.normalization.service import normalize_material_description
 from app.services.parsing.service import parse_specifications
 
@@ -154,10 +155,18 @@ def run_batch_matching(
     blocker_objects = [_store_material_to_blocker(m) for m in store.MATERIALS]
     material_index: dict[int, dict[str, Any]] = {m["id"]: m for m in store.MATERIALS}
 
-    # --- Build inverted block index ---
+    # --- Build inverted block index and precompute keys ---
     block_index: dict[str, list[int]] = {}
-    for bo in blocker_objects:
-        for key in generate_block_keys(bo):
+    material_block_keys: dict[int, set[str]] = {}
+    blocker_by_id: dict[int, MaterialForBlocking] = {}
+    target_order: dict[int, int] = {}
+
+    for idx, bo in enumerate(blocker_objects):
+        blocker_by_id[bo.id] = bo
+        target_order[bo.id] = idx
+        keys = generate_block_keys(bo)
+        material_block_keys[bo.id] = keys
+        for key in keys:
             block_index.setdefault(key, []).append(bo.id)
 
     # --- Track already-evaluated pairs to avoid duplicates ---
@@ -166,11 +175,26 @@ def run_batch_matching(
         for c in store.CANDIDATES
     }
 
+    # --- Precompute unique description embeddings for batch ---
+    unique_descriptions = {
+        m.get("normalized_description") or m.get("description", "")
+        for m in store.MATERIALS
+        if m.get("normalized_description") or m.get("description")
+    }
+    embedding_cache = precompute_embeddings(unique_descriptions)
+
     new_candidates: list[dict[str, Any]] = []
     total_pairs_evaluated = 0
 
     for source_bo in blocker_objects:
-        raw_candidates = blocking_generate_candidates(source_bo, blocker_objects)
+        source_keys = material_block_keys[source_bo.id]
+        raw_candidates = blocking_generate_candidates(
+            source_bo,
+            block_index=block_index,
+            target_map=blocker_by_id,
+            target_order=target_order,
+            source_keys=source_keys,
+        )
 
         # Cap per source material to avoid O(n²) explosion on large datasets
         raw_candidates = raw_candidates[: request.max_candidates_per_material]
@@ -189,7 +213,7 @@ def run_batch_matching(
             seen_pairs.add(pk)
             total_pairs_evaluated += 1
 
-            result = classify_match(source_mat, target_mat)
+            result = classify_match(source_mat, target_mat, embedding_cache=embedding_cache)
 
             candidate: dict[str, Any] = {
                 "id": store.next_candidate_id(),

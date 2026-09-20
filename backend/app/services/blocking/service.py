@@ -140,11 +140,70 @@ def generate_block_keys(
     return keys
 
 
-def generate_candidates(source, targets):
+def build_block_index(
+    materials: list[MaterialForBlocking],
+) -> dict[str, list[int]]:
+    """Build an inverted block index mapping each block key to a list of material IDs."""
+    block_index: dict[str, list[int]] = {}
+    for material in materials:
+        for key in generate_block_keys(material):
+            block_index.setdefault(key, []).append(material.id)
+    return block_index
 
-    source_keys = generate_block_keys(source)
+
+def generate_candidates(
+    source: MaterialForBlocking,
+    targets: list[MaterialForBlocking] | None = None,
+    *,
+    block_index: dict[str, list[int]] | None = None,
+    target_map: dict[int, MaterialForBlocking] | None = None,
+    target_order: dict[int, int] | None = None,
+    source_keys: set[str] | None = None,
+) -> list[MaterialForBlocking]:
+    """
+    Generate candidate target materials that share at least one block key with source.
+
+    If block_index is provided, uses inverted index lookup for O(1) candidate retrieval
+    without recomputing target block keys. Otherwise falls back to evaluating targets directly.
+    """
+    if source_keys is None:
+        source_keys = generate_block_keys(source)
 
     if not source_keys:
+        return []
+
+    if block_index is not None:
+        if target_map is None:
+            if targets is None:
+                raise ValueError(
+                    "Either target_map or targets must be provided when block_index is used"
+                )
+            target_map = {t.id: t for t in targets}
+
+        matching_ids: set[int] = set()
+        for key in source_keys:
+            for tid in block_index.get(key, ()):
+                if tid != source.id and tid in target_map:
+                    matching_ids.add(tid)
+
+        if not matching_ids:
+            return []
+
+        if target_order is not None:
+            sorted_ids = sorted(
+                matching_ids, key=lambda tid: target_order.get(tid, 0)
+            )
+        elif targets is not None:
+            order_map = {t.id: i for i, t in enumerate(targets)}
+            sorted_ids = sorted(
+                matching_ids, key=lambda tid: order_map.get(tid, 0)
+            )
+        else:
+            sorted_ids = sorted(matching_ids)
+
+        return [target_map[tid] for tid in sorted_ids]
+
+    if targets is None:
         return []
 
     candidates = []

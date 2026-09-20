@@ -164,9 +164,15 @@ def specification_similarity(
 # Compatibility wrapper used by the scorer.
 # Keeps semantic embedding logic in embeddings.py while exposing
 # the expected similarity API.
-def semantic_similarity(text_a: str, text_b: str) -> float:
-    from app.services.matching.embeddings import semantic_similarity as _semantic_similarity
-    return _semantic_similarity(text_a, text_b)
+def semantic_similarity(
+    text_a: str,
+    text_b: str,
+    embedding_cache: Any = None,
+) -> float:
+    from app.services.matching.embeddings import (
+        semantic_similarity as _semantic_similarity,
+    )
+    return _semantic_similarity(text_a, text_b, embedding_cache=embedding_cache)
 
 
 # =========================================================

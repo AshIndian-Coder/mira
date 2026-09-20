@@ -18,6 +18,7 @@ OTHER_ATTRIBUTES_WEIGHT = 0.10
 def calculate_match_score(
     source: dict[str, Any],
     target: dict[str, Any],
+    embedding_cache: Any = None,
 ) -> dict[str, float]:
     text_score = text_similarity(
         source.get("normalized_description", ""),
@@ -27,6 +28,7 @@ def calculate_match_score(
     semantic_score = semantic_similarity(
         source.get("normalized_description", ""),
         target.get("normalized_description", ""),
+        embedding_cache=embedding_cache,
     )
 
     specification_score = specification_similarity(
