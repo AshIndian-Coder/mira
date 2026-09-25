@@ -44,18 +44,42 @@ def parse_excel(content_or_path: bytes | str, filename: str = "") -> list[dict[s
     # PK\x03\x04 indicates zip/xlsx, \xD0\xCF\x11\xE0 indicates ole/xls
     is_xlsx = ext == ".xlsx" or raw_bytes.startswith(b"PK\x03\x04")
 
-    rows_data: list[list[Any]] = []
+    all_records: list[dict[str, Any]] = []
 
     if is_xlsx:
         try:
             import openpyxl
 
             wb = openpyxl.load_workbook(io.BytesIO(raw_bytes), data_only=True, read_only=True)
-            sheet = wb.active
-            if sheet is None:
-                return []
-            for row in sheet.iter_rows(values_only=True):
-                rows_data.append([_format_cell_value(c) for c in row])
+            for sheet_name in wb.sheetnames:
+                sheet = wb[sheet_name]
+                sheet_rows: list[list[Any]] = []
+                for row in sheet.iter_rows(values_only=True):
+                    sheet_rows.append([_format_cell_value(c) for c in row])
+
+                # Find header row in this sheet
+                header_idx = -1
+                for idx, row in enumerate(sheet_rows):
+                    if any(c is not None for c in row):
+                        header_idx = idx
+                        break
+
+                if header_idx == -1:
+                    continue
+
+                headers = [str(c) if c is not None else f"col_{i}" for i, c in enumerate(sheet_rows[header_idx])]
+                for row in sheet_rows[header_idx + 1 :]:
+                    if not any(c is not None for c in row):
+                        continue
+                    row_dict: dict[str, Any] = {}
+                    for h, v in zip(headers, row):
+                        if v is not None:
+                            row_dict[h] = v
+                    if row_dict:
+                        normalized = normalize_record_keys(row_dict)
+                        if normalized:
+                            normalized["_sheet_name"] = sheet_name
+                            all_records.append(normalized)
             wb.close()
         except Exception as exc:
             raise ValueError(f"Malformed XLSX file: {exc}")
@@ -64,41 +88,40 @@ def parse_excel(content_or_path: bytes | str, filename: str = "") -> list[dict[s
             import xlrd
 
             wb = xlrd.open_workbook(file_contents=raw_bytes)
-            sheet = wb.sheet_by_index(0)
-            for row_idx in range(sheet.nrows):
-                row_vals = [
-                    _format_cell_value(sheet.cell_value(row_idx, col_idx))
-                    for col_idx in range(sheet.ncols)
-                ]
-                rows_data.append(row_vals)
+            for sheet_idx in range(wb.nsheets):
+                sheet = wb.sheet_by_index(sheet_idx)
+                sheet_name = sheet.name
+                sheet_rows = []
+                for row_idx in range(sheet.nrows):
+                    row_vals = [
+                        _format_cell_value(sheet.cell_value(row_idx, col_idx))
+                        for col_idx in range(sheet.ncols)
+                    ]
+                    sheet_rows.append(row_vals)
+
+                header_idx = -1
+                for idx, row in enumerate(sheet_rows):
+                    if any(c is not None for c in row):
+                        header_idx = idx
+                        break
+
+                if header_idx == -1:
+                    continue
+
+                headers = [str(c) if c is not None else f"col_{i}" for i, c in enumerate(sheet_rows[header_idx])]
+                for row in sheet_rows[header_idx + 1 :]:
+                    if not any(c is not None for c in row):
+                        continue
+                    row_dict = {}
+                    for h, v in zip(headers, row):
+                        if v is not None:
+                            row_dict[h] = v
+                    if row_dict:
+                        normalized = normalize_record_keys(row_dict)
+                        if normalized:
+                            normalized["_sheet_name"] = sheet_name
+                            all_records.append(normalized)
         except Exception as exc:
             raise ValueError(f"Malformed XLS file: {exc}")
 
-    # Find the header row (first row with non-empty values)
-    header_idx = -1
-    for idx, row in enumerate(rows_data):
-        if any(c is not None for c in row):
-            header_idx = idx
-            break
-
-    if header_idx == -1:
-        return []
-
-    headers = [str(c) if c is not None else f"col_{i}" for i, c in enumerate(rows_data[header_idx])]
-    records: list[dict[str, Any]] = []
-
-    for row in rows_data[header_idx + 1 :]:
-        if not any(c is not None for c in row):
-            continue
-
-        row_dict: dict[str, Any] = {}
-        for h, v in zip(headers, row):
-            if v is not None:
-                row_dict[h] = v
-
-        if row_dict:
-            normalized = normalize_record_keys(row_dict)
-            if normalized:
-                records.append(normalized)
-
-    return records
+    return all_records

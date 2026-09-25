@@ -1,0 +1,92 @@
+pair_id,category,pair_type,hard_negative_field,final_score,differences,desc_a,desc_b
+P0067580,PIPE,HN_CORRUPT,schedule,0.8886,,Supply Of Jindal Pipe Ss304 Nb 80 (3.1 In) Sch80 Pn Pipe-Ss3048080,pipe ss304 nb 80 (3.1 in) sch 80
+P0067589,PIPE,HN_CORRUPT,material_grade,0.8926,"nominal_bore: {'value': 304.0, 'unit': 'NB'} != None",PIPE SS 304 NB 80 (3.1 IN) SCH 80,PPIE SS304 NB 80 (3.1 IN) SCH 80
+P0068226,PIPE,HN_CORRUPT,schedule,0.95,,Tata Pipe Ss316 Nb 400 (15.7 In) Sch 40,pipe ss316 nb 400 (15.7 in) sch40
+P0068424,PIPE,HN_CORRUPT,schedule,0.9098,,PIPE SS316 NB 400 (15.7 IN) SCH40 MAKE ISMT PN PIPE-SS31640040,pipe ss316 nb 400 (15.7 in) sch 40
+P0069077,PIPE,HN_CORRUPT,schedule,0.953,,PIPE SS316 NB 400 (15.7 IN) SCH 40 OR EQUIVALENT,PIPE SS316 NB 400 (15.7 IN) SCH40
+P0069323,PIPE,HN_CORRUPT,material_grade,0.894,"nominal_bore: None != {'value': 304.0, 'unit': 'NB'}",jindal pipe ss304 nb 600 (23.6 in) sch 40  ,pipe ss 304 nb 600 (23.6 in) sch 40 make ismt pn pipe-ss30460040
+P0069426,PIPE,HN_CORRUPT,standard,0.9406,,Jindal PIPE SS304 NB 80 (3.1 IN) SCH 80 PN PIPE-SS3048080,Pipe Ss304 Nb 80 (3.1 In) Sch 80 Make Ismt Pn Pipe-Ss3048080
+P0069529,PIPE,HN_CORRUPT,schedule,0.8732,,ISMT PIPE SS 316 NB 200 (7.9 IN) SCH 40 PN PIPE-SS31620040,PIPE SS 316 NB 200 (7.9 IN) SCH40 MAKE Jindal
+P0069622,PIPE,HN_CORRUPT,schedule,0.903,"nominal_bore: None != {'value': 304.0, 'unit': 'NB'}",PIPE SS304 NB 80 (3.1 IN) SCH80,Pipe Ss 304 Nb 80 (3.1 In) Sch 80 Make Jindal
+P0069897,PIPE,HN_CORRUPT,size_or_model,0.8868,,PIPE SS304 NB 80 (3.1 IN) SCHEDULE 80 FOR UNIT-1,Tata PIPE SS304 NB 80 (3.1 IN) SCH 80
+P0069960,PIPE,HN_CORRUPT,size_or_model,0.9268,,PIPE SS316 NB 200 (7.9 IN) SCH XS,Tata PIPE SS316 NB 200 (7.9 IN) SCH XS FOR UNIT-6
+P0070102,PIPE,HN_CORRUPT,material_grade,0.9796,"nominal_bore: {'value': 316.0, 'unit': 'NB'} != None",PIPE SS 316 NB 200 (7.9 IN) SCH XS,PIPE SS316 NB 200 (7.9 IN) SCH XS
+P0070274,PIPE,HN_CORRUPT,material_grade,0.9461,"nominal_bore: {'value': 304.0, 'unit': 'NB'} != None",PIPE SS 304 NB 600 (23.6 IN) SCH 40  ,Supply Of Pipe Ss304 Nb 600 (23.6 In) Sch 40
+P0070406,PIPE,HN_CORRUPT,standard,0.9278,,PIPE SS316 NB 200 (7.9 IN) SCHXS MAKE ISMT,Pipe Ss316 Nb 200 (7.9 In) Sch Xs
+P0070531,PIPE,HN_CORRUPT,schedule,0.9923,,Pipe Ss316 Nb 400 (15.7 In) Sch40,pipe ss316 nb 400 (15.7 in) sch 40
+P0070894,PIPE,HN_CORRUPT,material_grade,0.9155,,Pipe Ss304 Nb 80 (3.1 In) Sch 80,Pipe Ss304 Nb 80 (3.1 In) Sch 80 Make Ismt Pn Pipe-Ss3048080
+P0070912,PIPE,HN_CORRUPT,material_grade,0.966,"nominal_bore: {'value': 316.0, 'unit': 'NB'} != None",PIPE SS 316 NB 200 (7.9 IN) SCH XS,pipe ss316 nb 200 (7.9 in) schxs
+P0071027,PIPE,HN_CORRUPT,unrecognized_field,0.9573,,Tata PIPE SS316 NB 400 (15.7 IN) SCH 40,pipe ss316 nb 400 (15.7 in) sch 40
+P0071107,PIPE,HN_CORRUPT,schedule,0.9512,,Pipe Ss304 Nb 600 (23.6 In) Sch 40 For Unit-7,Pipe Ss304 Nb 600 (23.6 In) Sch40
+P0071217,PIPE,HN_CORRUPT,unrecognized_field,0.8696,,Pipe Ss316 Nb 400 (15.7 In) Sch 40,ppie ss316 nb 400 (15.7 in) schedule 40
+P0071487,PIPE,HN_CORRUPT,material_grade,0.8912,"nominal_bore: {'value': 316.0, 'unit': 'NB'} != None",PIPE SS 316 NB 200 (7.9 IN) SCH XS,PIPE SS316 NB 200 (7.9 IN) SCH XS MAKE Tata PN PIPE-SS316200XS
+P0071556,PIPE,HN_CORRUPT,material_grade,0.877,,PIPE SS316 NB 200 (7.9 IN) SCHEDULE 40 MAKE ISMT PN PIPE-SS31620040,Pipe Ss316 Nb 200 (7.9 In) Sch 40
+P0071631,PIPE,HN_CORRUPT,material_grade,0.8782,"nominal_bore: {'value': 304.0, 'unit': 'NB'} != None",PIPE SS 304 NB 80 (3.1 IN) SCH 80,pipe ss304 nb 80 (3.1 in) sch 80 make tata pn pipe-ss3048080
+P0071757,PIPE,HN_CORRUPT,material_grade,0.8753,"nominal_bore: {'value': 304.0, 'unit': 'NB'} != None",pipe ss 304 nb 600 (23.6 in) sch 40 for unit-2,ppie ss304 nb 600 (23.6 in) sch 40
+P0071920,PIPE,HN_CORRUPT,material_grade,0.935,"nominal_bore: None != {'value': 316.0, 'unit': 'NB'}",PIPE SS316 NB 200 (7.9 IN) SCHEDULE 40 MAKE ISMT PN PIPE-SS31620040,pipe ss 316 nb 200 (7.9 in) sch 40 make tata pn pipe-ss31620040
+P0072176,PIPE,HN_CORRUPT,unrecognized_field,0.9298,,PIPE SS316 NB 200 (7.9 IN) SCHEDULE XS FOR UNIT-6,Tata PIPE SS316 NB 200 (7.9 IN) SCH XS FOR UNIT-6
+P0072597,PIPE,HN_CORRUPT,schedule,0.951,,Jindal PIPE SS316 NB 400 (15.7 IN) SCH 40,PIPE SS316 NB 400 (15.7 IN) SCH40
+P0072674,PIPE,HN_CORRUPT,unrecognized_field,0.9286,,Jindal PIPE SS316 NB 400 (15.7 IN) SCH 40,PIPE SS316 NB 400 (15.7 IN) SCH 40 OR EQ
+P0072761,PIPE,HN_CORRUPT,material_grade,0.8701,"nominal_bore: {'value': 316.0, 'unit': 'NB'} != None",PIPE SS 316 NB 200 (7.9 IN) SCH40 MAKE Jindal,Supply Of Ismt Pipe Ss316 Nb 200 (7.9 In) Sch40 Or Equivalent
+P0072890,PIPE,HN_CORRUPT,material_grade,0.9273,"nominal_bore: None != {'value': 316.0, 'unit': 'NB'}",Pipe Ss316 Nb 200 (7.9 In) Schxs Or Equivalent,pipe ss 316 nb 200 (7.9 in) sch xs
+P0072917,PIPE,HN_CORRUPT,unrecognized_field,0.9627,,PIPE SS304 NB 80 (3.1 IN) SCH 80,PIPE SS304 NB 80 (3.1 IN) SCH 80 MAKE Ta
+P0073005,PIPE,HN_CORRUPT,material_grade,0.9153,,PIPE SS316 NB 200 (7.9 IN) SCH 40,ismt pipe ss316 nb 200 (7.9 in) sch 40 pn pipe-ss31620040
+P0073124,PIPE,HN_CORRUPT,material_grade,0.9146,,pipe ss316 nb 400 (15.7 in) sch 40,tata pipe ss316 nb 400 (15.7 in) sch 40 pn pipe-ss31640040
+P0073129,PIPE,HN_CORRUPT,schedule,0.8886,,PIPE SS304 NB 80 (3.1 IN) SCH 80,Supply Of Jindal Pipe Ss304 Nb 80 (3.1 In) Sch80 Pn Pipe-Ss3048080
+P0073266,PIPE,HN_CORRUPT,schedule,0.8828,,PIPE SS304 NB 600 (23.6 IN) SCH40 MAKE Jindal PN PIPE-SS30460040,ismt pipe ss304 nb 600 (23.6 in) sch 40
+P0073271,PIPE,HN_CORRUPT,material_grade,0.9067,"nominal_bore: {'value': 316.0, 'unit': 'NB'} != None",Tata PIPE SS 316 NB 200 (7.9 IN) SCH 40 PN PIPE-SS31620040,pipe ss316 nb 200 (7.9 in) sch 40
+P0073341,PIPE,HN_CORRUPT,material_grade,0.8647,,PIEP SS316 NB 400 (15.7 IN) SCH 40,PIPE SS316 NB 400 (15.7 IN) SCH 40 MAKE Jindal PN PIPE-SS31640040
+P0073607,PIPE,HN_CORRUPT,schedule,0.8803,,Pipe Ss316 Nb 200 (7.9 In) Schedule 40,Tata Pipe Ss316 Nb 200 (7.9 In) Sch40 Pn Pipe-Ss31620040
+P0073724,PIPE,HN_CORRUPT,material_grade,0.9185,"nominal_bore: {'value': 316.0, 'unit': 'NB'} != None",PIPE STAINLESS STEEL 316 NB 400 (15.7 IN) SCH 40,Pipe Ss316 Nb 400 (15.7 In) Sch 40
+P0073924,PIPE,HN_CORRUPT,unrecognized_field,0.9418,,PIPE SS316 NB 400 (15.7 IN) SCH 40,PIPE SS316 NB 400 (15.7 IN) SCHEDULE 40
+P0073990,PIPE,HN_CORRUPT,material_grade,0.8969,,PIPE SS304 NB 80 (3.1 IN) SCH 80,Pipe Ss304 Nb 80 (3.1 In) Sch 80 Make Jindal Pn Pipe-Ss3048080 For Unit-1
+P0074031,PIPE,HN_CORRUPT,material_grade,0.9067,"nominal_bore: None != {'value': 316.0, 'unit': 'NB'}",PIPE SS316 NB 200 (7.9 IN) SCH 40,Tata PIPE SS 316 NB 200 (7.9 IN) SCH 40 PN PIPE-SS31620040
+P0074228,PIPE,HN_CORRUPT,schedule,0.9083,,Pipe Ss304 Nb 600 (23.6 In) Sch40,ismt pipe ss304 nb 600 (23.6 in) sch 40 pn pipe-ss30460040
+P0074534,PIPE,HN_CORRUPT,material_grade,0.9134,,PIPE SS304 NB 80 (3.1 IN) SCH 80,PIPE SS304 NB 80 (3.1 IN) SCH 80 MAKE Jindal PN PIPE-SS3048080
+P0074738,PIPE,HN_CORRUPT,unrecognized_field,0.9048,,PIPE SS 316 NB 200 (7.9 IN) SCH XS,Pipe Ss 316 Nb 200 (7.9 In) Sch Xs Make Tata Pn Pipe-Ss316200Xs
+P0075561,PIPE,HN_CORRUPT,material_grade,0.9334,"nominal_bore: {'value': 316.0, 'unit': 'NB'} != None",Jindal PIPE SS 316 NB 200 (7.9 IN) SCHEDULE 40 PN PIPE-SS31620040,PIPE SS316 NB 200 (7.9 IN) SCHEDULE 40 MAKE ISMT PN PIPE-SS31620040
+P0075588,PIPE,HN_CORRUPT,material_grade,0.8648,,ISMT PIPE SS304 NB 600 (23.6 IN) SCHEDULE 40 PN PIPE-SS30460040,supply of pipe ss304 nb 600 (23.6 in) sch 40
+P0076311,PIPE,HN_CORRUPT,material_grade,0.9485,"nominal_bore: {'value': 304.0, 'unit': 'NB'} != None",PIPE SS 304 NB 600 (23.6 IN) SCH 40,jindal pipe ss304 nb 600 (23.6 in) sch 40
+P0076348,PIPE,HN_CORRUPT,schedule,0.9434,,piep ss316 nb 200 (7.9 in) sch 40,pipe ss316 nb 200 (7.9 in) sch40
+P0076691,PIPE,HN_CORRUPT,material_grade,0.8896,"nominal_bore: {'value': 304.0, 'unit': 'NB'} != None",Pipe Ss 304 Nb 80 (3.1 In) Sch 80 Make Jindal,SUPPLY OF PIPE SS304 NB 80 (3.1 IN) SCH 80
+P0076930,PIPE,HN_CORRUPT,unrecognized_field,0.9086,,Pipe Ss316 Nb 200 (7.9 In) Schedule 40,SUPPLY OF PIPE SS316 NB 200 (7.9 IN) SCH 40
+P0077090,PIPE,HN_CORRUPT,schedule,0.9116,"nominal_bore: None != {'value': 316.0, 'unit': 'NB'}",ISMT PIPE SS316 NB 200 (7.9 IN) SCH 40 PN PIPE-SS31620040,Pipe Ss 316 Nb 200 (7.9 In) Sch40 Make Tata Pn Pipe-Ss31620040 For Unit-8
+P0077348,PIPE,HN_CORRUPT,material_grade,0.8717,,IPPE SS316 NB 400 (15.7 IN) SCH40,PIPE SS316 NB 400 (15.7 IN) SCH40 MAKE ISMT PN PIPE-SS31640040
+P0077533,PIPE,HN_CORRUPT,schedule,0.9876,,PIPE SS304 NB 80 (3.1 IN) SCH 80,PIPE SS304 NB 80 (3.1 IN) SCH80
+P0078608,PIPE,HN_CORRUPT,standard,0.895,,PIPE SS304 NB 80 (3.1 IN) SCHEDULE 80,Pipe Ss304 Nb 80 (3.1 In) Sch 80 Make Ismt
+P0078752,PIPE,HN_CORRUPT,schedule,0.9511,,ISMT PIPE SS304 NB 600 (23.6 IN) SCH 40,Pipe Ss304 Nb 600 (23.6 In) Sch40
+P0078780,PIPE,HN_CORRUPT,material_grade,0.8869,"nominal_bore: None != {'value': 316.0, 'unit': 'NB'}",ISMT PIPE SS316 NB 200 (7.9 IN) SCH XS PN PIPE-SS316200XS,Jindal PIPE SS 316 NB 200 (7.9 IN) SCH XS
+P0078922,PIPE,HN_CORRUPT,material_grade,0.8585,"nominal_bore: None != {'value': 316.0, 'unit': 'NB'}",PIPE SS316 NB 200 (7.9 IN) SCH XS MAKE Tata PN PIPE-SS316200XS,pipe stainless steel 316 nb 200 (7.9 in) sch xs
+P0079016,PIPE,HN_CORRUPT,material_grade,0.9522,"nominal_bore: {'value': 304.0, 'unit': 'NB'} != None",pipe ss 304 nb 600 (23.6 in) sch 40 make,pipe ss304 nb 600 (23.6 in) sch 40 make ismt
+P0079155,PIPE,HN_CORRUPT,schedule,0.8706,"nominal_bore: None != {'value': 304.0, 'unit': 'NB'}",PIPE SS304 NB 600 (23.6 IN) SCH40 AMKE Tata PN PIPE-SS30460040,jindal pipe ss 304 nb 600 (23.6 in) sch 40 for unit-2
+P0079493,PIPE,HN_CORRUPT,standard,0.944,,ISMT PIPE SS316 NB 400 (15.7 IN) SCH 40,Tata Pipe Ss316 Nb 400 (15.7 In) Sch 40
+P0079906,PIPE,HN_CORRUPT,size_or_model,0.9167,,PIEP SS316 NB 200 (7.9 IN) SCH XS,Pipe Ss316 Nb 200 (7.9 In) Sch Xs For Unit-9
+P0079981,PIPE,HN_CORRUPT,material_grade,0.898,"nominal_bore: {'value': 304.0, 'unit': 'NB'} != None",Ppie Ss 304 Nb 80 (3.1 In) Sch 80,Tata PIPE SS304 NB 80 (3.1 IN) SCH 80
+P0080087,PIPE,HN_CORRUPT,unrecognized_field,0.9578,,Jindal PIPE SS 316 NB 200 (7.9 IN) SCH XS,PIPE SS 316 NB 200 (7.9 IN) SCH XS
+P0080258,PIPE,HN_CORRUPT,schedule,0.9439,,Jindal PIPE SS316 NB 400 (15.7 IN) SCH 40,PIPE SS316 NB 400 (15.7 IN) SCH40 MAKE Jindal
+P0080347,PIPE,HN_CORRUPT,standard,0.9094,,PIPE SS316 NB 200 (7.9 IN) SCH XS MAKE Tata PN PIPE-SS316200XS,Pipe Ss316 Nb 200 (7.9 In) Sch Xs Make Ismt
+P0080401,PIPE,HN_CORRUPT,material_grade,0.9041,"nominal_bore: None != {'value': 304.0, 'unit': 'NB'}",PIPE SS304 NB 600 (23.6 IN) SCH 40 MAKE ISMT PN PIPE-SS30460040,Pipe Ss 304 Nb 600 (23.6 In) Sch 40
+P0080460,PIPE,HN_CORRUPT,material_grade,0.9214,"nominal_bore: None != {'value': 316.0, 'unit': 'NB'}",PIPE SS316 NB 400 (15.7 IN) SCH 40 MAKE Tata,pipe ss 316 nb 400 (15.7 in) sch 40
+P0080829,PIPE,HN_CORRUPT,material_grade,0.9433,"nominal_bore: {'value': 316.0, 'unit': 'NB'} != None",PIPE SS 316 NB 200 (7.9 IN) SCH 40,PIPE SS316 NB 200 (7.9 IN) SCH 40 FOR UNIT-5
+P0080848,PIPE,HN_CORRUPT,material_grade,0.8685,"nominal_bore: None != {'value': 304.0, 'unit': 'NB'}",PIPE SS304 NB 80 (3.1 IN) SCH 80,Tata PIPE STAINLESS STEEL 304 NB 80 (3.1 IN) SCH 80
+P0081184,PIPE,HN_CORRUPT,unrecognized_field,0.9324,,PIPE SS304 NB 80 (3.1 IN) SCH 80,ppie ss304 nb 80 (3.1 in) sch 80
+P0081208,PIPE,HN_CORRUPT,material_grade,0.9086,"nominal_bore: None != {'value': 304.0, 'unit': 'NB'}",PIPE SS304 NB 80 (3.1 IN) SCH80 FOR UNIT-8,tata pipe ss 304 nb 80 (3.1 in) sch80
+P0081246,PIPE,HN_CORRUPT,material_grade,0.8686,,PIPE SS304 NB 80 (3.1 IN) SCH 80 OR EQUIVALENT,PIPE SS304 NB 80 (3.1 IN) SCHEDULE 80 MAKE ISMT PN PIPE-SS3048080
+P0081374,PIPE,HN_CORRUPT,material_grade,0.9116,,PIPE SS304 NB 600 (23.6 IN) SCH 40 MAKE ISMT PN PIPE-SS30460040,pipe ss304 nb 600 (23.6 in) sch 40 for unit-5
+P0081589,PIPE,HN_CORRUPT,material_grade,0.9063,,Pipe Ss304 Nb 600 (23.6 In) Sch40,pipe ss304 nb 600 (23.6 in) sch40 make tata pn pipe-ss30460040
+P0081600,PIPE,HN_CORRUPT,material_grade,0.9158,"nominal_bore: None != {'value': 304.0, 'unit': 'NB'}",Pipe Ss304 Nb 80 (3.1 In) Sch 80,iPpe Ss 304 Nb 80 (3.1 In) Sch 80
+P0081664,PIPE,HN_CORRUPT,unrecognized_field,0.968,,PIPE SS304 NB 80 (3.1 IN) SCH 80 FOR UNIT-8,SUPPLY OF PIPE SS304 NB 80 (3.1 IN) SCH 80 FOR UNIT-8
+P0081931,PIPE,HN_CORRUPT,schedule,0.9505,,PIPE SS304 NB 80 (3.1 IN) SCH 80 FOR UNIT-1,Pipe Ss304 Nb 80 (3.1 In) Sch80
+P0082096,PIPE,HN_CORRUPT,size_or_model,0.9094,,PIPE SS 316 NB 200 (7.9 IN) SCH XS,pipe ss 316 nb 200 (7.9 in) schedule xs for unit-1
+P0082540,PIPE,HN_CORRUPT,size_or_model,0.8893,,Pipe Ss316 Nb 200 (7.9 In) Sch Xs For Unit-9,Supply Of Tata Pipe Ss316 Nb 200 (7.9 In) Sch Xs Pn Pipe-Ss316200Xs
+P0082573,PIPE,HN_CORRUPT,schedule,0.9475,,PIPE SS304 NB 80 (3.1 IN) SCH 80 MAKE IS,Pipe Ss304 Nb 80 (3.1 In) Sch80
+P0082857,PIPE,HN_CORRUPT,schedule,0.9392,"nominal_bore: None != {'value': 304.0, 'unit': 'NB'}",PIPE SS304 NB 600 (23.6 IN) SCH40,Supply Of Pipe Ss 304 Nb 600 (23.6 In) Sch 40
+P0082896,PIPE,HN_CORRUPT,schedule,0.9856,"nominal_bore: {'value': 304.0, 'unit': 'NB'} != None",PIPE SS 304 NB 600 (23.6 IN) SCH 40 MAKE Jindal,PIPE SS304 NB 600 (23.6 IN) SCH40 MAKE Jindal
+P0083022,PIPE,HN_CORRUPT,standard,0.9161,,PIPE SS316 NB 200 (7.9 IN) SCH XS MAKE Jindal,pipe ss316 nb 200 (7.9 in) sch xs make ismt pn pipe-ss316200xs
+P0083096,PIPE,HN_CORRUPT,material_grade,0.9133,,PIPE SS304 NB 600 (23.6 IN) SCH40,PIPE SS304 NB 600 (23.6 IN) SCH40 MAKE Jindal PN PIPE-SS30460040
+P0083169,PIPE,HN_CORRUPT,standard,0.9221,,PIPE SS316 NB 200 (7.9 IN) SCH 40 FOR UNIT-5,ismt pipe ss316 nb 200 (7.9 in) sch 40
+P0083582,PIPE,HN_CORRUPT,material_grade,0.8835,"nominal_bore: {'value': 316.0, 'unit': 'NB'} != None",Tata PIPE SS 316 NB 200 (7.9 IN) SCH XS PN PIPE-SS316200XS,pipe ss316 nb 200 (7.9 in) sch xs make jindal
+P0083910,PIPE,HN_CORRUPT,size_or_model,0.9312,,Pipe Ss316 Nb 200 (7.9 In) Sch Xs For Unit-9,supply of pipe ss316 nb 200 (7.9 in) sch xs
+P0084181,PIPE,HN_CORRUPT,material_grade,0.8791,"nominal_bore: None != {'value': 304.0, 'unit': 'NB'}",Piep Ss304 Nb 80 (3.1 In) Sch 80,pipe ss 304 nb 80 (3.1 in) sch 80 make tata
+P0085910,PIPE,HN_CORRUPT,size_or_model,0.918,,PIPE SS304 NB 600 (23.6 IN) SCHEDULE 40,Pipe Ss304 Nb 600 (23.6 In) Sch 40 For Unit-7
+P0086188,PIPE,HN_CORRUPT,standard,0.9213,,ISMT PIPE SS316 NB 200 (7.9 IN) SCH 40,pipe ss316 nb 200 (7.9 in) sch 40 or equivalent

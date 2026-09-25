@@ -1,0 +1,19 @@
+section,key,total,correct,incorrect,accuracy,extra
+margin_bucket,"[0.00, 0.01)",5,3,2,0.6,
+margin_bucket,"[0.01, 0.02)",7,6,1,0.8571,
+margin_bucket,"[0.02, 0.05)",11,11,0,1.0,
+margin_bucket,"[0.05, 0.10)",34,34,0,1.0,
+margin_bucket,"[0.10, 0.20)",104,104,0,1.0,
+margin_bucket,"[0.20, 1.00]",387,387,0,1.0,
+score_vs_margin_matrix,>=0.85 (High) x <0.02 (Tight),2,2,0,1.0,"HIGH:2, REV:0, DIFF:0"
+score_vs_margin_matrix,">=0.85 (High) x [0.02, 0.10) (Mod)",17,17,0,1.0,"HIGH:17, REV:0, DIFF:0"
+score_vs_margin_matrix,>=0.85 (High) x >=0.10 (Wide),300,300,0,1.0,"HIGH:255, REV:45, DIFF:0"
+score_vs_margin_matrix,"[0.65, 0.85) (Med) x <0.02 (Tight)",0,0,0,,"HIGH:0, REV:0, DIFF:0"
+score_vs_margin_matrix,"[0.65, 0.85) (Med) x [0.02, 0.10) (Mod)",9,9,0,1.0,"HIGH:0, REV:9, DIFF:0"
+score_vs_margin_matrix,"[0.65, 0.85) (Med) x >=0.10 (Wide)",90,90,0,1.0,"HIGH:0, REV:90, DIFF:0"
+score_vs_margin_matrix,"[0.50, 0.65) (Low) x <0.02 (Tight)",1,1,0,1.0,"HIGH:0, REV:0, DIFF:1"
+score_vs_margin_matrix,"[0.50, 0.65) (Low) x [0.02, 0.10) (Mod)",1,1,0,1.0,"HIGH:0, REV:0, DIFF:1"
+score_vs_margin_matrix,"[0.50, 0.65) (Low) x >=0.10 (Wide)",86,86,0,1.0,"HIGH:0, REV:0, DIFF:86"
+score_vs_margin_matrix,<0.50 (Diff) x <0.02 (Tight),9,6,3,0.6667,"HIGH:0, REV:0, DIFF:9"
+score_vs_margin_matrix,"<0.50 (Diff) x [0.02, 0.10) (Mod)",18,18,0,1.0,"HIGH:0, REV:0, DIFF:18"
+score_vs_margin_matrix,<0.50 (Diff) x >=0.10 (Wide),15,15,0,1.0,"HIGH:0, REV:0, DIFF:15"

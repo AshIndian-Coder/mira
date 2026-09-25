@@ -1,0 +1,269 @@
+{
+  "dataset_metadata": {
+    "source_master_records": "Final_Master_Material_Records.csv",
+    "source_pair_manifest": "Training_Pairs_MIRA_FINAL.csv",
+    "split": "heldout",
+    "established_cnmcs": 83,
+    "seed_materials": 166
+  },
+  "query_counts": {
+    "total_positive_queries": 712,
+    "zero_candidates": 1,
+    "one_candidate": 163,
+    "two_or_more_candidates": 548,
+    "percentage_ge_2_candidates": 76.97,
+    "total_hard_negative_queries": 841
+  },
+  "accuracy_metrics": {
+    "overall_top_1_accuracy": 0.9944,
+    "top_1_accuracy_ge_1_candidate": 0.9958,
+    "top_1_accuracy_single_candidate": 1.0,
+    "top_1_accuracy_multi_candidate": 0.9945
+  },
+  "margin_statistics": {
+    "all_multi_candidate_queries": {
+      "count": 548,
+      "mean": 0.2814,
+      "median": 0.2747,
+      "std": 0.1382,
+      "p10": 0.0981,
+      "p25": 0.1812,
+      "p50": 0.2747,
+      "p75": 0.4083,
+      "p90": 0.4666,
+      "p95": 0.4963,
+      "min": 0.0008,
+      "max": 0.5775
+    },
+    "correct_top_1_queries": {
+      "count": 545,
+      "mean": 0.2829,
+      "median": 0.2755,
+      "std": 0.1371,
+      "p10": 0.1005,
+      "p25": 0.1875,
+      "p50": 0.2755,
+      "p75": 0.4083,
+      "p90": 0.4671,
+      "p95": 0.4963,
+      "min": 0.0008,
+      "max": 0.5775
+    },
+    "incorrect_top_1_queries": {
+      "count": 3,
+      "mean": 0.0118,
+      "median": 0.0093,
+      "std": 0.0047,
+      "p10": 0.0079,
+      "p25": 0.0084,
+      "p50": 0.0093,
+      "p75": 0.0138,
+      "p90": 0.0166,
+      "p95": 0.0175,
+      "min": 0.0076,
+      "max": 0.0184
+    }
+  },
+  "margin_buckets": [
+    {
+      "bucket": "[0.00, 0.01)",
+      "low": 0.0,
+      "high": 0.01,
+      "total_queries": 5,
+      "correct_top_1": 3,
+      "incorrect_top_1": 2,
+      "top_1_accuracy": 0.6
+    },
+    {
+      "bucket": "[0.01, 0.02)",
+      "low": 0.01,
+      "high": 0.02,
+      "total_queries": 7,
+      "correct_top_1": 6,
+      "incorrect_top_1": 1,
+      "top_1_accuracy": 0.8571
+    },
+    {
+      "bucket": "[0.02, 0.05)",
+      "low": 0.02,
+      "high": 0.05,
+      "total_queries": 11,
+      "correct_top_1": 11,
+      "incorrect_top_1": 0,
+      "top_1_accuracy": 1.0
+    },
+    {
+      "bucket": "[0.05, 0.10)",
+      "low": 0.05,
+      "high": 0.1,
+      "total_queries": 34,
+      "correct_top_1": 34,
+      "incorrect_top_1": 0,
+      "top_1_accuracy": 1.0
+    },
+    {
+      "bucket": "[0.10, 0.20)",
+      "low": 0.1,
+      "high": 0.2,
+      "total_queries": 104,
+      "correct_top_1": 104,
+      "incorrect_top_1": 0,
+      "top_1_accuracy": 1.0
+    },
+    {
+      "bucket": "[0.20, 1.00]",
+      "low": 0.2,
+      "high": 1.01,
+      "total_queries": 387,
+      "correct_top_1": 387,
+      "incorrect_top_1": 0,
+      "top_1_accuracy": 1.0
+    }
+  ],
+  "score_vs_margin_matrix": [
+    {
+      "score_range": ">=0.85 (High)",
+      "margin_range": "<0.02 (Tight)",
+      "total": 2,
+      "correct": 2,
+      "top_1_accuracy": 1.0,
+      "HIGH_CONFIDENCE": 2,
+      "REVIEW": 0,
+      "DIFFERENT": 0
+    },
+    {
+      "score_range": ">=0.85 (High)",
+      "margin_range": "[0.02, 0.10) (Mod)",
+      "total": 17,
+      "correct": 17,
+      "top_1_accuracy": 1.0,
+      "HIGH_CONFIDENCE": 17,
+      "REVIEW": 0,
+      "DIFFERENT": 0
+    },
+    {
+      "score_range": ">=0.85 (High)",
+      "margin_range": ">=0.10 (Wide)",
+      "total": 300,
+      "correct": 300,
+      "top_1_accuracy": 1.0,
+      "HIGH_CONFIDENCE": 255,
+      "REVIEW": 45,
+      "DIFFERENT": 0
+    },
+    {
+      "score_range": "[0.65, 0.85) (Med)",
+      "margin_range": "<0.02 (Tight)",
+      "total": 0,
+      "correct": 0,
+      "top_1_accuracy": null,
+      "HIGH_CONFIDENCE": 0,
+      "REVIEW": 0,
+      "DIFFERENT": 0
+    },
+    {
+      "score_range": "[0.65, 0.85) (Med)",
+      "margin_range": "[0.02, 0.10) (Mod)",
+      "total": 9,
+      "correct": 9,
+      "top_1_accuracy": 1.0,
+      "HIGH_CONFIDENCE": 0,
+      "REVIEW": 9,
+      "DIFFERENT": 0
+    },
+    {
+      "score_range": "[0.65, 0.85) (Med)",
+      "margin_range": ">=0.10 (Wide)",
+      "total": 90,
+      "correct": 90,
+      "top_1_accuracy": 1.0,
+      "HIGH_CONFIDENCE": 0,
+      "REVIEW": 90,
+      "DIFFERENT": 0
+    },
+    {
+      "score_range": "[0.50, 0.65) (Low)",
+      "margin_range": "<0.02 (Tight)",
+      "total": 1,
+      "correct": 1,
+      "top_1_accuracy": 1.0,
+      "HIGH_CONFIDENCE": 0,
+      "REVIEW": 0,
+      "DIFFERENT": 1
+    },
+    {
+      "score_range": "[0.50, 0.65) (Low)",
+      "margin_range": "[0.02, 0.10) (Mod)",
+      "total": 1,
+      "correct": 1,
+      "top_1_accuracy": 1.0,
+      "HIGH_CONFIDENCE": 0,
+      "REVIEW": 0,
+      "DIFFERENT": 1
+    },
+    {
+      "score_range": "[0.50, 0.65) (Low)",
+      "margin_range": ">=0.10 (Wide)",
+      "total": 86,
+      "correct": 86,
+      "top_1_accuracy": 1.0,
+      "HIGH_CONFIDENCE": 0,
+      "REVIEW": 0,
+      "DIFFERENT": 86
+    },
+    {
+      "score_range": "<0.50 (Diff)",
+      "margin_range": "<0.02 (Tight)",
+      "total": 9,
+      "correct": 6,
+      "top_1_accuracy": 0.6667,
+      "HIGH_CONFIDENCE": 0,
+      "REVIEW": 0,
+      "DIFFERENT": 9
+    },
+    {
+      "score_range": "<0.50 (Diff)",
+      "margin_range": "[0.02, 0.10) (Mod)",
+      "total": 18,
+      "correct": 18,
+      "top_1_accuracy": 1.0,
+      "HIGH_CONFIDENCE": 0,
+      "REVIEW": 0,
+      "DIFFERENT": 18
+    },
+    {
+      "score_range": "<0.50 (Diff)",
+      "margin_range": ">=0.10 (Wide)",
+      "total": 15,
+      "correct": 15,
+      "top_1_accuracy": 1.0,
+      "HIGH_CONFIDENCE": 0,
+      "REVIEW": 0,
+      "DIFFERENT": 15
+    }
+  ],
+  "hard_negative_analysis": {
+    "total_hard_negatives": 841,
+    "decision_distribution": {
+      "DIFFERENT": 683,
+      "REVIEW": 140,
+      "NO_CANDIDATE": 18
+    },
+    "false_high_confidence_count": 0,
+    "false_high_confidence_rate": 0.0,
+    "margin_statistics": {
+      "count": 687,
+      "mean": 0.0932,
+      "median": 0.0355,
+      "std": 0.126,
+      "p10": 0.007,
+      "p25": 0.0137,
+      "p50": 0.0355,
+      "p75": 0.1086,
+      "p90": 0.3914,
+      "p95": 0.4068,
+      "min": 0.0001,
+      "max": 0.4368
+    }
+  }
+}

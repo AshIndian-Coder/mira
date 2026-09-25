@@ -939,3 +939,78 @@ Audited embedding cache coverage across all production matching paths and elimin
   - Added regression test `test_single_cnmc_candidate_embedding_cache_coverage` in [`backend/tests/test_existing_cnmc_matching.py`](file:///home/shikhar/Desktop/mira/backend/tests/test_existing_cnmc_matching.py).
   - Full backend pytest suite: 189 passed (100% passing).
   - No scoring formulas, classifier thresholds, critical gates, or CNMC canonicalization rules modified.
+
+## Domain Semantic Fine-Tuning & Evaluation on CPSE Pairs — 2026-09-21
+
+Successfully trained and evaluated a domain-adapted sentence-transformer model on CPSE material descriptions and integrated it into the matching pipeline:
+- **Dataset Policy & Integrity:**
+  - Strictly trained on balanced CPSE training pairs from `Training_Pairs_MIRA_FINAL.csv`.
+  - Excluded multi-tenant raw SAP dumps (`mara.csv`, `makt.csv`) to prevent label corruption and noise leakage.
+  - Prioritized hard-negative pairs (`HN_CORRUPT`, `HN_SIBLING`) with balanced positive pairs.
+- **Training Configuration:**
+  - Script: [`backend/app/ml_pipeline/train_minilm_cpse.py`](file:///home/shikhar/Desktop/mira/backend/app/ml_pipeline/train_minilm_cpse.py).
+  - Base architecture: `sentence-transformers/all-MiniLM-L6-v2`.
+  - Loss: `CosineSimilarityLoss` with AdamW optimizer, warmup, cosine decay, and `model.max_seq_length = 48` (optimized for industrial descriptions).
+  - Saved checkpoint: `models/trained/minilm_cpse_v1/`.
+- **Comparative Benchmark Results:**
+  - Evaluated on DEV (5,228 pairs), blind HELDOUT (5,284 pairs), and 300 Hard Negatives benchmark:
+
+  | Metric | Baseline MiniLM | Fine-Tuned CPSE MiniLM | Improvement |
+  |---|---:|---:|---:|
+  | **DEV ROC-AUC** | 0.7663 | **0.8627** | +0.0964 |
+  | **DEV PR-AUC** | 0.8557 | **0.9177** | +0.0620 |
+  | **DEV Score Margin** | 0.3019 | **0.4995** | +0.1976 |
+  | **HELDOUT ROC-AUC** | 0.7728 | **0.8775** | +0.1047 |
+  | **HELDOUT PR-AUC** | 0.8712 | **0.9304** | +0.0592 |
+  | **HELDOUT Score Margin** | 0.3079 | **0.5410** | +0.2331 |
+  | **HN 300 Mean Similarity** | 0.9757 | **0.3524** | -0.6233 (false sim eliminated) |
+  | **HN 300 FHC Rate (>0.85)** | 100.0% (300/300) | **16.0% (48/300)** | **-84.0% false high-confidence** |
+
+- **Integration:**
+  - Updated [`backend/app/services/matching/embeddings.py`](file:///home/shikhar/Desktop/mira/backend/app/services/matching/embeddings.py) to automatically load `models/trained/minilm_cpse_v1` when present on disk or specified via `MIRA_EMBEDDING_MODEL` environment variable, falling back gracefully to `all-MiniLM-L6-v2`.
+
+## Universal Jumbled-File & Multi-Format Provenance Resolution — 2026-09-21
+
+Implemented generic, deterministic provenance resolution across all 6 supported legacy file formats (`CSV`, `TXT`, `XML`, `JSON`, `XLS`, `XLSX`):
+- **Deterministic 6-Tier Evidence Hierarchy:**
+  - Implemented in [`backend/app/services/ingestion/provenance.py`](file:///home/shikhar/Desktop/mira/backend/app/services/ingestion/provenance.py):
+    1. `EXPLICIT_ROW` (confidence 1.0): Direct row fields (`cpse`, `organization`, `source_org`, `company`).
+    2. `SHEET_NAME` (confidence 0.95): Worksheet title in multi-sheet Excel workbooks (`.xlsx`, `.xls`).
+    3. `FILE_HEADER` (confidence 0.90): Top-level file header text and comments.
+    4. `FILENAME_METADATA` (confidence 0.85): CPSE tokens embedded in uploaded file name.
+    5. `OBSERVED_CODE_PATTERN` (confidence 0.80): Known material code prefix/regex patterns (e.g., `PO\d+` $\rightarrow$ POLYCAB, `YA\d+` $\rightarrow$ YANTRAIN, `MC\d+` $\rightarrow$ MCL, `SRF-*` $\rightarrow$ SRF).
+    6. `UNKNOWN` (confidence 0.0): Safe fallback to `CPSE_GENERIC` with `requires_review = True` and zero hallucinated guessing.
+- **Multi-Sheet Extraction & Ingestion Pipeline:**
+  - Updated [`backend/app/services/ingestion/parsers/excel_parser.py`](file:///home/shikhar/Desktop/mira/backend/app/services/ingestion/parsers/excel_parser.py) to extract all sheets from multi-worksheet workbooks and preserve `_sheet_name` across all rows.
+  - In [`backend/app/api/v1/materials.py`](file:///home/shikhar/Desktop/mira/backend/app/api/v1/materials.py), integrated `resolve_provenance()` to record `provenance_level`, `provenance_confidence`, `provenance_source`, `provenance_conflict`, `requires_review`, and `provenance_details` for full traceability.
+  - Cross-source conflict detection automatically flags discrepancies between explicit row data and file/sheet metadata for human review.
+- **Verification:**
+  - Added [`backend/tests/test_provenance.py`](file:///home/shikhar/Desktop/mira/backend/tests/test_provenance.py) (7 focused tests covering hierarchy levels, multi-sheet resolution, code prefix extraction, conflict detection, and upload integration).
+  - Full backend test suite: **201 passed tests (100% passing)**; frontend TypeScript build passed with 0 errors.
+
+## Qwen Learned Weights & Production Scoring Weight Freeze — 2026-09-25
+
+Following systematic Track 1 evaluation across unregularized optimization, regularized constrained grid search (981 candidate vectors), independent stress tests (712 pairs), and controlled 3-arm A/B/C testing against fine-tuned Qwen INT8 embeddings (1024D), the production hybrid scoring weights have been frozen:
+
+### Frozen Production Weights (Arm C / `CAND_0678`):
+$$\mathbf{w}_{\text{Production}} = [0.175, 0.400, 0.250, 0.125, 0.050]$$
+
+* `TEXT_WEIGHT = 0.175` (previously `0.200`)
+* `SEMANTIC_WEIGHT = 0.400` (previously `0.200`)
+* `SPECIFICATION_WEIGHT = 0.250` (previously `0.350`)
+* `GRADE_WEIGHT = 0.125` (previously `0.150`)
+* `OTHER_ATTRIBUTES_WEIGHT = 0.050` (previously `0.100`)
+
+### Experimental Evidence & Operational Justification:
+1. **DEV & HELDOUT Discrimination:**
+   * DEV ROC-AUC increased from `0.7456` to **`0.7691`** (+0.0235); Score Separation increased from `+0.2069` to **`+0.2722`** (+0.0653).
+   * HELDOUT ROC-AUC increased from `0.7651` to **`0.7891`** (+0.0240); Score Separation increased from `+0.2021` to **`+0.2769`** (+0.0748).
+2. **False Positive & Rejection Recovery:**
+   * Rescues **~900 legitimate positive pairs** previously misclassified as `DIFFERENT` (DEV Pos DIFFERENT dropped from `359` down to `7`; HELDOUT Pos DIFFERENT dropped from `547` down to `18`).
+3. **Hard-Negative Safety & Operator Burden Reduction:**
+   * Hard negatives mean score dropped from `0.4201` down to **`0.3760`** (max `0.6127`).
+   * **Zero hard negatives reach $\ge 0.80$ and zero receive `HIGH_CONFIDENCE`**.
+   * Auto-rejects **250 / 300 hard negatives as `DIFFERENT`** (83.33%), reducing the human review load from 68 pairs down to 50 pairs (**26.5% reduction in operator review workload**).
+4. **Preservation of Engineering Invariants:**
+   * Critical specification gates and decision thresholds (`HIGH_CONFIDENCE = 0.85`, `DIFFERENT = 0.45`) remain 100% intact.
+   * Specification weight is firmly locked at $0.250 \ge 0.25$ and material grade at $0.125 \ge 0.10$.

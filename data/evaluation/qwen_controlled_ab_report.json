@@ -1,0 +1,534 @@
+{
+  "experiment_name": "Final Controlled Qwen A/B Experiment",
+  "objective": "Controlled evaluation of Control Prior vs CAND_0804 vs CAND_0678 with frozen production gates/thresholds",
+  "dataset_audit": {
+    "DEV": {
+      "total": 5228,
+      "positive_count": 3661,
+      "negative_count": 1567
+    },
+    "HELDOUT": {
+      "total": 5284,
+      "positive_count": 3804,
+      "negative_count": 1480
+    },
+    "HARD_NEGATIVES_300": {
+      "total": 300,
+      "positive_count": 0,
+      "negative_count": 300
+    }
+  },
+  "feature_source_audit": {
+    "semantic_model": "Fine-Tuned Qwen INT8 Embedding Model",
+    "model_path": "/home/shikhar/mira-model-test/Mira.ai",
+    "embedding_dimension": 1024,
+    "quantization": "INT8 (bitsandbytes)",
+    "feature_parity": "Exact production parity across text, spec, grade, other_attributes, and critical gates"
+  },
+  "arms_evaluated": {
+    "Arm_A_CONTROL": {
+      "arm_id": "Arm_A_CONTROL",
+      "name": "Arm A \u2014 CONTROL (Production Prior)",
+      "description": "Production prior baseline with fine-tuned Qwen INT8 semantic features",
+      "weights": {
+        "text_similarity": 0.2,
+        "semantic_similarity": 0.2,
+        "specification_similarity": 0.35,
+        "material_grade_similarity": 0.15,
+        "other_attributes_similarity": 0.1,
+        "weight_vector": [
+          0.2,
+          0.2,
+          0.35,
+          0.15,
+          0.1
+        ]
+      },
+      "DEV": {
+        "roc_auc": 0.7456,
+        "pr_auc": 0.8208,
+        "score_separation": 0.2069,
+        "pos_mean": 0.6164,
+        "pos_median": 0.5718,
+        "neg_mean": 0.4095,
+        "neg_median": 0.355,
+        "confusion_matrix_at_0_50": {
+          "threshold": 0.5,
+          "true_positives": 2226,
+          "false_positives": 502,
+          "true_negatives": 1065,
+          "false_negatives": 1435,
+          "precision": 0.816,
+          "recall": 0.608,
+          "f1_score": 0.6968,
+          "accuracy": 0.6295
+        },
+        "overall_decisions": {
+          "HIGH_CONFIDENCE": 0,
+          "REVIEW": 4149,
+          "DIFFERENT": 1079
+        },
+        "pos_decisions": {
+          "HIGH_CONFIDENCE": 0,
+          "REVIEW": 3302,
+          "DIFFERENT": 359
+        },
+        "neg_decisions": {
+          "HIGH_CONFIDENCE": 0,
+          "REVIEW": 847,
+          "DIFFERENT": 720
+        },
+        "positive_pairs_classified_different": 359,
+        "negative_pairs_classified_high_confidence": 0
+      },
+      "HELDOUT": {
+        "roc_auc": 0.7651,
+        "pr_auc": 0.8446,
+        "score_separation": 0.2021,
+        "pos_mean": 0.5803,
+        "pos_median": 0.5124,
+        "neg_mean": 0.3782,
+        "neg_median": 0.3285,
+        "confusion_matrix_at_0_50": {
+          "threshold": 0.5,
+          "true_positives": 1939,
+          "false_positives": 401,
+          "true_negatives": 1079,
+          "false_negatives": 1865,
+          "precision": 0.8286,
+          "recall": 0.5097,
+          "f1_score": 0.6312,
+          "accuracy": 0.5712
+        },
+        "overall_decisions": {
+          "HIGH_CONFIDENCE": 0,
+          "REVIEW": 3980,
+          "DIFFERENT": 1304
+        },
+        "pos_decisions": {
+          "HIGH_CONFIDENCE": 0,
+          "REVIEW": 3257,
+          "DIFFERENT": 547
+        },
+        "neg_decisions": {
+          "HIGH_CONFIDENCE": 0,
+          "REVIEW": 723,
+          "DIFFERENT": 757
+        },
+        "positive_pairs_classified_different": 547,
+        "negative_pairs_classified_high_confidence": 0
+      },
+      "HARD_NEGATIVES_300": {
+        "mean_score": 0.4201,
+        "median_score": 0.4069,
+        "max_score": 0.6359,
+        "count_ge_0_50": 30,
+        "count_ge_0_80": 0,
+        "count_ge_0_85": 0,
+        "decision_distribution": {
+          "HIGH_CONFIDENCE": 0,
+          "REVIEW": 68,
+          "DIFFERENT": 232
+        },
+        "per_field_breakdown": {
+          "dimensions": {
+            "count": 81,
+            "mean_score": 0.4104,
+            "median_score": 0.4011,
+            "max_score": 0.573,
+            "count_ge_0_50": 15,
+            "count_ge_0_80": 0,
+            "count_ge_0_85": 0,
+            "DIFFERENT": 59,
+            "REVIEW": 22,
+            "HIGH_CONFIDENCE": 0
+          },
+          "metric_thread": {
+            "count": 161,
+            "mean_score": 0.4202,
+            "median_score": 0.4057,
+            "max_score": 0.6359,
+            "count_ge_0_50": 9,
+            "count_ge_0_80": 0,
+            "count_ge_0_85": 0,
+            "DIFFERENT": 132,
+            "REVIEW": 29,
+            "HIGH_CONFIDENCE": 0
+          },
+          "nominal_bore": {
+            "count": 18,
+            "mean_score": 0.46,
+            "median_score": 0.4168,
+            "max_score": 0.6321,
+            "count_ge_0_50": 6,
+            "count_ge_0_80": 0,
+            "count_ge_0_85": 0,
+            "DIFFERENT": 11,
+            "REVIEW": 7,
+            "HIGH_CONFIDENCE": 0
+          },
+          "pressure_rating": {
+            "count": 1,
+            "mean_score": 0.3754,
+            "median_score": 0.3754,
+            "max_score": 0.3754,
+            "count_ge_0_50": 0,
+            "count_ge_0_80": 0,
+            "count_ge_0_85": 0,
+            "DIFFERENT": 1,
+            "REVIEW": 0,
+            "HIGH_CONFIDENCE": 0
+          },
+          "voltage_class": {
+            "count": 39,
+            "mean_score": 0.4228,
+            "median_score": 0.429,
+            "max_score": 0.4898,
+            "count_ge_0_50": 0,
+            "count_ge_0_80": 0,
+            "count_ge_0_85": 0,
+            "DIFFERENT": 29,
+            "REVIEW": 10,
+            "HIGH_CONFIDENCE": 0
+          }
+        }
+      }
+    },
+    "Arm_B_CAND_0804": {
+      "arm_id": "Arm_B_CAND_0804",
+      "name": "Arm B \u2014 CAND_0804 (Discrimination Champion)",
+      "description": "Highest DEV/HELDOUT discrimination and positive pair recovery",
+      "weights": {
+        "text_similarity": 0.2,
+        "semantic_similarity": 0.4,
+        "specification_similarity": 0.25,
+        "material_grade_similarity": 0.1,
+        "other_attributes_similarity": 0.05,
+        "weight_vector": [
+          0.2,
+          0.4,
+          0.25,
+          0.1,
+          0.05
+        ]
+      },
+      "DEV": {
+        "roc_auc": 0.7705,
+        "pr_auc": 0.8333,
+        "score_separation": 0.2768,
+        "pos_mean": 0.7026,
+        "pos_median": 0.6701,
+        "neg_mean": 0.4258,
+        "neg_median": 0.4016,
+        "confusion_matrix_at_0_50": {
+          "threshold": 0.5,
+          "true_positives": 3591,
+          "false_positives": 702,
+          "true_negatives": 865,
+          "false_negatives": 70,
+          "precision": 0.8365,
+          "recall": 0.9809,
+          "f1_score": 0.9029,
+          "accuracy": 0.8523
+        },
+        "overall_decisions": {
+          "HIGH_CONFIDENCE": 0,
+          "REVIEW": 4567,
+          "DIFFERENT": 661
+        },
+        "pos_decisions": {
+          "HIGH_CONFIDENCE": 0,
+          "REVIEW": 3659,
+          "DIFFERENT": 2
+        },
+        "neg_decisions": {
+          "HIGH_CONFIDENCE": 0,
+          "REVIEW": 908,
+          "DIFFERENT": 659
+        },
+        "positive_pairs_classified_different": 2,
+        "negative_pairs_classified_high_confidence": 0
+      },
+      "HELDOUT": {
+        "roc_auc": 0.7903,
+        "pr_auc": 0.8575,
+        "score_separation": 0.2831,
+        "pos_mean": 0.6788,
+        "pos_median": 0.637,
+        "neg_mean": 0.3958,
+        "neg_median": 0.3612,
+        "confusion_matrix_at_0_50": {
+          "threshold": 0.5,
+          "true_positives": 3729,
+          "false_positives": 597,
+          "true_negatives": 883,
+          "false_negatives": 75,
+          "precision": 0.862,
+          "recall": 0.9803,
+          "f1_score": 0.9173,
+          "accuracy": 0.8728
+        },
+        "overall_decisions": {
+          "HIGH_CONFIDENCE": 0,
+          "REVIEW": 4586,
+          "DIFFERENT": 698
+        },
+        "pos_decisions": {
+          "HIGH_CONFIDENCE": 0,
+          "REVIEW": 3790,
+          "DIFFERENT": 14
+        },
+        "neg_decisions": {
+          "HIGH_CONFIDENCE": 0,
+          "REVIEW": 796,
+          "DIFFERENT": 684
+        },
+        "positive_pairs_classified_different": 14,
+        "negative_pairs_classified_high_confidence": 0
+      },
+      "HARD_NEGATIVES_300": {
+        "mean_score": 0.3988,
+        "median_score": 0.3792,
+        "max_score": 0.637,
+        "count_ge_0_50": 42,
+        "count_ge_0_80": 0,
+        "count_ge_0_85": 0,
+        "decision_distribution": {
+          "HIGH_CONFIDENCE": 0,
+          "REVIEW": 68,
+          "DIFFERENT": 232
+        },
+        "per_field_breakdown": {
+          "dimensions": {
+            "count": 81,
+            "mean_score": 0.3716,
+            "median_score": 0.3603,
+            "max_score": 0.5583,
+            "count_ge_0_50": 2,
+            "count_ge_0_80": 0,
+            "count_ge_0_85": 0,
+            "DIFFERENT": 70,
+            "REVIEW": 11,
+            "HIGH_CONFIDENCE": 0
+          },
+          "metric_thread": {
+            "count": 161,
+            "mean_score": 0.382,
+            "median_score": 0.3656,
+            "max_score": 0.5802,
+            "count_ge_0_50": 13,
+            "count_ge_0_80": 0,
+            "count_ge_0_85": 0,
+            "DIFFERENT": 141,
+            "REVIEW": 20,
+            "HIGH_CONFIDENCE": 0
+          },
+          "nominal_bore": {
+            "count": 18,
+            "mean_score": 0.4444,
+            "median_score": 0.435,
+            "max_score": 0.637,
+            "count_ge_0_50": 6,
+            "count_ge_0_80": 0,
+            "count_ge_0_85": 0,
+            "DIFFERENT": 9,
+            "REVIEW": 9,
+            "HIGH_CONFIDENCE": 0
+          },
+          "pressure_rating": {
+            "count": 1,
+            "mean_score": 0.3521,
+            "median_score": 0.3521,
+            "max_score": 0.3521,
+            "count_ge_0_50": 0,
+            "count_ge_0_80": 0,
+            "count_ge_0_85": 0,
+            "DIFFERENT": 1,
+            "REVIEW": 0,
+            "HIGH_CONFIDENCE": 0
+          },
+          "voltage_class": {
+            "count": 39,
+            "mean_score": 0.5046,
+            "median_score": 0.5195,
+            "max_score": 0.6319,
+            "count_ge_0_50": 21,
+            "count_ge_0_80": 0,
+            "count_ge_0_85": 0,
+            "DIFFERENT": 11,
+            "REVIEW": 28,
+            "HIGH_CONFIDENCE": 0
+          }
+        }
+      }
+    },
+    "Arm_C_CAND_0678": {
+      "arm_id": "Arm_C_CAND_0678",
+      "name": "Arm C \u2014 CAND_0678 (Safety & Workload Champion)",
+      "description": "Lowest hard-negative mean score and highest auto-rejection rate",
+      "weights": {
+        "text_similarity": 0.175,
+        "semantic_similarity": 0.4,
+        "specification_similarity": 0.25,
+        "material_grade_similarity": 0.125,
+        "other_attributes_similarity": 0.05,
+        "weight_vector": [
+          0.175,
+          0.4,
+          0.25,
+          0.125,
+          0.05
+        ]
+      },
+      "DEV": {
+        "roc_auc": 0.7691,
+        "pr_auc": 0.8317,
+        "score_separation": 0.2722,
+        "pos_mean": 0.689,
+        "pos_median": 0.6629,
+        "neg_mean": 0.4168,
+        "neg_median": 0.3856,
+        "confusion_matrix_at_0_50": {
+          "threshold": 0.5,
+          "true_positives": 3566,
+          "false_positives": 703,
+          "true_negatives": 864,
+          "false_negatives": 95,
+          "precision": 0.8353,
+          "recall": 0.9741,
+          "f1_score": 0.8994,
+          "accuracy": 0.8474
+        },
+        "overall_decisions": {
+          "HIGH_CONFIDENCE": 0,
+          "REVIEW": 4557,
+          "DIFFERENT": 671
+        },
+        "pos_decisions": {
+          "HIGH_CONFIDENCE": 0,
+          "REVIEW": 3654,
+          "DIFFERENT": 7
+        },
+        "neg_decisions": {
+          "HIGH_CONFIDENCE": 0,
+          "REVIEW": 903,
+          "DIFFERENT": 664
+        },
+        "positive_pairs_classified_different": 7,
+        "negative_pairs_classified_high_confidence": 0
+      },
+      "HELDOUT": {
+        "roc_auc": 0.7891,
+        "pr_auc": 0.8566,
+        "score_separation": 0.2769,
+        "pos_mean": 0.6625,
+        "pos_median": 0.6184,
+        "neg_mean": 0.3856,
+        "neg_median": 0.3415,
+        "confusion_matrix_at_0_50": {
+          "threshold": 0.5,
+          "true_positives": 3681,
+          "false_positives": 591,
+          "true_negatives": 889,
+          "false_negatives": 123,
+          "precision": 0.8617,
+          "recall": 0.9677,
+          "f1_score": 0.9116,
+          "accuracy": 0.8649
+        },
+        "overall_decisions": {
+          "HIGH_CONFIDENCE": 0,
+          "REVIEW": 4578,
+          "DIFFERENT": 706
+        },
+        "pos_decisions": {
+          "HIGH_CONFIDENCE": 0,
+          "REVIEW": 3786,
+          "DIFFERENT": 18
+        },
+        "neg_decisions": {
+          "HIGH_CONFIDENCE": 0,
+          "REVIEW": 792,
+          "DIFFERENT": 688
+        },
+        "positive_pairs_classified_different": 18,
+        "negative_pairs_classified_high_confidence": 0
+      },
+      "HARD_NEGATIVES_300": {
+        "mean_score": 0.376,
+        "median_score": 0.356,
+        "max_score": 0.6127,
+        "count_ge_0_50": 32,
+        "count_ge_0_80": 0,
+        "count_ge_0_85": 0,
+        "decision_distribution": {
+          "HIGH_CONFIDENCE": 0,
+          "REVIEW": 50,
+          "DIFFERENT": 250
+        },
+        "per_field_breakdown": {
+          "dimensions": {
+            "count": 81,
+            "mean_score": 0.3482,
+            "median_score": 0.3378,
+            "max_score": 0.5342,
+            "count_ge_0_50": 1,
+            "count_ge_0_80": 0,
+            "count_ge_0_85": 0,
+            "DIFFERENT": 76,
+            "REVIEW": 5,
+            "HIGH_CONFIDENCE": 0
+          },
+          "metric_thread": {
+            "count": 161,
+            "mean_score": 0.3591,
+            "median_score": 0.3427,
+            "max_score": 0.5558,
+            "count_ge_0_50": 8,
+            "count_ge_0_80": 0,
+            "count_ge_0_85": 0,
+            "DIFFERENT": 145,
+            "REVIEW": 16,
+            "HIGH_CONFIDENCE": 0
+          },
+          "nominal_bore": {
+            "count": 18,
+            "mean_score": 0.4277,
+            "median_score": 0.4122,
+            "max_score": 0.6127,
+            "count_ge_0_50": 6,
+            "count_ge_0_80": 0,
+            "count_ge_0_85": 0,
+            "DIFFERENT": 12,
+            "REVIEW": 6,
+            "HIGH_CONFIDENCE": 0
+          },
+          "pressure_rating": {
+            "count": 1,
+            "mean_score": 0.3286,
+            "median_score": 0.3286,
+            "max_score": 0.3286,
+            "count_ge_0_50": 0,
+            "count_ge_0_80": 0,
+            "count_ge_0_85": 0,
+            "DIFFERENT": 1,
+            "REVIEW": 0,
+            "HIGH_CONFIDENCE": 0
+          },
+          "voltage_class": {
+            "count": 39,
+            "mean_score": 0.4807,
+            "median_score": 0.4958,
+            "max_score": 0.6072,
+            "count_ge_0_50": 17,
+            "count_ge_0_80": 0,
+            "count_ge_0_85": 0,
+            "DIFFERENT": 16,
+            "REVIEW": 23,
+            "HIGH_CONFIDENCE": 0
+          }
+        }
+      }
+    }
+  }
+}

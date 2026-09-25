@@ -1,0 +1,687 @@
+[
+  {
+    "source_name": "Original_company_records_no_synthetic.csv",
+    "total_records": 25370,
+    "sample_audited": 25370,
+    "cpse_coverage": [
+      "BPCL",
+      "NTPC",
+      "BHEL",
+      "SAIL",
+      "IOCL",
+      "WBPDCL",
+      "HCL",
+      "NALCO",
+      "Indian Oil Corporation Limited",
+      "NTPC Limited"
+    ],
+    "cpse_distribution": {
+      "NTPC": 18360,
+      "Oil India Limited": 4752,
+      "BPCL": 968,
+      "NTPC Limited": 750,
+      "Indian Oil Corporation Limited": 470,
+      "BHEL": 25,
+      "IOCL": 15,
+      "NALCO": 12,
+      "WBPDCL": 11,
+      "SAIL": 6
+    },
+    "material_id_columns": [
+      "material_code",
+      "manufacturer_part_number",
+      "material_grade",
+      "part_number",
+      "material_code_occurrences",
+      "org_material_code_occurrences"
+    ],
+    "material_id_counts": {
+      "material_code": 19490,
+      "manufacturer_part_number": 0,
+      "material_grade": 162,
+      "part_number": 918,
+      "material_code_occurrences": 19490,
+      "org_material_code_occurrences": 19490
+    },
+    "description_coverage": {
+      "clean_description": "25370/25370 (100.0%)",
+      "search_text": "25370/25370 (100.0%)"
+    },
+    "specification_coverage": {
+      "dimensions": "3675/25370 (14.5%)",
+      "specifications": "20/25370 (0.1%)",
+      "other_attributes": "20/25370 (0.1%)",
+      "parsed_specifications": "16785/25370 (66.2%)"
+    },
+    "category_coverage": {
+      "item_type_hint": {
+        "coverage": "10761/25370 (42.4%)",
+        "top_5": {
+          "nan": 14609,
+          "pump": 1291,
+          "bearing": 1216,
+          "pipe": 1015,
+          "sealing material": 955
+        }
+      },
+      "product_category": {
+        "coverage": "20859/25370 (82.2%)",
+        "top_5": {
+          "Other Material/Equipment": 13349,
+          "nan": 4511,
+          "Mechanical": 3041,
+          "National": 1449,
+          "Limited": 945
+        }
+      },
+      "specifications": {
+        "coverage": "20/25370 (0.1%)",
+        "top_5": {
+          "nan": 25350,
+          "{}": 13,
+          "{\"product_specification\": \"HE51370\", \"drawing_number\": \"31750102724\"}": 3,
+          "{\"product_specification\": \"HE51370\", \"drawing_number\": \"41622600340\"}": 3,
+          "{\"product_specification\": \"HE51527\", \"drawing_number\": \"31750102724\"}": 1
+        }
+      },
+      "parsed_specifications": {
+        "coverage": "16785/25370 (66.2%)",
+        "top_5": {
+          "{\"material_grade\": null, \"pressure_rating\": null, \"dimensions\": null, \"dimension_tokens\": [], \"dished_end_dimensions\": null, \"nominal_bore\": null, \"metric_thread\": null, \"voltage_class\": null}": 11198,
+          "nan": 8585,
+          "{\"material_grade\": null, \"pressure_rating\": null, \"dimensions\": null, \"dimension_tokens\": [], \"dished_end_dimensions\": null, \"nominal_bore\": null, \"metric_thread\": null, \"voltage_class\": {\"value\": 1.1, \"unit\": \"KV\"}}": 262,
+          "{\"material_grade\": null, \"pressure_rating\": null, \"dimensions\": null, \"dimension_tokens\": [], \"dished_end_dimensions\": null, \"nominal_bore\": null, \"metric_thread\": null, \"voltage_class\": {\"value\": 415.0, \"unit\": \"V\"}}": 122,
+          "{\"material_grade\": null, \"pressure_rating\": null, \"dimensions\": {\"value\": 25.0, \"unit\": \"MM\"}, \"dimension_tokens\": [{\"value\": 25.0, \"unit\": \"MM\"}], \"dished_end_dimensions\": null, \"nominal_bore\": null, \"metric_thread\": null, \"voltage_class\": null}": 96
+        }
+      },
+      "equipment_type": {
+        "coverage": "16/25370 (0.1%)",
+        "top_5": {
+          "nan": 25354,
+          "VERTICAL SUBMERSIBLE": 8,
+          "VERTICAL SUMP": 3,
+          "HORIZONTAL CENTRIFUGAL DW NO : CS 002906201 SL NO : 101616 W.O.NO. : 00-29062": 3,
+          "HORIZONTAL DW.NO:CS-9150387/1": 1
+        }
+      },
+      "location": {
+        "coverage": "2120/25370 (8.4%)",
+        "top_5": {
+          "nan": 23250,
+          "Duliajan": 859,
+          "Chhattisgarh / Western Region-II": 230,
+          "Guwahati Refinery, Noonmati, Guwahati, Assam": 157,
+          "Guwahati": 157
+        }
+      },
+      "source_group": {
+        "coverage": "0/25370 (0.0%)",
+        "top_5": {
+          "nan": 25370
+        }
+      }
+    },
+    "material_grade_coverage": {
+      "material_grade": "162/25370 (0.6%)",
+      "moc": "718/25370 (2.8%)"
+    },
+    "data_nature": "Synthetic",
+    "material_code_overlap_with_prior_train_dev_heldout": 9351,
+    "material_code_overlap_pct": "51.30%",
+    "direct_pair_id_overlap_with_train": 0
+  },
+  {
+    "source_name": "Final_Master_Material_Records.csv",
+    "total_records": 832516,
+    "sample_audited": 50000,
+    "cpse_coverage": [
+      "CPCL",
+      "IOCL",
+      "BPCL",
+      "HPCL",
+      "ONGC",
+      "GAIL",
+      "OIL",
+      "MRPL",
+      "NRL",
+      "BORL"
+    ],
+    "cpse_distribution": {
+      "CPCL": 5000,
+      "IOCL": 5000,
+      "BPCL": 5000,
+      "HPCL": 5000,
+      "ONGC": 5000,
+      "GAIL": 5000,
+      "OIL": 5000,
+      "MRPL": 5000,
+      "NRL": 5000,
+      "BORL": 5000
+    },
+    "material_id_columns": [
+      "cpse_code",
+      "material_code"
+    ],
+    "material_id_counts": {
+      "cpse_code": 50000,
+      "material_code": 50000
+    },
+    "description_coverage": {
+      "description": "50000/50000 (100.0%)",
+      "cleaned_description": "50000/50000 (100.0%)",
+      "canonical_description": "50000/50000 (100.0%)"
+    },
+    "specification_coverage": {
+      "attributes": "50000/50000 (100.0%)"
+    },
+    "category_coverage": {
+      "category": {
+        "coverage": "50000/50000 (100.0%)",
+        "top_5": {
+          "FASTENER": 15042,
+          "VALVE": 9287,
+          "BEARING": 6092,
+          "PIPE": 4743,
+          "PIPE FITTING": 2046
+        }
+      }
+    },
+    "material_grade_coverage": {},
+    "data_nature": "Real / Enriched / Derived",
+    "material_code_overlap_with_prior_train_dev_heldout": 13889,
+    "material_code_overlap_pct": "27.77%",
+    "direct_pair_id_overlap_with_train": 0
+  },
+  {
+    "source_name": "makt.csv",
+    "total_records": 117442,
+    "sample_audited": 117442,
+    "cpse_coverage": [
+      "250",
+      "200",
+      "800",
+      "50",
+      "100"
+    ],
+    "cpse_distribution": {
+      "800": 116862,
+      "200": 404,
+      "100": 89,
+      "250": 84,
+      "50": 3
+    },
+    "material_id_columns": [
+      "matnr"
+    ],
+    "material_id_counts": {
+      "matnr": 117442
+    },
+    "description_coverage": {
+      "maktx": "117361/117442 (99.9%)",
+      "maktg": "117440/117442 (100.0%)"
+    },
+    "specification_coverage": {},
+    "category_coverage": {},
+    "material_grade_coverage": {},
+    "data_nature": "Real / Enriched / Derived",
+    "material_code_overlap_with_prior_train_dev_heldout": 0,
+    "material_code_overlap_pct": "0.00%",
+    "direct_pair_id_overlap_with_train": 0
+  },
+  {
+    "source_name": "mara.csv",
+    "total_records": 23897,
+    "sample_audited": 23897,
+    "cpse_coverage": [
+      "800",
+      "250",
+      "200",
+      "50",
+      "100"
+    ],
+    "cpse_distribution": {
+      "800": 22302,
+      "250": 1148,
+      "200": 202,
+      "50": 156,
+      "100": 89
+    },
+    "material_id_columns": [
+      "matnr",
+      "spart",
+      "hndlcode",
+      "psm_code",
+      "packcode",
+      "care_code",
+      "fiber_code1",
+      "fiber_part1",
+      "fiber_code2",
+      "fiber_part2",
+      "fiber_code3",
+      "fiber_part3",
+      "fiber_code4",
+      "fiber_part4",
+      "fiber_code5",
+      "fiber_part5"
+    ],
+    "material_id_counts": {
+      "matnr": 23897,
+      "spart": 13194,
+      "hndlcode": 0,
+      "psm_code": 11,
+      "packcode": 2,
+      "care_code": 0,
+      "fiber_code1": 12,
+      "fiber_part1": 22504,
+      "fiber_code2": 12,
+      "fiber_part2": 22504,
+      "fiber_code3": 12,
+      "fiber_part3": 22504,
+      "fiber_code4": 12,
+      "fiber_part4": 22504,
+      "fiber_code5": 12,
+      "fiber_part5": 22504
+    },
+    "description_coverage": {},
+    "specification_coverage": {
+      "maxdim_uom": "24/23897 (0.1%)",
+      "size1_atinn": "22504/23897 (94.2%)",
+      "size2_atinn": "22504/23897 (94.2%)",
+      "size1": "0/23897 (0.0%)",
+      "size2": "0/23897 (0.0%)"
+    },
+    "category_coverage": {
+      "bev1_nestruccat": {
+        "coverage": "15/23897 (0.1%)",
+        "top_5": {
+          "nan": 23882,
+          "0": 12,
+          "F": 2,
+          "S": 1
+        }
+      },
+      "dsd_vc_group": {
+        "coverage": "0/23897 (0.0%)",
+        "top_5": {
+          "nan": 23897
+        }
+      }
+    },
+    "material_grade_coverage": {},
+    "data_nature": "Real / Enriched / Derived",
+    "material_code_overlap_with_prior_train_dev_heldout": 0,
+    "material_code_overlap_pct": "0.00%",
+    "direct_pair_id_overlap_with_train": 0
+  },
+  {
+    "source_name": "mard.csv",
+    "total_records": 44663,
+    "sample_audited": 44663,
+    "cpse_coverage": [
+      "50",
+      "100",
+      "200",
+      "250",
+      "800"
+    ],
+    "cpse_distribution": {
+      "800": 27234,
+      "250": 11428,
+      "50": 4918,
+      "200": 871,
+      "100": 212
+    },
+    "material_id_columns": [
+      "matnr"
+    ],
+    "material_id_counts": {
+      "matnr": 44663
+    },
+    "description_coverage": {},
+    "specification_coverage": {},
+    "category_coverage": {},
+    "material_grade_coverage": {},
+    "data_nature": "Real / Enriched / Derived",
+    "material_code_overlap_with_prior_train_dev_heldout": 0,
+    "material_code_overlap_pct": "0.00%",
+    "direct_pair_id_overlap_with_train": 0
+  },
+  {
+    "source_name": "data/processed/materials_all_enriched.csv",
+    "total_records": 16785,
+    "sample_audited": 16785,
+    "cpse_coverage": [
+      "NTPC",
+      "BHEL",
+      "NALCO"
+    ],
+    "cpse_distribution": {
+      "NTPC": 16772,
+      "BHEL": 7,
+      "NALCO": 6
+    },
+    "material_id_columns": [
+      "material_code",
+      "manufacturer_part_number",
+      "material_grade"
+    ],
+    "material_id_counts": {
+      "material_code": 16785,
+      "manufacturer_part_number": 0,
+      "material_grade": 162
+    },
+    "description_coverage": {
+      "description": "16785/16785 (100.0%)",
+      "normalized_description": "16785/16785 (100.0%)"
+    },
+    "specification_coverage": {
+      "dimensions": "3675/16785 (21.9%)",
+      "specifications": "13/16785 (0.1%)",
+      "other_attributes": "13/16785 (0.1%)",
+      "parsed_specifications": "16785/16785 (100.0%)"
+    },
+    "category_coverage": {
+      "category": {
+        "coverage": "0/16785 (0.0%)",
+        "top_5": {
+          "nan": 16785
+        }
+      },
+      "specifications": {
+        "coverage": "13/16785 (0.1%)",
+        "top_5": {
+          "nan": 16772,
+          "{}": 6,
+          "{\"product_specification\": \"HE51370\", \"drawing_number\": \"31750102724\"}": 3,
+          "{\"product_specification\": \"HE51370\", \"drawing_number\": \"41622600340\"}": 3,
+          "{\"product_specification\": \"HE51527\", \"drawing_number\": \"31750102724\"}": 1
+        }
+      },
+      "parsed_specifications": {
+        "coverage": "16785/16785 (100.0%)",
+        "top_5": {
+          "{\"material_grade\": null, \"pressure_rating\": null, \"dimensions\": null, \"dimension_tokens\": [], \"dished_end_dimensions\": null, \"nominal_bore\": null, \"metric_thread\": null, \"voltage_class\": null}": 11198,
+          "{\"material_grade\": null, \"pressure_rating\": null, \"dimensions\": null, \"dimension_tokens\": [], \"dished_end_dimensions\": null, \"nominal_bore\": null, \"metric_thread\": null, \"voltage_class\": {\"value\": 1.1, \"unit\": \"KV\"}}": 262,
+          "{\"material_grade\": null, \"pressure_rating\": null, \"dimensions\": null, \"dimension_tokens\": [], \"dished_end_dimensions\": null, \"nominal_bore\": null, \"metric_thread\": null, \"voltage_class\": {\"value\": 415.0, \"unit\": \"V\"}}": 122,
+          "{\"material_grade\": null, \"pressure_rating\": null, \"dimensions\": {\"value\": 25.0, \"unit\": \"MM\"}, \"dimension_tokens\": [{\"value\": 25.0, \"unit\": \"MM\"}], \"dished_end_dimensions\": null, \"nominal_bore\": null, \"metric_thread\": null, \"voltage_class\": null}": 96,
+          "{\"material_grade\": null, \"pressure_rating\": null, \"dimensions\": {\"value\": 50.0, \"unit\": \"MM\"}, \"dimension_tokens\": [{\"value\": 50.0, \"unit\": \"MM\"}], \"dished_end_dimensions\": null, \"nominal_bore\": null, \"metric_thread\": null, \"voltage_class\": null}": 85
+        }
+      }
+    },
+    "material_grade_coverage": {
+      "material_grade": "162/16785 (1.0%)"
+    },
+    "data_nature": "Real / Enriched / Derived",
+    "material_code_overlap_with_prior_train_dev_heldout": 8863,
+    "material_code_overlap_pct": "52.79%",
+    "direct_pair_id_overlap_with_train": 0
+  },
+  {
+    "source_name": "data/processed/ntpc_materials.csv",
+    "total_records": 16772,
+    "sample_audited": 16772,
+    "cpse_coverage": [
+      "NTPC"
+    ],
+    "cpse_distribution": {
+      "NTPC": 16772
+    },
+    "material_id_columns": [
+      "material_code"
+    ],
+    "material_id_counts": {
+      "material_code": 16772
+    },
+    "description_coverage": {
+      "description": "16772/16772 (100.0%)"
+    },
+    "specification_coverage": {},
+    "category_coverage": {},
+    "material_grade_coverage": {},
+    "data_nature": "Real / Enriched / Derived",
+    "material_code_overlap_with_prior_train_dev_heldout": 8856,
+    "material_code_overlap_pct": "52.80%",
+    "direct_pair_id_overlap_with_train": 0
+  },
+  {
+    "source_name": "data/processed/bhel_materials.csv",
+    "total_records": 7,
+    "sample_audited": 7,
+    "cpse_coverage": [
+      "BHEL"
+    ],
+    "cpse_distribution": {
+      "BHEL": 7
+    },
+    "material_id_columns": [
+      "material_code",
+      "manufacturer_part_number",
+      "material_grade"
+    ],
+    "material_id_counts": {
+      "material_code": 7,
+      "manufacturer_part_number": 0,
+      "material_grade": 0
+    },
+    "description_coverage": {
+      "description": "7/7 (100.0%)"
+    },
+    "specification_coverage": {
+      "dimensions": "0/7 (0.0%)",
+      "specifications": "7/7 (100.0%)",
+      "other_attributes": "7/7 (100.0%)"
+    },
+    "category_coverage": {
+      "category": {
+        "coverage": "0/7 (0.0%)",
+        "top_5": {
+          "nan": 7
+        }
+      },
+      "specifications": {
+        "coverage": "7/7 (100.0%)",
+        "top_5": {
+          "{}": 7
+        }
+      }
+    },
+    "material_grade_coverage": {
+      "material_grade": "0/7 (0.0%)"
+    },
+    "data_nature": "Real / Enriched / Derived",
+    "material_code_overlap_with_prior_train_dev_heldout": 7,
+    "material_code_overlap_pct": "100.00%",
+    "direct_pair_id_overlap_with_train": 0
+  },
+  {
+    "source_name": "data/processed/nalco_materials.csv",
+    "total_records": 6,
+    "sample_audited": 6,
+    "cpse_coverage": [
+      "NALCO"
+    ],
+    "cpse_distribution": {
+      "NALCO": 6
+    },
+    "material_id_columns": [
+      "material_code",
+      "manufacturer_part_number",
+      "material_grade"
+    ],
+    "material_id_counts": {
+      "material_code": 6,
+      "manufacturer_part_number": 0,
+      "material_grade": 0
+    },
+    "description_coverage": {
+      "description": "6/6 (100.0%)"
+    },
+    "specification_coverage": {
+      "dimensions": "0/6 (0.0%)",
+      "specifications": "6/6 (100.0%)",
+      "other_attributes": "6/6 (100.0%)"
+    },
+    "category_coverage": {
+      "category": {
+        "coverage": "0/6 (0.0%)",
+        "top_5": {
+          "nan": 6
+        }
+      },
+      "specifications": {
+        "coverage": "6/6 (100.0%)",
+        "top_5": {
+          "{}": 6
+        }
+      }
+    },
+    "material_grade_coverage": {
+      "material_grade": "0/6 (0.0%)"
+    },
+    "data_nature": "Real / Enriched / Derived",
+    "material_code_overlap_with_prior_train_dev_heldout": 0,
+    "material_code_overlap_pct": "0.00%",
+    "direct_pair_id_overlap_with_train": 0
+  },
+  {
+    "source_name": "data/evaluation/dataset_a_dev.csv",
+    "total_records": 595,
+    "sample_audited": 595,
+    "cpse_coverage": [
+      "N/A"
+    ],
+    "cpse_distribution": {},
+    "material_id_columns": [
+      "source_material_code",
+      "target_material_code"
+    ],
+    "material_id_counts": {
+      "source_material_code": 595,
+      "target_material_code": 595
+    },
+    "description_coverage": {
+      "source_description": "595/595 (100.0%)",
+      "target_description": "595/595 (100.0%)"
+    },
+    "specification_coverage": {
+      "source_specs": "595/595 (100.0%)",
+      "target_specs": "595/595 (100.0%)"
+    },
+    "category_coverage": {
+      "generation_type": {
+        "coverage": "595/595 (100.0%)",
+        "top_5": {
+          "controlled_positive": 500,
+          "controlled_negative": 95
+        }
+      }
+    },
+    "material_grade_coverage": {},
+    "data_nature": "Real / Enriched / Derived",
+    "material_code_overlap_with_prior_train_dev_heldout": 337,
+    "material_code_overlap_pct": "28.32%",
+    "direct_pair_id_overlap_with_train": 0
+  },
+  {
+    "source_name": "data/evaluation/dataset_a_heldout.csv",
+    "total_records": 585,
+    "sample_audited": 585,
+    "cpse_coverage": [
+      "N/A"
+    ],
+    "cpse_distribution": {},
+    "material_id_columns": [
+      "source_material_code",
+      "target_material_code"
+    ],
+    "material_id_counts": {
+      "source_material_code": 585,
+      "target_material_code": 585
+    },
+    "description_coverage": {
+      "source_description": "585/585 (100.0%)",
+      "target_description": "585/585 (100.0%)"
+    },
+    "specification_coverage": {
+      "source_specs": "585/585 (100.0%)",
+      "target_specs": "585/585 (100.0%)"
+    },
+    "category_coverage": {
+      "generation_type": {
+        "coverage": "585/585 (100.0%)",
+        "top_5": {
+          "controlled_positive": 500,
+          "controlled_negative": 85
+        }
+      }
+    },
+    "material_grade_coverage": {},
+    "data_nature": "Real / Enriched / Derived",
+    "material_code_overlap_with_prior_train_dev_heldout": 304,
+    "material_code_overlap_pct": "25.98%",
+    "direct_pair_id_overlap_with_train": 0
+  },
+  {
+    "source_name": "data/evaluation/dataset_a_hard_negatives.csv",
+    "total_records": 300,
+    "sample_audited": 300,
+    "cpse_coverage": [
+      "N/A"
+    ],
+    "cpse_distribution": {},
+    "material_id_columns": [
+      "source_material_code",
+      "target_material_code"
+    ],
+    "material_id_counts": {
+      "source_material_code": 300,
+      "target_material_code": 300
+    },
+    "description_coverage": {
+      "source_description": "300/300 (100.0%)",
+      "target_description": "300/300 (100.0%)"
+    },
+    "specification_coverage": {
+      "source_specs": "300/300 (100.0%)",
+      "target_specs": "300/300 (100.0%)"
+    },
+    "category_coverage": {
+      "generation_type": {
+        "coverage": "300/300 (100.0%)",
+        "top_5": {
+          "real_hard_negative": 300
+        }
+      }
+    },
+    "material_grade_coverage": {},
+    "data_nature": "Real / Enriched / Derived",
+    "material_code_overlap_with_prior_train_dev_heldout": 219,
+    "material_code_overlap_pct": "100.00%",
+    "direct_pair_id_overlap_with_train": 0
+  },
+  {
+    "source_name": "data/training/ntpc_weak_labels.csv",
+    "total_records": 565664,
+    "sample_audited": 565664,
+    "cpse_coverage": [
+      "N/A"
+    ],
+    "cpse_distribution": {},
+    "material_id_columns": [
+      "source_material_code",
+      "target_material_code"
+    ],
+    "material_id_counts": {
+      "source_material_code": 565664,
+      "target_material_code": 565664
+    },
+    "description_coverage": {},
+    "specification_coverage": {},
+    "category_coverage": {},
+    "material_grade_coverage": {},
+    "data_nature": "Real / Enriched / Derived",
+    "material_code_overlap_with_prior_train_dev_heldout": 1541,
+    "material_code_overlap_pct": "62.11%",
+    "direct_pair_id_overlap_with_train": 0
+  }
+]

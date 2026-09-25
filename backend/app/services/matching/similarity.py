@@ -188,11 +188,18 @@ def semantic_similarity(
     text_a: str,
     text_b: str,
     embedding_cache: Any = None,
+    model_name: str | None = None,
 ) -> float:
     from app.services.matching.embeddings import (
         semantic_similarity as _semantic_similarity,
     )
-    return _semantic_similarity(text_a, text_b, embedding_cache=embedding_cache)
+    return _semantic_similarity(
+        text_a,
+        text_b,
+        embedding_cache=embedding_cache,
+        model_name=model_name,
+    )
+
 
 
 # =========================================================

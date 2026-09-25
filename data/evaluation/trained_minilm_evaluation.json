@@ -1,0 +1,140 @@
+{
+  "model": "models/trained/minilm_cpse_v1",
+  "dev": {
+    "total_pairs": 5228,
+    "pos_count": 3661,
+    "neg_count": 1567,
+    "pos_mean_sim": 0.8427,
+    "neg_mean_sim": 0.3432,
+    "margin": 0.4995,
+    "roc_auc": 0.8627,
+    "pr_auc": 0.9177,
+    "fhc_count_gt_0_85": 243,
+    "fhc_rate": 0.1551,
+    "pair_type_breakdown": {
+      "HN_CORRUPT": {
+        "count": 878,
+        "mean_sim": 0.5551,
+        "median_sim": 0.7084,
+        "std_sim": 0.3494,
+        "fhc_count (>0.85)": 239
+      },
+      "HN_SIBLING": {
+        "count": 37,
+        "mean_sim": 0.3172,
+        "median_sim": 0.2565,
+        "std_sim": 0.225,
+        "fhc_count (>0.85)": 3
+      },
+      "NEG_EASY": {
+        "count": 635,
+        "mean_sim": 0.0584,
+        "median_sim": 0.0222,
+        "std_sim": 0.0913,
+        "fhc_count (>0.85)": 1
+      },
+      "NEG_SAME_CAT": {
+        "count": 17,
+        "mean_sim": 0.097,
+        "median_sim": 0.0616,
+        "std_sim": 0.1475,
+        "fhc_count (>0.85)": 0
+      },
+      "POS": {
+        "count": 3661,
+        "mean_sim": 0.8427,
+        "median_sim": 0.8798,
+        "std_sim": 0.1408,
+        "fhc_count (>0.85)": 0
+      }
+    }
+  },
+  "heldout": {
+    "total_pairs": 5284,
+    "pos_count": 3804,
+    "neg_count": 1480,
+    "pos_mean_sim": 0.8578,
+    "neg_mean_sim": 0.3168,
+    "margin": 0.541,
+    "roc_auc": 0.8775,
+    "pr_auc": 0.9304,
+    "fhc_count_gt_0_85": 233,
+    "fhc_rate": 0.1574,
+    "pair_type_breakdown": {
+      "HN_CORRUPT": {
+        "count": 816,
+        "mean_sim": 0.5212,
+        "median_sim": 0.6911,
+        "std_sim": 0.3699,
+        "fhc_count (>0.85)": 232
+      },
+      "HN_SIBLING": {
+        "count": 25,
+        "mean_sim": 0.3364,
+        "median_sim": 0.2667,
+        "std_sim": 0.2468,
+        "fhc_count (>0.85)": 1
+      },
+      "NEG_EASY": {
+        "count": 615,
+        "mean_sim": 0.0529,
+        "median_sim": 0.0127,
+        "std_sim": 0.0883,
+        "fhc_count (>0.85)": 0
+      },
+      "NEG_SAME_CAT": {
+        "count": 24,
+        "mean_sim": 0.1075,
+        "median_sim": 0.0662,
+        "std_sim": 0.1376,
+        "fhc_count (>0.85)": 0
+      },
+      "POS": {
+        "count": 3804,
+        "mean_sim": 0.8578,
+        "median_sim": 0.8913,
+        "std_sim": 0.1339,
+        "fhc_count (>0.85)": 0
+      }
+    }
+  },
+  "hard_negatives_300": {
+    "total_pairs": 300,
+    "mean_similarity": 0.3524,
+    "median_similarity": 0.2264,
+    "fhc_count_gt_0_85": 48,
+    "fhc_rate": 0.16,
+    "field_breakdown": {
+      "dimensions": {
+        "count": 81,
+        "mean_sim": 0.3071,
+        "median_sim": 0.2638,
+        "fhc_count (>0.85)": 1
+      },
+      "metric_thread": {
+        "count": 161,
+        "mean_sim": 0.2405,
+        "median_sim": 0.1632,
+        "fhc_count (>0.85)": 13
+      },
+      "nominal_bore": {
+        "count": 18,
+        "mean_sim": 0.3166,
+        "median_sim": 0.2878,
+        "fhc_count (>0.85)": 0
+      },
+      "pressure_rating": {
+        "count": 1,
+        "mean_sim": 0.4542,
+        "median_sim": 0.4542,
+        "fhc_count (>0.85)": 0
+      },
+      "voltage_class": {
+        "count": 39,
+        "mean_sim": 0.9224,
+        "median_sim": 0.9565,
+        "fhc_count (>0.85)": 34
+      }
+    }
+  }
+}

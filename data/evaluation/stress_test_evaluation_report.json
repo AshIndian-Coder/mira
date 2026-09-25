@@ -1,0 +1,837 @@
+{
+  "configurations": {
+    "BASELINE": [
+      0.2,
+      0.2,
+      0.35,
+      0.15,
+      0.1
+    ],
+    "REG_1.00": [
+      0.2367,
+      0.3192,
+      0.2173,
+      0.1115,
+      0.1154
+    ],
+    "REG_HN_2.00": [
+      0.2755,
+      0.5014,
+      0.0782,
+      0.1449,
+      0.0
+    ]
+  },
+  "total_pairs": 712,
+  "overall_metrics": {
+    "total_count": 712,
+    "positive_count": 320,
+    "negative_count": 392,
+    "configs": {
+      "BASELINE": {
+        "weights": [
+          0.2,
+          0.2,
+          0.35,
+          0.15,
+          0.1
+        ],
+        "roc_auc": 0.6209,
+        "pr_auc": 0.4959,
+        "f1_at_0.50": 0.716,
+        "score_separation": -0.0095,
+        "false_high_confidence_count": 2,
+        "false_high_confidence_rate_pct": 0.51,
+        "overall_score": {
+          "mean": 0.5637,
+          "median": 0.5467,
+          "std": 0.1348
+        },
+        "positive_population": {
+          "count": 320,
+          "HIGH_CONFIDENCE": 0,
+          "HIGH_CONFIDENCE_pct": 0.0,
+          "REVIEW": 320,
+          "REVIEW_pct": 100.0,
+          "DIFFERENT": 0,
+          "DIFFERENT_pct": 0.0,
+          "mean_score": 0.5584,
+          "median_score": 0.561
+        },
+        "negative_population": {
+          "count": 392,
+          "HIGH_CONFIDENCE": 2,
+          "HIGH_CONFIDENCE_pct": 0.51,
+          "REVIEW": 303,
+          "REVIEW_pct": 77.3,
+          "DIFFERENT": 87,
+          "DIFFERENT_pct": 22.19,
+          "mean_score": 0.5679,
+          "median_score": 0.5015
+        }
+      },
+      "REG_1.00": {
+        "weights": [
+          0.2367,
+          0.3192,
+          0.2173,
+          0.1115,
+          0.1154
+        ],
+        "roc_auc": 0.6135,
+        "pr_auc": 0.4932,
+        "f1_at_0.50": 0.6373,
+        "score_separation": 0.0147,
+        "false_high_confidence_count": 5,
+        "false_high_confidence_rate_pct": 1.28,
+        "overall_score": {
+          "mean": 0.6607,
+          "median": 0.6608,
+          "std": 0.1007
+        },
+        "positive_population": {
+          "count": 320,
+          "HIGH_CONFIDENCE": 0,
+          "HIGH_CONFIDENCE_pct": 0.0,
+          "REVIEW": 320,
+          "REVIEW_pct": 100.0,
+          "DIFFERENT": 0,
+          "DIFFERENT_pct": 0.0,
+          "mean_score": 0.6688,
+          "median_score": 0.6715
+        },
+        "negative_population": {
+          "count": 392,
+          "HIGH_CONFIDENCE": 5,
+          "HIGH_CONFIDENCE_pct": 1.28,
+          "REVIEW": 378,
+          "REVIEW_pct": 96.43,
+          "DIFFERENT": 9,
+          "DIFFERENT_pct": 2.3,
+          "mean_score": 0.6541,
+          "median_score": 0.6202
+        }
+      },
+      "REG_HN_2.00": {
+        "weights": [
+          0.2755,
+          0.5014,
+          0.0782,
+          0.1449,
+          0.0
+        ],
+        "roc_auc": 0.8158,
+        "pr_auc": 0.6999,
+        "f1_at_0.50": 0.6413,
+        "score_separation": 0.1082,
+        "false_high_confidence_count": 2,
+        "false_high_confidence_rate_pct": 0.51,
+        "overall_score": {
+          "mean": 0.7114,
+          "median": 0.7172,
+          "std": 0.1106
+        },
+        "positive_population": {
+          "count": 320,
+          "HIGH_CONFIDENCE": 0,
+          "HIGH_CONFIDENCE_pct": 0.0,
+          "REVIEW": 320,
+          "REVIEW_pct": 100.0,
+          "DIFFERENT": 0,
+          "DIFFERENT_pct": 0.0,
+          "mean_score": 0.771,
+          "median_score": 0.7803
+        },
+        "negative_population": {
+          "count": 392,
+          "HIGH_CONFIDENCE": 2,
+          "HIGH_CONFIDENCE_pct": 0.51,
+          "REVIEW": 379,
+          "REVIEW_pct": 96.68,
+          "DIFFERENT": 11,
+          "DIFFERENT_pct": 2.81,
+          "mean_score": 0.6628,
+          "median_score": 0.6647
+        }
+      }
+    }
+  },
+  "per_population_metrics": {
+    "CRITICAL_HARD_NEGATIVE": {
+      "total_count": 280,
+      "positive_count": 0,
+      "negative_count": 280,
+      "configs": {
+        "BASELINE": {
+          "weights": [
+            0.2,
+            0.2,
+            0.35,
+            0.15,
+            0.1
+          ],
+          "roc_auc": null,
+          "pr_auc": null,
+          "f1_at_0.50": null,
+          "score_separation": null,
+          "false_high_confidence_count": 0,
+          "false_high_confidence_rate_pct": 0.0,
+          "overall_score": {
+            "mean": 0.5966,
+            "median": 0.4902,
+            "std": 0.1924
+          },
+          "positive_population": {
+            "count": 0,
+            "HIGH_CONFIDENCE": 0,
+            "HIGH_CONFIDENCE_pct": 0.0,
+            "REVIEW": 0,
+            "REVIEW_pct": 0.0,
+            "DIFFERENT": 0,
+            "DIFFERENT_pct": 0.0,
+            "mean_score": null,
+            "median_score": null
+          },
+          "negative_population": {
+            "count": 280,
+            "HIGH_CONFIDENCE": 0,
+            "HIGH_CONFIDENCE_pct": 0.0,
+            "REVIEW": 218,
+            "REVIEW_pct": 77.86,
+            "DIFFERENT": 62,
+            "DIFFERENT_pct": 22.14,
+            "mean_score": 0.5966,
+            "median_score": 0.4902
+          }
+        },
+        "REG_1.00": {
+          "weights": [
+            0.2367,
+            0.3192,
+            0.2173,
+            0.1115,
+            0.1154
+          ],
+          "roc_auc": null,
+          "pr_auc": null,
+          "f1_at_0.50": null,
+          "score_separation": null,
+          "false_high_confidence_count": 3,
+          "false_high_confidence_rate_pct": 1.07,
+          "overall_score": {
+            "mean": 0.6673,
+            "median": 0.6234,
+            "std": 0.1403
+          },
+          "positive_population": {
+            "count": 0,
+            "HIGH_CONFIDENCE": 0,
+            "HIGH_CONFIDENCE_pct": 0.0,
+            "REVIEW": 0,
+            "REVIEW_pct": 0.0,
+            "DIFFERENT": 0,
+            "DIFFERENT_pct": 0.0,
+            "mean_score": null,
+            "median_score": null
+          },
+          "negative_population": {
+            "count": 280,
+            "HIGH_CONFIDENCE": 3,
+            "HIGH_CONFIDENCE_pct": 1.07,
+            "REVIEW": 269,
+            "REVIEW_pct": 96.07,
+            "DIFFERENT": 8,
+            "DIFFERENT_pct": 2.86,
+            "mean_score": 0.6673,
+            "median_score": 0.6234
+          }
+        },
+        "REG_HN_2.00": {
+          "weights": [
+            0.2755,
+            0.5014,
+            0.0782,
+            0.1449,
+            0.0
+          ],
+          "roc_auc": null,
+          "pr_auc": null,
+          "f1_at_0.50": null,
+          "score_separation": null,
+          "false_high_confidence_count": 0,
+          "false_high_confidence_rate_pct": 0.0,
+          "overall_score": {
+            "mean": 0.6583,
+            "median": 0.6455,
+            "std": 0.1257
+          },
+          "positive_population": {
+            "count": 0,
+            "HIGH_CONFIDENCE": 0,
+            "HIGH_CONFIDENCE_pct": 0.0,
+            "REVIEW": 0,
+            "REVIEW_pct": 0.0,
+            "DIFFERENT": 0,
+            "DIFFERENT_pct": 0.0,
+            "mean_score": null,
+            "median_score": null
+          },
+          "negative_population": {
+            "count": 280,
+            "HIGH_CONFIDENCE": 0,
+            "HIGH_CONFIDENCE_pct": 0.0,
+            "REVIEW": 270,
+            "REVIEW_pct": 96.43,
+            "DIFFERENT": 10,
+            "DIFFERENT_pct": 3.57,
+            "mean_score": 0.6583,
+            "median_score": 0.6455
+          }
+        }
+      }
+    },
+    "NEAR_DUPLICATE_NEGATIVE": {
+      "total_count": 112,
+      "positive_count": 0,
+      "negative_count": 112,
+      "configs": {
+        "BASELINE": {
+          "weights": [
+            0.2,
+            0.2,
+            0.35,
+            0.15,
+            0.1
+          ],
+          "roc_auc": null,
+          "pr_auc": null,
+          "f1_at_0.50": null,
+          "score_separation": null,
+          "false_high_confidence_count": 2,
+          "false_high_confidence_rate_pct": 1.79,
+          "overall_score": {
+            "mean": 0.4962,
+            "median": 0.5021,
+            "std": 0.0853
+          },
+          "positive_population": {
+            "count": 0,
+            "HIGH_CONFIDENCE": 0,
+            "HIGH_CONFIDENCE_pct": 0.0,
+            "REVIEW": 0,
+            "REVIEW_pct": 0.0,
+            "DIFFERENT": 0,
+            "DIFFERENT_pct": 0.0,
+            "mean_score": null,
+            "median_score": null
+          },
+          "negative_population": {
+            "count": 112,
+            "HIGH_CONFIDENCE": 2,
+            "HIGH_CONFIDENCE_pct": 1.79,
+            "REVIEW": 85,
+            "REVIEW_pct": 75.89,
+            "DIFFERENT": 25,
+            "DIFFERENT_pct": 22.32,
+            "mean_score": 0.4962,
+            "median_score": 0.5021
+          }
+        },
+        "REG_1.00": {
+          "weights": [
+            0.2367,
+            0.3192,
+            0.2173,
+            0.1115,
+            0.1154
+          ],
+          "roc_auc": null,
+          "pr_auc": null,
+          "f1_at_0.50": null,
+          "score_separation": null,
+          "false_high_confidence_count": 2,
+          "false_high_confidence_rate_pct": 1.79,
+          "overall_score": {
+            "mean": 0.6212,
+            "median": 0.6202,
+            "std": 0.0719
+          },
+          "positive_population": {
+            "count": 0,
+            "HIGH_CONFIDENCE": 0,
+            "HIGH_CONFIDENCE_pct": 0.0,
+            "REVIEW": 0,
+            "REVIEW_pct": 0.0,
+            "DIFFERENT": 0,
+            "DIFFERENT_pct": 0.0,
+            "mean_score": null,
+            "median_score": null
+          },
+          "negative_population": {
+            "count": 112,
+            "HIGH_CONFIDENCE": 2,
+            "HIGH_CONFIDENCE_pct": 1.79,
+            "REVIEW": 109,
+            "REVIEW_pct": 97.32,
+            "DIFFERENT": 1,
+            "DIFFERENT_pct": 0.89,
+            "mean_score": 0.6212,
+            "median_score": 0.6202
+          }
+        },
+        "REG_HN_2.00": {
+          "weights": [
+            0.2755,
+            0.5014,
+            0.0782,
+            0.1449,
+            0.0
+          ],
+          "roc_auc": null,
+          "pr_auc": null,
+          "f1_at_0.50": null,
+          "score_separation": null,
+          "false_high_confidence_count": 2,
+          "false_high_confidence_rate_pct": 1.79,
+          "overall_score": {
+            "mean": 0.674,
+            "median": 0.6741,
+            "std": 0.0738
+          },
+          "positive_population": {
+            "count": 0,
+            "HIGH_CONFIDENCE": 0,
+            "HIGH_CONFIDENCE_pct": 0.0,
+            "REVIEW": 0,
+            "REVIEW_pct": 0.0,
+            "DIFFERENT": 0,
+            "DIFFERENT_pct": 0.0,
+            "mean_score": null,
+            "median_score": null
+          },
+          "negative_population": {
+            "count": 112,
+            "HIGH_CONFIDENCE": 2,
+            "HIGH_CONFIDENCE_pct": 1.79,
+            "REVIEW": 109,
+            "REVIEW_pct": 97.32,
+            "DIFFERENT": 1,
+            "DIFFERENT_pct": 0.89,
+            "mean_score": 0.674,
+            "median_score": 0.6741
+          }
+        }
+      }
+    },
+    "SPARSE_TRUE_POSITIVE": {
+      "total_count": 160,
+      "positive_count": 160,
+      "negative_count": 0,
+      "configs": {
+        "BASELINE": {
+          "weights": [
+            0.2,
+            0.2,
+            0.35,
+            0.15,
+            0.1
+          ],
+          "roc_auc": null,
+          "pr_auc": null,
+          "f1_at_0.50": null,
+          "score_separation": null,
+          "false_high_confidence_count": 0,
+          "false_high_confidence_rate_pct": 0.0,
+          "overall_score": {
+            "mean": 0.5709,
+            "median": 0.5705,
+            "std": 0.0334
+          },
+          "positive_population": {
+            "count": 160,
+            "HIGH_CONFIDENCE": 0,
+            "HIGH_CONFIDENCE_pct": 0.0,
+            "REVIEW": 160,
+            "REVIEW_pct": 100.0,
+            "DIFFERENT": 0,
+            "DIFFERENT_pct": 0.0,
+            "mean_score": 0.5709,
+            "median_score": 0.5705
+          },
+          "negative_population": {
+            "count": 0,
+            "HIGH_CONFIDENCE": 0,
+            "HIGH_CONFIDENCE_pct": 0.0,
+            "REVIEW": 0,
+            "REVIEW_pct": 0.0,
+            "DIFFERENT": 0,
+            "DIFFERENT_pct": 0.0,
+            "mean_score": null,
+            "median_score": null
+          }
+        },
+        "REG_1.00": {
+          "weights": [
+            0.2367,
+            0.3192,
+            0.2173,
+            0.1115,
+            0.1154
+          ],
+          "roc_auc": null,
+          "pr_auc": null,
+          "f1_at_0.50": null,
+          "score_separation": null,
+          "false_high_confidence_count": 0,
+          "false_high_confidence_rate_pct": 0.0,
+          "overall_score": {
+            "mean": 0.6828,
+            "median": 0.6757,
+            "std": 0.0389
+          },
+          "positive_population": {
+            "count": 160,
+            "HIGH_CONFIDENCE": 0,
+            "HIGH_CONFIDENCE_pct": 0.0,
+            "REVIEW": 160,
+            "REVIEW_pct": 100.0,
+            "DIFFERENT": 0,
+            "DIFFERENT_pct": 0.0,
+            "mean_score": 0.6828,
+            "median_score": 0.6757
+          },
+          "negative_population": {
+            "count": 0,
+            "HIGH_CONFIDENCE": 0,
+            "HIGH_CONFIDENCE_pct": 0.0,
+            "REVIEW": 0,
+            "REVIEW_pct": 0.0,
+            "DIFFERENT": 0,
+            "DIFFERENT_pct": 0.0,
+            "mean_score": null,
+            "median_score": null
+          }
+        },
+        "REG_HN_2.00": {
+          "weights": [
+            0.2755,
+            0.5014,
+            0.0782,
+            0.1449,
+            0.0
+          ],
+          "roc_auc": null,
+          "pr_auc": null,
+          "f1_at_0.50": null,
+          "score_separation": null,
+          "false_high_confidence_count": 0,
+          "false_high_confidence_rate_pct": 0.0,
+          "overall_score": {
+            "mean": 0.794,
+            "median": 0.7803,
+            "std": 0.0506
+          },
+          "positive_population": {
+            "count": 160,
+            "HIGH_CONFIDENCE": 0,
+            "HIGH_CONFIDENCE_pct": 0.0,
+            "REVIEW": 160,
+            "REVIEW_pct": 100.0,
+            "DIFFERENT": 0,
+            "DIFFERENT_pct": 0.0,
+            "mean_score": 0.794,
+            "median_score": 0.7803
+          },
+          "negative_population": {
+            "count": 0,
+            "HIGH_CONFIDENCE": 0,
+            "HIGH_CONFIDENCE_pct": 0.0,
+            "REVIEW": 0,
+            "REVIEW_pct": 0.0,
+            "DIFFERENT": 0,
+            "DIFFERENT_pct": 0.0,
+            "mean_score": null,
+            "median_score": null
+          }
+        }
+      }
+    },
+    "STRUCTURED_TRUE_POSITIVE": {
+      "total_count": 160,
+      "positive_count": 160,
+      "negative_count": 0,
+      "configs": {
+        "BASELINE": {
+          "weights": [
+            0.2,
+            0.2,
+            0.35,
+            0.15,
+            0.1
+          ],
+          "roc_auc": null,
+          "pr_auc": null,
+          "f1_at_0.50": null,
+          "score_separation": null,
+          "false_high_confidence_count": 0,
+          "false_high_confidence_rate_pct": 0.0,
+          "overall_score": {
+            "mean": 0.546,
+            "median": 0.5582,
+            "std": 0.0668
+          },
+          "positive_population": {
+            "count": 160,
+            "HIGH_CONFIDENCE": 0,
+            "HIGH_CONFIDENCE_pct": 0.0,
+            "REVIEW": 160,
+            "REVIEW_pct": 100.0,
+            "DIFFERENT": 0,
+            "DIFFERENT_pct": 0.0,
+            "mean_score": 0.546,
+            "median_score": 0.5582
+          },
+          "negative_population": {
+            "count": 0,
+            "HIGH_CONFIDENCE": 0,
+            "HIGH_CONFIDENCE_pct": 0.0,
+            "REVIEW": 0,
+            "REVIEW_pct": 0.0,
+            "DIFFERENT": 0,
+            "DIFFERENT_pct": 0.0,
+            "mean_score": null,
+            "median_score": null
+          }
+        },
+        "REG_1.00": {
+          "weights": [
+            0.2367,
+            0.3192,
+            0.2173,
+            0.1115,
+            0.1154
+          ],
+          "roc_auc": null,
+          "pr_auc": null,
+          "f1_at_0.50": null,
+          "score_separation": null,
+          "false_high_confidence_count": 0,
+          "false_high_confidence_rate_pct": 0.0,
+          "overall_score": {
+            "mean": 0.6548,
+            "median": 0.6679,
+            "std": 0.0623
+          },
+          "positive_population": {
+            "count": 160,
+            "HIGH_CONFIDENCE": 0,
+            "HIGH_CONFIDENCE_pct": 0.0,
+            "REVIEW": 160,
+            "REVIEW_pct": 100.0,
+            "DIFFERENT": 0,
+            "DIFFERENT_pct": 0.0,
+            "mean_score": 0.6548,
+            "median_score": 0.6679
+          },
+          "negative_population": {
+            "count": 0,
+            "HIGH_CONFIDENCE": 0,
+            "HIGH_CONFIDENCE_pct": 0.0,
+            "REVIEW": 0,
+            "REVIEW_pct": 0.0,
+            "DIFFERENT": 0,
+            "DIFFERENT_pct": 0.0,
+            "mean_score": null,
+            "median_score": null
+          }
+        },
+        "REG_HN_2.00": {
+          "weights": [
+            0.2755,
+            0.5014,
+            0.0782,
+            0.1449,
+            0.0
+          ],
+          "roc_auc": null,
+          "pr_auc": null,
+          "f1_at_0.50": null,
+          "score_separation": null,
+          "false_high_confidence_count": 0,
+          "false_high_confidence_rate_pct": 0.0,
+          "overall_score": {
+            "mean": 0.748,
+            "median": 0.7751,
+            "std": 0.0798
+          },
+          "positive_population": {
+            "count": 160,
+            "HIGH_CONFIDENCE": 0,
+            "HIGH_CONFIDENCE_pct": 0.0,
+            "REVIEW": 160,
+            "REVIEW_pct": 100.0,
+            "DIFFERENT": 0,
+            "DIFFERENT_pct": 0.0,
+            "mean_score": 0.748,
+            "median_score": 0.7751
+          },
+          "negative_population": {
+            "count": 0,
+            "HIGH_CONFIDENCE": 0,
+            "HIGH_CONFIDENCE_pct": 0.0,
+            "REVIEW": 0,
+            "REVIEW_pct": 0.0,
+            "DIFFERENT": 0,
+            "DIFFERENT_pct": 0.0,
+            "mean_score": null,
+            "median_score": null
+          }
+        }
+      }
+    }
+  },
+  "tier_transition_analysis": {
+    "REG_1.00": {
+      "positive_rescues": {
+        "DIFFERENT_to_REVIEW": 0,
+        "DIFFERENT_to_HIGH_CONFIDENCE": 0,
+        "total_positive_rescues": 0
+      },
+      "positive_regressions": {
+        "REVIEW_to_DIFFERENT": 0,
+        "HIGH_CONFIDENCE_to_REVIEW": 0,
+        "total_positive_regressions": 0
+      },
+      "negative_improvements": {
+        "REVIEW_to_DIFFERENT": 0
+      },
+      "negative_regressions": {
+        "DIFFERENT_to_REVIEW": 78
+      },
+      "safety_failures": {
+        "negative_to_HIGH_CONFIDENCE": 5
+      }
+    },
+    "REG_HN_2.00": {
+      "positive_rescues": {
+        "DIFFERENT_to_REVIEW": 0,
+        "DIFFERENT_to_HIGH_CONFIDENCE": 0,
+        "total_positive_rescues": 0
+      },
+      "positive_regressions": {
+        "REVIEW_to_DIFFERENT": 0,
+        "HIGH_CONFIDENCE_to_REVIEW": 0,
+        "total_positive_regressions": 0
+      },
+      "negative_improvements": {
+        "REVIEW_to_DIFFERENT": 0
+      },
+      "negative_regressions": {
+        "DIFFERENT_to_REVIEW": 76
+      },
+      "safety_failures": {
+        "negative_to_HIGH_CONFIDENCE": 2
+      }
+    }
+  },
+  "critical_field_breakdown": {
+    "dimensions": {
+      "count": 40,
+      "baseline_DIFFERENT_count": 14,
+      "baseline_DIFFERENT_pct": 35.0,
+      "REG_1.00_DIFFERENT_count": 0,
+      "REG_1.00_DIFFERENT_pct": 0.0,
+      "REG_HN_2.00_DIFFERENT_count": 0,
+      "REG_HN_2.00_DIFFERENT_pct": 0.0,
+      "mean_composite_score": {
+        "BASELINE": 0.4604,
+        "REG_1.00": 0.5903,
+        "REG_HN_2.00": 0.6369
+      }
+    },
+    "material_grade": {
+      "count": 40,
+      "baseline_DIFFERENT_count": 1,
+      "baseline_DIFFERENT_pct": 2.5,
+      "REG_1.00_DIFFERENT_count": 0,
+      "REG_1.00_DIFFERENT_pct": 0.0,
+      "REG_HN_2.00_DIFFERENT_count": 0,
+      "REG_HN_2.00_DIFFERENT_pct": 0.0,
+      "mean_composite_score": {
+        "BASELINE": 0.5333,
+        "REG_1.00": 0.6557,
+        "REG_HN_2.00": 0.7017
+      }
+    },
+    "metric_thread": {
+      "count": 40,
+      "baseline_DIFFERENT_count": 0,
+      "baseline_DIFFERENT_pct": 0.0,
+      "REG_1.00_DIFFERENT_count": 0,
+      "REG_1.00_DIFFERENT_pct": 0.0,
+      "REG_HN_2.00_DIFFERENT_count": 0,
+      "REG_HN_2.00_DIFFERENT_pct": 0.0,
+      "mean_composite_score": {
+        "BASELINE": 0.4781,
+        "REG_1.00": 0.601,
+        "REG_HN_2.00": 0.6609
+      }
+    },
+    "nominal_bore": {
+      "count": 40,
+      "baseline_DIFFERENT_count": 10,
+      "baseline_DIFFERENT_pct": 25.0,
+      "REG_1.00_DIFFERENT_count": 6,
+      "REG_1.00_DIFFERENT_pct": 15.0,
+      "REG_HN_2.00_DIFFERENT_count": 6,
+      "REG_HN_2.00_DIFFERENT_pct": 15.0,
+      "mean_composite_score": {
+        "BASELINE": 0.6492,
+        "REG_1.00": 0.6609,
+        "REG_HN_2.00": 0.5715
+      }
+    },
+    "pressure_rating": {
+      "count": 40,
+      "baseline_DIFFERENT_count": 1,
+      "baseline_DIFFERENT_pct": 2.5,
+      "REG_1.00_DIFFERENT_count": 0,
+      "REG_1.00_DIFFERENT_pct": 0.0,
+      "REG_HN_2.00_DIFFERENT_count": 0,
+      "REG_HN_2.00_DIFFERENT_pct": 0.0,
+      "mean_composite_score": {
+        "BASELINE": 0.7514,
+        "REG_1.00": 0.7496,
+        "REG_HN_2.00": 0.6534
+      }
+    },
+    "schedule": {
+      "count": 40,
+      "baseline_DIFFERENT_count": 0,
+      "baseline_DIFFERENT_pct": 0.0,
+      "REG_1.00_DIFFERENT_count": 0,
+      "REG_1.00_DIFFERENT_pct": 0.0,
+      "REG_HN_2.00_DIFFERENT_count": 0,
+      "REG_HN_2.00_DIFFERENT_pct": 0.0,
+      "mean_composite_score": {
+        "BASELINE": 0.899,
+        "REG_1.00": 0.9051,
+        "REG_HN_2.00": 0.8685
+      }
+    },
+    "voltage_class": {
+      "count": 40,
+      "baseline_DIFFERENT_count": 36,
+      "baseline_DIFFERENT_pct": 90.0,
+      "REG_1.00_DIFFERENT_count": 2,
+      "REG_1.00_DIFFERENT_pct": 5.0,
+      "REG_HN_2.00_DIFFERENT_count": 4,
+      "REG_HN_2.00_DIFFERENT_pct": 10.0,
+      "mean_composite_score": {
+        "BASELINE": 0.405,
+        "REG_1.00": 0.5084,
+        "REG_HN_2.00": 0.515
+      }
+    }
+  }
+}

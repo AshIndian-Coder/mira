@@ -8,11 +8,15 @@ from app.services.matching.similarity import (
 )
 
 
-TEXT_WEIGHT = 0.20
-SEMANTIC_WEIGHT = 0.20
-SPECIFICATION_WEIGHT = 0.35
-GRADE_WEIGHT = 0.15
-OTHER_ATTRIBUTES_WEIGHT = 0.10
+# MIRA Production Frozen Weights
+# Validated via Qwen Controlled A/B Evaluation (Arm C / CAND_0678)
+# Optimization constraints: w_i >= 0, sum(w) = 1.0, w_spec >= 0.25, w_grade >= 0.10
+TEXT_WEIGHT = 0.175
+SEMANTIC_WEIGHT = 0.400
+SPECIFICATION_WEIGHT = 0.250
+GRADE_WEIGHT = 0.125
+OTHER_ATTRIBUTES_WEIGHT = 0.050
+
 
 
 def calculate_match_score(

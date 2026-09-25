@@ -1,0 +1,55 @@
+{
+  "stress_dataset_total_pairs": 712,
+  "population_counts": {
+    "CRITICAL_HARD_NEGATIVE": 280,
+    "SPARSE_TRUE_POSITIVE": 160,
+    "STRUCTURED_TRUE_POSITIVE": 160,
+    "NEAR_DUPLICATE_NEGATIVE": 112
+  },
+  "class_counts": {
+    "0": 392,
+    "1": 320
+  },
+  "leakage_audits": {
+    "Training_Pairs_MIRA_FINAL": {
+      "target_dataset_rows": 119932,
+      "pair_id_overlap": 0,
+      "exact_description_pair_overlap": 0,
+      "material_code_overlap": 205,
+      "material_code_overlap_pct": "19.29%",
+      "source_row_overlap": 0
+    },
+    "DEV_5228": {
+      "target_dataset_rows": 5228,
+      "pair_id_overlap": 0,
+      "exact_description_pair_overlap": 0,
+      "material_code_overlap": 6,
+      "material_code_overlap_pct": "0.56%",
+      "source_row_overlap": 0
+    },
+    "HELDOUT_5284": {
+      "target_dataset_rows": 5284,
+      "pair_id_overlap": 0,
+      "exact_description_pair_overlap": 0,
+      "material_code_overlap": 77,
+      "material_code_overlap_pct": "7.24%",
+      "source_row_overlap": 0
+    },
+    "HARD_NEGATIVES_300": {
+      "target_dataset_rows": 300,
+      "pair_id_overlap": 0,
+      "exact_description_pair_overlap": 0,
+      "material_code_overlap": 0,
+      "material_code_overlap_pct": "0.00%",
+      "source_row_overlap": 0
+    },
+    "STEP6_VALIDATION_585": {
+      "target_dataset_rows": 585,
+      "pair_id_overlap": 0,
+      "exact_description_pair_overlap": 0,
+      "material_code_overlap": 0,
+      "material_code_overlap_pct": "0.00%",
+      "source_row_overlap": 0
+    }
+  }
+}

@@ -143,21 +143,8 @@ huggingface_cache/
 # Project-specific local files
 # ------------------------------------------------------------
 *.local
-# Freebuff local tooling metadata
 .freebuff/
-.venv/
-venv/
 venv-ml/
-
-__pycache__/
-*.py[cod]
-.pytest_cache/
-.mypy_cache/
-.ruff_cache/
-
-.env
-.env.*
-!.env.example
 
 backend/app/ml_pipeline/qwen_models/
 backend/app/ml_pipeline/results/
@@ -174,16 +161,29 @@ backend/app/ml_pipeline/train_data/
 *.npz
 *.parquet
 
-*.log
-*.tmp
-*.temp
-
-.DS_Store
-Thumbs.db
-
 Training_Pairs_Final.csv
-memory.md
 pairs_report.json
 dataset_audit_report.csv
 dataset_manifest.json
 dataset_validation_report.csv
+
+# ------------------------------------------------------------
+# MIRA local datasets and generated evaluation data
+# ------------------------------------------------------------
+data/raw/
+data/processed/
+data/training/
+data/evaluation/features/
+data/evaluation/synthetic/
+
+# Local training/evaluation datasets
+Training_Pairs_MIRA_FINAL.csv
+makt.csv
+mara.csv
+mard.csv
+data/evaluation/qwen_learned_weights_experiment_report.json
+data/evaluation/minilm_dev_5228_results.csv
+data/evaluation/nominal_bore_counterfactual_5228.csv
+data/evaluation/production_feature_audit_5228.csv
+data/evaluation/production_feature_audit_5228_after_nb_fix.csv
+data/evaluation/schedule_parser_audit_5228.csv

@@ -1,0 +1,1022 @@
+{
+  "evaluation_title": "MIRA Operational Evaluation Framework for Learned Weights (Track 1 \u2014 Step 5)",
+  "configurations": {
+    "BASELINE": [
+      0.2,
+      0.2,
+      0.35,
+      0.15,
+      0.1
+    ],
+    "REG_0.50": [
+      0.2612,
+      0.3812,
+      0.1186,
+      0.0769,
+      0.1621
+    ],
+    "REG_1.00": [
+      0.2367,
+      0.3192,
+      0.2173,
+      0.1115,
+      0.1154
+    ],
+    "REG_HN_2.00": [
+      0.2755,
+      0.5014,
+      0.0782,
+      0.1449,
+      0.0
+    ]
+  },
+  "DEV_operational_metrics": {
+    "BASELINE": {
+      "positive_coverage": {
+        "total_positive_pairs": 3661,
+        "count_DIFFERENT": 482,
+        "pct_DIFFERENT": 13.17,
+        "count_REVIEW": 3179,
+        "pct_REVIEW": 86.83,
+        "count_HIGH_CONFIDENCE": 0,
+        "pct_HIGH_CONFIDENCE": 0.0,
+        "positive_rescue_count": 0,
+        "positive_regression_count": 0,
+        "overall_positive_coverage_count": 3179,
+        "overall_positive_coverage_pct": 86.83
+      },
+      "negative_handling": {
+        "overall": {
+          "total_negative_pairs": 1567,
+          "count_DIFFERENT": 742,
+          "pct_DIFFERENT": 47.35,
+          "count_REVIEW": 825,
+          "pct_REVIEW": 52.65,
+          "count_HIGH_CONFIDENCE": 0,
+          "pct_HIGH_CONFIDENCE": 0.0
+        },
+        "by_pair_type": {
+          "HN_CORRUPT": {
+            "total": 878,
+            "count_DIFFERENT": 132,
+            "pct_DIFFERENT": 15.03,
+            "count_REVIEW": 746,
+            "pct_REVIEW": 84.97,
+            "count_HIGH_CONFIDENCE": 0,
+            "pct_HIGH_CONFIDENCE": 0.0
+          },
+          "HN_SIBLING": {
+            "total": 37,
+            "count_DIFFERENT": 24,
+            "pct_DIFFERENT": 64.86,
+            "count_REVIEW": 13,
+            "pct_REVIEW": 35.14,
+            "count_HIGH_CONFIDENCE": 0,
+            "pct_HIGH_CONFIDENCE": 0.0
+          },
+          "NEG_EASY": {
+            "total": 635,
+            "count_DIFFERENT": 572,
+            "pct_DIFFERENT": 90.08,
+            "count_REVIEW": 63,
+            "pct_REVIEW": 9.92,
+            "count_HIGH_CONFIDENCE": 0,
+            "pct_HIGH_CONFIDENCE": 0.0
+          },
+          "NEG_SAME_CAT": {
+            "total": 17,
+            "count_DIFFERENT": 14,
+            "pct_DIFFERENT": 82.35,
+            "count_REVIEW": 3,
+            "pct_REVIEW": 17.65,
+            "count_HIGH_CONFIDENCE": 0,
+            "pct_HIGH_CONFIDENCE": 0.0
+          }
+        }
+      },
+      "review_load_and_efficiency": {
+        "total_pairs": 5228,
+        "total_REVIEW_count": 4004,
+        "REVIEW_pct": 76.59,
+        "delta_REVIEW_count_vs_baseline": 0,
+        "delta_REVIEW_pct_vs_baseline": 0.0,
+        "review_queue_composition": {
+          "positive_count_in_REVIEW": 3179,
+          "negative_count_in_REVIEW": 825,
+          "positive_fraction_pct": 79.4,
+          "negative_fraction_pct": 20.6
+        },
+        "incremental_efficiency": {
+          "added_positive_reviews": 0,
+          "added_negative_reviews": 0,
+          "positive_rescues": 0,
+          "incremental_efficiency_ratio (rescues/added_neg_rev)": "N/A (zero incremental negative reviews)"
+        }
+      }
+    },
+    "REG_0.50": {
+      "positive_coverage": {
+        "total_positive_pairs": 3661,
+        "count_DIFFERENT": 23,
+        "pct_DIFFERENT": 0.63,
+        "count_REVIEW": 3638,
+        "pct_REVIEW": 99.37,
+        "count_HIGH_CONFIDENCE": 0,
+        "pct_HIGH_CONFIDENCE": 0.0,
+        "positive_rescue_count": 459,
+        "positive_regression_count": 0,
+        "overall_positive_coverage_count": 3638,
+        "overall_positive_coverage_pct": 99.37
+      },
+      "negative_handling": {
+        "overall": {
+          "total_negative_pairs": 1567,
+          "count_DIFFERENT": 644,
+          "pct_DIFFERENT": 41.1,
+          "count_REVIEW": 923,
+          "pct_REVIEW": 58.9,
+          "count_HIGH_CONFIDENCE": 0,
+          "pct_HIGH_CONFIDENCE": 0.0
+        },
+        "by_pair_type": {
+          "HN_CORRUPT": {
+            "total": 878,
+            "count_DIFFERENT": 55,
+            "pct_DIFFERENT": 6.26,
+            "count_REVIEW": 823,
+            "pct_REVIEW": 93.74,
+            "count_HIGH_CONFIDENCE": 0,
+            "pct_HIGH_CONFIDENCE": 0.0
+          },
+          "HN_SIBLING": {
+            "total": 37,
+            "count_DIFFERENT": 4,
+            "pct_DIFFERENT": 10.81,
+            "count_REVIEW": 33,
+            "pct_REVIEW": 89.19,
+            "count_HIGH_CONFIDENCE": 0,
+            "pct_HIGH_CONFIDENCE": 0.0
+          },
+          "NEG_EASY": {
+            "total": 635,
+            "count_DIFFERENT": 572,
+            "pct_DIFFERENT": 90.08,
+            "count_REVIEW": 63,
+            "pct_REVIEW": 9.92,
+            "count_HIGH_CONFIDENCE": 0,
+            "pct_HIGH_CONFIDENCE": 0.0
+          },
+          "NEG_SAME_CAT": {
+            "total": 17,
+            "count_DIFFERENT": 13,
+            "pct_DIFFERENT": 76.47,
+            "count_REVIEW": 4,
+            "pct_REVIEW": 23.53,
+            "count_HIGH_CONFIDENCE": 0,
+            "pct_HIGH_CONFIDENCE": 0.0
+          }
+        }
+      },
+      "review_load_and_efficiency": {
+        "total_pairs": 5228,
+        "total_REVIEW_count": 4561,
+        "REVIEW_pct": 87.24,
+        "delta_REVIEW_count_vs_baseline": 557,
+        "delta_REVIEW_pct_vs_baseline": 10.65,
+        "review_queue_composition": {
+          "positive_count_in_REVIEW": 3638,
+          "negative_count_in_REVIEW": 923,
+          "positive_fraction_pct": 79.76,
+          "negative_fraction_pct": 20.24
+        },
+        "incremental_efficiency": {
+          "added_positive_reviews": 459,
+          "added_negative_reviews": 98,
+          "positive_rescues": 459,
+          "incremental_efficiency_ratio (rescues/added_neg_rev)": 4.6837
+        }
+      }
+    },
+    "REG_1.00": {
+      "positive_coverage": {
+        "total_positive_pairs": 3661,
+        "count_DIFFERENT": 125,
+        "pct_DIFFERENT": 3.41,
+        "count_REVIEW": 3536,
+        "pct_REVIEW": 96.59,
+        "count_HIGH_CONFIDENCE": 0,
+        "pct_HIGH_CONFIDENCE": 0.0,
+        "positive_rescue_count": 357,
+        "positive_regression_count": 0,
+        "overall_positive_coverage_count": 3536,
+        "overall_positive_coverage_pct": 96.59
+      },
+      "negative_handling": {
+        "overall": {
+          "total_negative_pairs": 1567,
+          "count_DIFFERENT": 687,
+          "pct_DIFFERENT": 43.84,
+          "count_REVIEW": 880,
+          "pct_REVIEW": 56.16,
+          "count_HIGH_CONFIDENCE": 0,
+          "pct_HIGH_CONFIDENCE": 0.0
+        },
+        "by_pair_type": {
+          "HN_CORRUPT": {
+            "total": 878,
+            "count_DIFFERENT": 86,
+            "pct_DIFFERENT": 9.79,
+            "count_REVIEW": 792,
+            "pct_REVIEW": 90.21,
+            "count_HIGH_CONFIDENCE": 0,
+            "pct_HIGH_CONFIDENCE": 0.0
+          },
+          "HN_SIBLING": {
+            "total": 37,
+            "count_DIFFERENT": 16,
+            "pct_DIFFERENT": 43.24,
+            "count_REVIEW": 21,
+            "pct_REVIEW": 56.76,
+            "count_HIGH_CONFIDENCE": 0,
+            "pct_HIGH_CONFIDENCE": 0.0
+          },
+          "NEG_EASY": {
+            "total": 635,
+            "count_DIFFERENT": 572,
+            "pct_DIFFERENT": 90.08,
+            "count_REVIEW": 63,
+            "pct_REVIEW": 9.92,
+            "count_HIGH_CONFIDENCE": 0,
+            "pct_HIGH_CONFIDENCE": 0.0
+          },
+          "NEG_SAME_CAT": {
+            "total": 17,
+            "count_DIFFERENT": 13,
+            "pct_DIFFERENT": 76.47,
+            "count_REVIEW": 4,
+            "pct_REVIEW": 23.53,
+            "count_HIGH_CONFIDENCE": 0,
+            "pct_HIGH_CONFIDENCE": 0.0
+          }
+        }
+      },
+      "review_load_and_efficiency": {
+        "total_pairs": 5228,
+        "total_REVIEW_count": 4416,
+        "REVIEW_pct": 84.47,
+        "delta_REVIEW_count_vs_baseline": 412,
+        "delta_REVIEW_pct_vs_baseline": 7.88,
+        "review_queue_composition": {
+          "positive_count_in_REVIEW": 3536,
+          "negative_count_in_REVIEW": 880,
+          "positive_fraction_pct": 80.07,
+          "negative_fraction_pct": 19.93
+        },
+        "incremental_efficiency": {
+          "added_positive_reviews": 357,
+          "added_negative_reviews": 55,
+          "positive_rescues": 357,
+          "incremental_efficiency_ratio (rescues/added_neg_rev)": 6.4909
+        }
+      }
+    },
+    "REG_HN_2.00": {
+      "positive_coverage": {
+        "total_positive_pairs": 3661,
+        "count_DIFFERENT": 110,
+        "pct_DIFFERENT": 3.0,
+        "count_REVIEW": 3551,
+        "pct_REVIEW": 97.0,
+        "count_HIGH_CONFIDENCE": 0,
+        "pct_HIGH_CONFIDENCE": 0.0,
+        "positive_rescue_count": 372,
+        "positive_regression_count": 0,
+        "overall_positive_coverage_count": 3551,
+        "overall_positive_coverage_pct": 97.0
+      },
+      "negative_handling": {
+        "overall": {
+          "total_negative_pairs": 1567,
+          "count_DIFFERENT": 698,
+          "pct_DIFFERENT": 44.54,
+          "count_REVIEW": 869,
+          "pct_REVIEW": 55.46,
+          "count_HIGH_CONFIDENCE": 0,
+          "pct_HIGH_CONFIDENCE": 0.0
+        },
+        "by_pair_type": {
+          "HN_CORRUPT": {
+            "total": 878,
+            "count_DIFFERENT": 90,
+            "pct_DIFFERENT": 10.25,
+            "count_REVIEW": 788,
+            "pct_REVIEW": 89.75,
+            "count_HIGH_CONFIDENCE": 0,
+            "pct_HIGH_CONFIDENCE": 0.0
+          },
+          "HN_SIBLING": {
+            "total": 37,
+            "count_DIFFERENT": 23,
+            "pct_DIFFERENT": 62.16,
+            "count_REVIEW": 14,
+            "pct_REVIEW": 37.84,
+            "count_HIGH_CONFIDENCE": 0,
+            "pct_HIGH_CONFIDENCE": 0.0
+          },
+          "NEG_EASY": {
+            "total": 635,
+            "count_DIFFERENT": 572,
+            "pct_DIFFERENT": 90.08,
+            "count_REVIEW": 63,
+            "pct_REVIEW": 9.92,
+            "count_HIGH_CONFIDENCE": 0,
+            "pct_HIGH_CONFIDENCE": 0.0
+          },
+          "NEG_SAME_CAT": {
+            "total": 17,
+            "count_DIFFERENT": 13,
+            "pct_DIFFERENT": 76.47,
+            "count_REVIEW": 4,
+            "pct_REVIEW": 23.53,
+            "count_HIGH_CONFIDENCE": 0,
+            "pct_HIGH_CONFIDENCE": 0.0
+          }
+        }
+      },
+      "review_load_and_efficiency": {
+        "total_pairs": 5228,
+        "total_REVIEW_count": 4420,
+        "REVIEW_pct": 84.54,
+        "delta_REVIEW_count_vs_baseline": 416,
+        "delta_REVIEW_pct_vs_baseline": 7.95,
+        "review_queue_composition": {
+          "positive_count_in_REVIEW": 3551,
+          "negative_count_in_REVIEW": 869,
+          "positive_fraction_pct": 80.34,
+          "negative_fraction_pct": 19.66
+        },
+        "incremental_efficiency": {
+          "added_positive_reviews": 372,
+          "added_negative_reviews": 44,
+          "positive_rescues": 372,
+          "incremental_efficiency_ratio (rescues/added_neg_rev)": 8.4545
+        }
+      }
+    }
+  },
+  "HELDOUT_operational_metrics": {
+    "BASELINE": {
+      "positive_coverage": {
+        "total_positive_pairs": 3804,
+        "count_DIFFERENT": 682,
+        "pct_DIFFERENT": 17.93,
+        "count_REVIEW": 3122,
+        "pct_REVIEW": 82.07,
+        "count_HIGH_CONFIDENCE": 0,
+        "pct_HIGH_CONFIDENCE": 0.0,
+        "positive_rescue_count": 0,
+        "positive_regression_count": 0,
+        "overall_positive_coverage_count": 3122,
+        "overall_positive_coverage_pct": 82.07
+      },
+      "negative_handling": {
+        "overall": {
+          "total_negative_pairs": 1480,
+          "count_DIFFERENT": 771,
+          "pct_DIFFERENT": 52.09,
+          "count_REVIEW": 709,
+          "pct_REVIEW": 47.91,
+          "count_HIGH_CONFIDENCE": 0,
+          "pct_HIGH_CONFIDENCE": 0.0
+        },
+        "by_pair_type": {
+          "HN_CORRUPT": {
+            "total": 816,
+            "count_DIFFERENT": 185,
+            "pct_DIFFERENT": 22.67,
+            "count_REVIEW": 631,
+            "pct_REVIEW": 77.33,
+            "count_HIGH_CONFIDENCE": 0,
+            "pct_HIGH_CONFIDENCE": 0.0
+          },
+          "HN_SIBLING": {
+            "total": 25,
+            "count_DIFFERENT": 13,
+            "pct_DIFFERENT": 52.0,
+            "count_REVIEW": 12,
+            "pct_REVIEW": 48.0,
+            "count_HIGH_CONFIDENCE": 0,
+            "pct_HIGH_CONFIDENCE": 0.0
+          },
+          "NEG_EASY": {
+            "total": 615,
+            "count_DIFFERENT": 551,
+            "pct_DIFFERENT": 89.59,
+            "count_REVIEW": 64,
+            "pct_REVIEW": 10.41,
+            "count_HIGH_CONFIDENCE": 0,
+            "pct_HIGH_CONFIDENCE": 0.0
+          },
+          "NEG_SAME_CAT": {
+            "total": 24,
+            "count_DIFFERENT": 22,
+            "pct_DIFFERENT": 91.67,
+            "count_REVIEW": 2,
+            "pct_REVIEW": 8.33,
+            "count_HIGH_CONFIDENCE": 0,
+            "pct_HIGH_CONFIDENCE": 0.0
+          }
+        }
+      },
+      "review_load_and_efficiency": {
+        "total_pairs": 5284,
+        "total_REVIEW_count": 3831,
+        "REVIEW_pct": 72.5,
+        "delta_REVIEW_count_vs_baseline": 0,
+        "delta_REVIEW_pct_vs_baseline": 0.0,
+        "review_queue_composition": {
+          "positive_count_in_REVIEW": 3122,
+          "negative_count_in_REVIEW": 709,
+          "positive_fraction_pct": 81.49,
+          "negative_fraction_pct": 18.51
+        },
+        "incremental_efficiency": {
+          "added_positive_reviews": 0,
+          "added_negative_reviews": 0,
+          "positive_rescues": 0,
+          "incremental_efficiency_ratio (rescues/added_neg_rev)": "N/A (zero incremental negative reviews)"
+        }
+      }
+    },
+    "REG_0.50": {
+      "positive_coverage": {
+        "total_positive_pairs": 3804,
+        "count_DIFFERENT": 35,
+        "pct_DIFFERENT": 0.92,
+        "count_REVIEW": 3769,
+        "pct_REVIEW": 99.08,
+        "count_HIGH_CONFIDENCE": 0,
+        "pct_HIGH_CONFIDENCE": 0.0,
+        "positive_rescue_count": 647,
+        "positive_regression_count": 0,
+        "overall_positive_coverage_count": 3769,
+        "overall_positive_coverage_pct": 99.08
+      },
+      "negative_handling": {
+        "overall": {
+          "total_negative_pairs": 1480,
+          "count_DIFFERENT": 661,
+          "pct_DIFFERENT": 44.66,
+          "count_REVIEW": 819,
+          "pct_REVIEW": 55.34,
+          "count_HIGH_CONFIDENCE": 0,
+          "pct_HIGH_CONFIDENCE": 0.0
+        },
+        "by_pair_type": {
+          "HN_CORRUPT": {
+            "total": 816,
+            "count_DIFFERENT": 87,
+            "pct_DIFFERENT": 10.66,
+            "count_REVIEW": 729,
+            "pct_REVIEW": 89.34,
+            "count_HIGH_CONFIDENCE": 0,
+            "pct_HIGH_CONFIDENCE": 0.0
+          },
+          "HN_SIBLING": {
+            "total": 25,
+            "count_DIFFERENT": 3,
+            "pct_DIFFERENT": 12.0,
+            "count_REVIEW": 22,
+            "pct_REVIEW": 88.0,
+            "count_HIGH_CONFIDENCE": 0,
+            "pct_HIGH_CONFIDENCE": 0.0
+          },
+          "NEG_EASY": {
+            "total": 615,
+            "count_DIFFERENT": 550,
+            "pct_DIFFERENT": 89.43,
+            "count_REVIEW": 65,
+            "pct_REVIEW": 10.57,
+            "count_HIGH_CONFIDENCE": 0,
+            "pct_HIGH_CONFIDENCE": 0.0
+          },
+          "NEG_SAME_CAT": {
+            "total": 24,
+            "count_DIFFERENT": 21,
+            "pct_DIFFERENT": 87.5,
+            "count_REVIEW": 3,
+            "pct_REVIEW": 12.5,
+            "count_HIGH_CONFIDENCE": 0,
+            "pct_HIGH_CONFIDENCE": 0.0
+          }
+        }
+      },
+      "review_load_and_efficiency": {
+        "total_pairs": 5284,
+        "total_REVIEW_count": 4588,
+        "REVIEW_pct": 86.83,
+        "delta_REVIEW_count_vs_baseline": 757,
+        "delta_REVIEW_pct_vs_baseline": 14.33,
+        "review_queue_composition": {
+          "positive_count_in_REVIEW": 3769,
+          "negative_count_in_REVIEW": 819,
+          "positive_fraction_pct": 82.15,
+          "negative_fraction_pct": 17.85
+        },
+        "incremental_efficiency": {
+          "added_positive_reviews": 647,
+          "added_negative_reviews": 110,
+          "positive_rescues": 647,
+          "incremental_efficiency_ratio (rescues/added_neg_rev)": 5.8818
+        }
+      }
+    },
+    "REG_1.00": {
+      "positive_coverage": {
+        "total_positive_pairs": 3804,
+        "count_DIFFERENT": 114,
+        "pct_DIFFERENT": 3.0,
+        "count_REVIEW": 3690,
+        "pct_REVIEW": 97.0,
+        "count_HIGH_CONFIDENCE": 0,
+        "pct_HIGH_CONFIDENCE": 0.0,
+        "positive_rescue_count": 568,
+        "positive_regression_count": 0,
+        "overall_positive_coverage_count": 3690,
+        "overall_positive_coverage_pct": 97.0
+      },
+      "negative_handling": {
+        "overall": {
+          "total_negative_pairs": 1480,
+          "count_DIFFERENT": 696,
+          "pct_DIFFERENT": 47.03,
+          "count_REVIEW": 784,
+          "pct_REVIEW": 52.97,
+          "count_HIGH_CONFIDENCE": 0,
+          "pct_HIGH_CONFIDENCE": 0.0
+        },
+        "by_pair_type": {
+          "HN_CORRUPT": {
+            "total": 816,
+            "count_DIFFERENT": 114,
+            "pct_DIFFERENT": 13.97,
+            "count_REVIEW": 702,
+            "pct_REVIEW": 86.03,
+            "count_HIGH_CONFIDENCE": 0,
+            "pct_HIGH_CONFIDENCE": 0.0
+          },
+          "HN_SIBLING": {
+            "total": 25,
+            "count_DIFFERENT": 11,
+            "pct_DIFFERENT": 44.0,
+            "count_REVIEW": 14,
+            "pct_REVIEW": 56.0,
+            "count_HIGH_CONFIDENCE": 0,
+            "pct_HIGH_CONFIDENCE": 0.0
+          },
+          "NEG_EASY": {
+            "total": 615,
+            "count_DIFFERENT": 550,
+            "pct_DIFFERENT": 89.43,
+            "count_REVIEW": 65,
+            "pct_REVIEW": 10.57,
+            "count_HIGH_CONFIDENCE": 0,
+            "pct_HIGH_CONFIDENCE": 0.0
+          },
+          "NEG_SAME_CAT": {
+            "total": 24,
+            "count_DIFFERENT": 21,
+            "pct_DIFFERENT": 87.5,
+            "count_REVIEW": 3,
+            "pct_REVIEW": 12.5,
+            "count_HIGH_CONFIDENCE": 0,
+            "pct_HIGH_CONFIDENCE": 0.0
+          }
+        }
+      },
+      "review_load_and_efficiency": {
+        "total_pairs": 5284,
+        "total_REVIEW_count": 4474,
+        "REVIEW_pct": 84.67,
+        "delta_REVIEW_count_vs_baseline": 643,
+        "delta_REVIEW_pct_vs_baseline": 12.17,
+        "review_queue_composition": {
+          "positive_count_in_REVIEW": 3690,
+          "negative_count_in_REVIEW": 784,
+          "positive_fraction_pct": 82.48,
+          "negative_fraction_pct": 17.52
+        },
+        "incremental_efficiency": {
+          "added_positive_reviews": 568,
+          "added_negative_reviews": 75,
+          "positive_rescues": 568,
+          "incremental_efficiency_ratio (rescues/added_neg_rev)": 7.5733
+        }
+      }
+    },
+    "REG_HN_2.00": {
+      "positive_coverage": {
+        "total_positive_pairs": 3804,
+        "count_DIFFERENT": 104,
+        "pct_DIFFERENT": 2.73,
+        "count_REVIEW": 3700,
+        "pct_REVIEW": 97.27,
+        "count_HIGH_CONFIDENCE": 0,
+        "pct_HIGH_CONFIDENCE": 0.0,
+        "positive_rescue_count": 579,
+        "positive_regression_count": 1,
+        "overall_positive_coverage_count": 3700,
+        "overall_positive_coverage_pct": 97.27
+      },
+      "negative_handling": {
+        "overall": {
+          "total_negative_pairs": 1480,
+          "count_DIFFERENT": 697,
+          "pct_DIFFERENT": 47.09,
+          "count_REVIEW": 783,
+          "pct_REVIEW": 52.91,
+          "count_HIGH_CONFIDENCE": 0,
+          "pct_HIGH_CONFIDENCE": 0.0
+        },
+        "by_pair_type": {
+          "HN_CORRUPT": {
+            "total": 816,
+            "count_DIFFERENT": 115,
+            "pct_DIFFERENT": 14.09,
+            "count_REVIEW": 701,
+            "pct_REVIEW": 85.91,
+            "count_HIGH_CONFIDENCE": 0,
+            "pct_HIGH_CONFIDENCE": 0.0
+          },
+          "HN_SIBLING": {
+            "total": 25,
+            "count_DIFFERENT": 11,
+            "pct_DIFFERENT": 44.0,
+            "count_REVIEW": 14,
+            "pct_REVIEW": 56.0,
+            "count_HIGH_CONFIDENCE": 0,
+            "pct_HIGH_CONFIDENCE": 0.0
+          },
+          "NEG_EASY": {
+            "total": 615,
+            "count_DIFFERENT": 550,
+            "pct_DIFFERENT": 89.43,
+            "count_REVIEW": 65,
+            "pct_REVIEW": 10.57,
+            "count_HIGH_CONFIDENCE": 0,
+            "pct_HIGH_CONFIDENCE": 0.0
+          },
+          "NEG_SAME_CAT": {
+            "total": 24,
+            "count_DIFFERENT": 21,
+            "pct_DIFFERENT": 87.5,
+            "count_REVIEW": 3,
+            "pct_REVIEW": 12.5,
+            "count_HIGH_CONFIDENCE": 0,
+            "pct_HIGH_CONFIDENCE": 0.0
+          }
+        }
+      },
+      "review_load_and_efficiency": {
+        "total_pairs": 5284,
+        "total_REVIEW_count": 4483,
+        "REVIEW_pct": 84.84,
+        "delta_REVIEW_count_vs_baseline": 652,
+        "delta_REVIEW_pct_vs_baseline": 12.34,
+        "review_queue_composition": {
+          "positive_count_in_REVIEW": 3700,
+          "negative_count_in_REVIEW": 783,
+          "positive_fraction_pct": 82.53,
+          "negative_fraction_pct": 17.47
+        },
+        "incremental_efficiency": {
+          "added_positive_reviews": 578,
+          "added_negative_reviews": 74,
+          "positive_rescues": 579,
+          "incremental_efficiency_ratio (rescues/added_neg_rev)": 7.8243
+        }
+      }
+    }
+  },
+  "controlled_hard_negatives_300": {
+    "overall_summary": {
+      "BASELINE": {
+        "count_DIFFERENT": 183,
+        "count_REVIEW": 117,
+        "count_HIGH_CONFIDENCE": 0,
+        "mean_score": 0.4393,
+        "median_score": 0.4225,
+        "count_ge_0_80": 0,
+        "count_ge_0_85": 0
+      },
+      "REG_0.50": {
+        "count_DIFFERENT": 46,
+        "count_REVIEW": 254,
+        "count_HIGH_CONFIDENCE": 0,
+        "mean_score": 0.5696,
+        "median_score": 0.5248,
+        "count_ge_0_80": 8,
+        "count_ge_0_85": 0
+      },
+      "REG_1.00": {
+        "count_DIFFERENT": 125,
+        "count_REVIEW": 175,
+        "count_HIGH_CONFIDENCE": 0,
+        "mean_score": 0.5009,
+        "median_score": 0.4637,
+        "count_ge_0_80": 0,
+        "count_ge_0_85": 0
+      },
+      "REG_HN_2.00": {
+        "count_DIFFERENT": 186,
+        "count_REVIEW": 114,
+        "count_HIGH_CONFIDENCE": 0,
+        "mean_score": 0.456,
+        "median_score": 0.3872,
+        "count_ge_0_80": 0,
+        "count_ge_0_85": 0
+      }
+    },
+    "by_field": {
+      "dimensions": {
+        "BASELINE": {
+          "count": 81,
+          "count_DIFFERENT": 48,
+          "count_REVIEW": 33,
+          "count_HIGH_CONFIDENCE": 0,
+          "mean_score": 0.4359,
+          "count_ge_0_80": 0,
+          "count_ge_0_85": 0
+        },
+        "REG_0.50": {
+          "count": 81,
+          "count_DIFFERENT": 7,
+          "count_REVIEW": 74,
+          "count_HIGH_CONFIDENCE": 0,
+          "mean_score": 0.5538,
+          "count_ge_0_80": 1,
+          "count_ge_0_85": 0
+        },
+        "REG_1.00": {
+          "count": 81,
+          "count_DIFFERENT": 31,
+          "count_REVIEW": 50,
+          "count_HIGH_CONFIDENCE": 0,
+          "mean_score": 0.4895,
+          "count_ge_0_80": 0,
+          "count_ge_0_85": 0
+        },
+        "REG_HN_2.00": {
+          "count": 81,
+          "count_DIFFERENT": 52,
+          "count_REVIEW": 29,
+          "count_HIGH_CONFIDENCE": 0,
+          "mean_score": 0.4321,
+          "count_ge_0_80": 0,
+          "count_ge_0_85": 0
+        }
+      },
+      "metric_thread": {
+        "BASELINE": {
+          "count": 161,
+          "count_DIFFERENT": 120,
+          "count_REVIEW": 41,
+          "count_HIGH_CONFIDENCE": 0,
+          "mean_score": 0.4301,
+          "count_ge_0_80": 0,
+          "count_ge_0_85": 0
+        },
+        "REG_0.50": {
+          "count": 161,
+          "count_DIFFERENT": 37,
+          "count_REVIEW": 124,
+          "count_HIGH_CONFIDENCE": 0,
+          "mean_score": 0.5297,
+          "count_ge_0_80": 7,
+          "count_ge_0_85": 0
+        },
+        "REG_1.00": {
+          "count": 161,
+          "count_DIFFERENT": 86,
+          "count_REVIEW": 75,
+          "count_HIGH_CONFIDENCE": 0,
+          "mean_score": 0.4723,
+          "count_ge_0_80": 0,
+          "count_ge_0_85": 0
+        },
+        "REG_HN_2.00": {
+          "count": 161,
+          "count_DIFFERENT": 124,
+          "count_REVIEW": 37,
+          "count_HIGH_CONFIDENCE": 0,
+          "mean_score": 0.3998,
+          "count_ge_0_80": 0,
+          "count_ge_0_85": 0
+        }
+      },
+      "nominal_bore": {
+        "BASELINE": {
+          "count": 18,
+          "count_DIFFERENT": 11,
+          "count_REVIEW": 7,
+          "count_HIGH_CONFIDENCE": 0,
+          "mean_score": 0.4605,
+          "count_ge_0_80": 0,
+          "count_ge_0_85": 0
+        },
+        "REG_0.50": {
+          "count": 18,
+          "count_DIFFERENT": 2,
+          "count_REVIEW": 16,
+          "count_HIGH_CONFIDENCE": 0,
+          "mean_score": 0.5788,
+          "count_ge_0_80": 0,
+          "count_ge_0_85": 0
+        },
+        "REG_1.00": {
+          "count": 18,
+          "count_DIFFERENT": 8,
+          "count_REVIEW": 10,
+          "count_HIGH_CONFIDENCE": 0,
+          "mean_score": 0.5157,
+          "count_ge_0_80": 0,
+          "count_ge_0_85": 0
+        },
+        "REG_HN_2.00": {
+          "count": 18,
+          "count_DIFFERENT": 10,
+          "count_REVIEW": 8,
+          "count_HIGH_CONFIDENCE": 0,
+          "mean_score": 0.4819,
+          "count_ge_0_80": 0,
+          "count_ge_0_85": 0
+        }
+      },
+      "pressure_rating": {
+        "BASELINE": {
+          "count": 1,
+          "count_DIFFERENT": 1,
+          "count_REVIEW": 0,
+          "count_HIGH_CONFIDENCE": 0,
+          "mean_score": 0.428,
+          "count_ge_0_80": 0,
+          "count_ge_0_85": 0
+        },
+        "REG_0.50": {
+          "count": 1,
+          "count_DIFFERENT": 0,
+          "count_REVIEW": 1,
+          "count_HIGH_CONFIDENCE": 0,
+          "mean_score": 0.601,
+          "count_ge_0_80": 0,
+          "count_ge_0_85": 0
+        },
+        "REG_1.00": {
+          "count": 1,
+          "count_DIFFERENT": 0,
+          "count_REVIEW": 1,
+          "count_HIGH_CONFIDENCE": 0,
+          "mean_score": 0.5156,
+          "count_ge_0_80": 0,
+          "count_ge_0_85": 0
+        },
+        "REG_HN_2.00": {
+          "count": 1,
+          "count_DIFFERENT": 0,
+          "count_REVIEW": 1,
+          "count_HIGH_CONFIDENCE": 0,
+          "mean_score": 0.5028,
+          "count_ge_0_80": 0,
+          "count_ge_0_85": 0
+        }
+      },
+      "voltage_class": {
+        "BASELINE": {
+          "count": 39,
+          "count_DIFFERENT": 3,
+          "count_REVIEW": 36,
+          "count_HIGH_CONFIDENCE": 0,
+          "mean_score": 0.4751,
+          "count_ge_0_80": 0,
+          "count_ge_0_85": 0
+        },
+        "REG_0.50": {
+          "count": 39,
+          "count_DIFFERENT": 0,
+          "count_REVIEW": 39,
+          "count_HIGH_CONFIDENCE": 0,
+          "mean_score": 0.7625,
+          "count_ge_0_80": 0,
+          "count_ge_0_85": 0
+        },
+        "REG_1.00": {
+          "count": 39,
+          "count_DIFFERENT": 0,
+          "count_REVIEW": 39,
+          "count_HIGH_CONFIDENCE": 0,
+          "mean_score": 0.6353,
+          "count_ge_0_80": 0,
+          "count_ge_0_85": 0
+        },
+        "REG_HN_2.00": {
+          "count": 39,
+          "count_DIFFERENT": 0,
+          "count_REVIEW": 39,
+          "count_HIGH_CONFIDENCE": 0,
+          "mean_score": 0.7246,
+          "count_ge_0_80": 0,
+          "count_ge_0_85": 0
+        }
+      }
+    }
+  },
+  "DEV_vs_HELDOUT_consistency": {
+    "BASELINE": {
+      "DEV_positive_coverage_pct": 86.83,
+      "HELDOUT_positive_coverage_pct": 82.07,
+      "positive_coverage_delta (HELDOUT - DEV)": -4.76,
+      "DEV_REVIEW_pct": 76.59,
+      "HELDOUT_REVIEW_pct": 72.5,
+      "REVIEW_pct_delta (HELDOUT - DEV)": -4.09,
+      "DEV_negative_DIFFERENT_pct": 47.35,
+      "HELDOUT_negative_DIFFERENT_pct": 52.09,
+      "negative_DIFFERENT_pct_delta (HELDOUT - DEV)": 4.74,
+      "DEV_positive_regressions": 0,
+      "HELDOUT_positive_regressions": 0
+    },
+    "REG_0.50": {
+      "DEV_positive_coverage_pct": 99.37,
+      "HELDOUT_positive_coverage_pct": 99.08,
+      "positive_coverage_delta (HELDOUT - DEV)": -0.29,
+      "DEV_REVIEW_pct": 87.24,
+      "HELDOUT_REVIEW_pct": 86.83,
+      "REVIEW_pct_delta (HELDOUT - DEV)": -0.41,
+      "DEV_negative_DIFFERENT_pct": 41.1,
+      "HELDOUT_negative_DIFFERENT_pct": 44.66,
+      "negative_DIFFERENT_pct_delta (HELDOUT - DEV)": 3.56,
+      "DEV_positive_regressions": 0,
+      "HELDOUT_positive_regressions": 0
+    },
+    "REG_1.00": {
+      "DEV_positive_coverage_pct": 96.59,
+      "HELDOUT_positive_coverage_pct": 97.0,
+      "positive_coverage_delta (HELDOUT - DEV)": 0.41,
+      "DEV_REVIEW_pct": 84.47,
+      "HELDOUT_REVIEW_pct": 84.67,
+      "REVIEW_pct_delta (HELDOUT - DEV)": 0.2,
+      "DEV_negative_DIFFERENT_pct": 43.84,
+      "HELDOUT_negative_DIFFERENT_pct": 47.03,
+      "negative_DIFFERENT_pct_delta (HELDOUT - DEV)": 3.19,
+      "DEV_positive_regressions": 0,
+      "HELDOUT_positive_regressions": 0
+    },
+    "REG_HN_2.00": {
+      "DEV_positive_coverage_pct": 97.0,
+      "HELDOUT_positive_coverage_pct": 97.27,
+      "positive_coverage_delta (HELDOUT - DEV)": 0.27,
+      "DEV_REVIEW_pct": 84.54,
+      "HELDOUT_REVIEW_pct": 84.84,
+      "REVIEW_pct_delta (HELDOUT - DEV)": 0.3,
+      "DEV_negative_DIFFERENT_pct": 44.54,
+      "HELDOUT_negative_DIFFERENT_pct": 47.09,
+      "negative_DIFFERENT_pct_delta (HELDOUT - DEV)": 2.55,
+      "DEV_positive_regressions": 0,
+      "HELDOUT_positive_regressions": 1
+    }
+  },
+  "guardrail_framework": {
+    "description": "Empirical guardrails derived from Step 1-5 offline evaluations for future candidate scoring verification.",
+    "guardrails": [
+      {
+        "guardrail_name": "Zero Positive Regression",
+        "condition": "positive_regression_count == 0",
+        "rationale": "Learned weights must never drop a baseline REVIEW or HIGH_CONFIDENCE positive pair into DIFFERENT."
+      },
+      {
+        "guardrail_name": "Zero Controlled-HN False High Confidence",
+        "condition": "controlled_HN_HIGH_CONFIDENCE == 0",
+        "rationale": "Critical gates and classifier must ensure zero engineering hard negatives reach auto-match."
+      },
+      {
+        "guardrail_name": "Zero Controlled-HN False High Score",
+        "condition": "controlled_HN_ge_0_85 == 0",
+        "rationale": "No controlled hard negative should score above the high-confidence scalar threshold (0.85)."
+      },
+      {
+        "guardrail_name": "Authoritative Critical Gate Invariance",
+        "condition": "gate_conflict_override == True",
+        "rationale": "Critical gates must retain absolute veto power over scores regardless of learned scalar magnitude."
+      },
+      {
+        "guardrail_name": "DEV-HELDOUT Generalization Stability",
+        "condition": "abs(HELDOUT_pos_cov - DEV_pos_cov) <= 3.0%",
+        "rationale": "Learned weights must exhibit consistent coverage across split boundaries without overfitting."
+      },
+      {
+        "guardrail_name": "Bounded Human Review Capacity",
+        "condition": "Human review queue growth must align with operational team capacity.",
+        "rationale": "Specific numerical caps on added review count cannot be inferred from dataset alone and must be set by operational business requirements."
+      }
+    ]
+  }
+}

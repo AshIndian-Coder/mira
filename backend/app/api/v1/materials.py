@@ -1,12 +1,14 @@
 import csv
 import io
 from typing import Any
+import uuid
 
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
 
 from app.core.rbac import require_permission
 from app.core.security import get_current_active_user
 from app.models.user import User
+from app.services.ingestion.provenance import resolve_provenance
 from app.services.ingestion.service import parse_legacy_file
 from app.services.normalization.service import normalize_material_description
 from app.services.parsing.service import parse_specifications
@@ -33,11 +35,14 @@ async def upload_materials_csv(
 
     new_records: list[dict[str, Any]] = []
     for row in raw_rows:
-        cpse = row.get("cpse") or row.get("source_org") or "CPSE_GENERIC"
+        sheet_name = row.get("_sheet_name")
+        prov = resolve_provenance(row, sheet_name=sheet_name, filename=file.filename)
+        cpse = prov.cpse if (prov.cpse and prov.cpse != "UNKNOWN") else "CPSE_GENERIC"
         code = (
             row.get("material_code")
             or row.get("source_material_code")
-            or f"MAT-{len(store.MATERIALS) + len(new_records) + 1:05d}"
+            or row.get("item_code")
+            or f"MAT-{uuid.uuid4().hex[:8].upper()}"
         )
         raw_desc = (row.get("description") or row.get("material_description") or "").strip()
 
@@ -50,6 +55,15 @@ async def upload_materials_csv(
         record: dict[str, Any] = {
             "id": len(store.MATERIALS) + len(new_records) + 1,
             "cpse": cpse,
+            "provenance_level": prov.level.value,
+            "provenance_confidence": prov.confidence,
+            "provenance_source": prov.source,
+            "provenance_conflict": prov.conflict_detected,
+            "requires_review": prov.requires_review,
+            "provenance_details": {
+                "all_evidence": prov.all_evidence,
+                "conflicts": prov.conflicting_evidence,
+            },
             "material_code": code,
             "description": raw_desc,
             "normalized_description": norm_desc,

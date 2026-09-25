@@ -314,11 +314,11 @@ def test_deterministic_candidate_ranking():
         "id": 2,
         "cpse": "ONGC",
         "material_code": "VLV-300",
-        "description": "GLOBE VALVE CS 300 LB 3 IN",
-        "normalized_description": normalize_material_description("GLOBE VALVE CS 300 LB 3 IN"),
+        "description": "GATE VALVE CS 150 LB 3 IN",
+        "normalized_description": normalize_material_description("GATE VALVE CS 150 LB 3 IN"),
         "category": "Valve",
         "material_grade": "CS",
-        "parsed_specifications": parse_specifications("GLOBE VALVE CS 300 LB 3 IN"),
+        "parsed_specifications": parse_specifications("GATE VALVE CS 150 LB 3 IN"),
     }
     cmr2 = build_common_material_record([mat_vlv2])
     cnmc2 = generate_or_get_cnmc([mat_vlv2], cmr2)
@@ -592,11 +592,11 @@ def test_api_cnmc_candidates_endpoint_margin_and_compatibility():
         "id": 2,
         "cpse": "ONGC",
         "material_code": "VLV-300-B",
-        "description": "GLOBE VALVE CS 300 LB 3 IN",
-        "normalized_description": normalize_material_description("GLOBE VALVE CS 300 LB 3 IN"),
+        "description": "GATE VALVE CS 150 LB 3 IN",
+        "normalized_description": normalize_material_description("GATE VALVE CS 150 LB 3 IN"),
         "category": "Valve",
         "material_grade": "CS",
-        "parsed_specifications": parse_specifications("GLOBE VALVE CS 300 LB 3 IN"),
+        "parsed_specifications": parse_specifications("GATE VALVE CS 150 LB 3 IN"),
     }
     cmr2 = build_common_material_record([mat2])
     cnmc2 = generate_or_get_cnmc([mat2], cmr2)
