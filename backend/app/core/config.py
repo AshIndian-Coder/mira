@@ -16,6 +16,13 @@ class Settings(BaseSettings):
     seed_admin_email: str = "admin@mira.gov.in"
     seed_admin_password: str = "Admin@123"
 
+    # Milvus vector store
+    milvus_host: str = "localhost"
+    milvus_port: str = "19530"
+    milvus_collection: str = "material_embeddings"
+    milvus_enabled: bool = True
+    milvus_top_k: int = 50
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",

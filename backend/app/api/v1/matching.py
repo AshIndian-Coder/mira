@@ -30,6 +30,7 @@ from app.services.matching.cnmc_matcher import (
     match_new_materials_against_cnmcs,
 )
 from app.services.matching.embeddings import precompute_embeddings
+from app.services.matching.vector_search import search_similar_materials
 from app.services.normalization.service import normalize_material_description
 from app.services.parsing.service import parse_specifications
 
@@ -236,6 +237,61 @@ def run_batch_matching(
                 "id": store.next_candidate_id(),
                 "source_material_id": source_bo.id,
                 "target_material_id": target_bo.id,
+                "source_cpse": source_mat["cpse"],
+                "target_cpse": target_mat["cpse"],
+                "source_code": source_mat["material_code"],
+                "target_code": target_mat["material_code"],
+                "source_description": source_mat["description"],
+                "target_description": target_mat["description"],
+                "scores": result["scores"],
+                "critical_checks": result["critical_checks"],
+                "engine_decision": result["decision"],
+                "review_status": "PENDING"
+                if result["decision"] in {"HIGH_CONFIDENCE", "REVIEW"}
+                else result["decision"],
+                "reviewer_id": None,
+                "reviewer_comments": None,
+                "reviewed_at": None,
+                "created_at": started_at.isoformat(),
+            }
+            new_candidates.append(candidate)
+
+    # --- Additional candidates from vector search (Milvus) ---
+    # Runs AFTER the rule-based blocking above, and only ever ADDS
+    # candidates -- never removes or changes anything the rule-based loop
+    # already found. If Milvus is unavailable, this is skipped silently.
+    for source_bo in blocker_objects:
+        source_mat = material_index[source_bo.id]
+        try:
+            vector_ids = search_similar_materials(
+                description=source_mat.get("normalized_description", ""),
+                category=source_mat.get("category"),
+                top_k=50,
+            )
+        except Exception:
+            continue
+
+        for target_id in vector_ids:
+            if target_id == source_bo.id or target_id not in material_index:
+                continue
+
+            target_mat = material_index[target_id]
+
+            if source_mat["cpse"].upper() == target_mat["cpse"].upper():
+                continue
+
+            pk = _pair_key(source_bo.id, target_id)
+            if pk in seen_pairs:
+                continue
+            seen_pairs.add(pk)
+            total_pairs_evaluated += 1
+
+            result = classify_match(source_mat, target_mat, embedding_cache=embedding_cache)
+
+            candidate = {
+                "id": store.next_candidate_id(),
+                "source_material_id": source_bo.id,
+                "target_material_id": target_id,
                 "source_cpse": source_mat["cpse"],
                 "target_cpse": target_mat["cpse"],
                 "source_code": source_mat["material_code"],
