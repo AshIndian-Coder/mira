@@ -3,54 +3,134 @@ import { useCallback, useEffect, useState, type ChangeEvent } from 'react'
 import Button from '../../components/UI/Button'
 import { api, formatNumber, type Material } from '../../lib/api'
 
+const PAGE_SIZE = 50
+
 function Materials() {
   const [materials, setMaterials] = useState<Material[]>([])
   const [total, setTotal] = useState(0)
+  const [skip, setSkip] = useState(0)
+  const [limit] = useState(PAGE_SIZE)
   const [query, setQuery] = useState('')
+  const [selectedCpse, setSelectedCpse] = useState('')
+  const [selectedCategory, setSelectedCategory] = useState('')
+  const [cpses, setCpses] = useState<string[]>([])
+  const [categories, setCategories] = useState<string[]>([])
   const [loading, setLoading] = useState(true)
   const [uploading, setUploading] = useState(false)
   const [matching, setMatching] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
 
-  const loadMaterials = useCallback(async (search = query) => {
+  const loadStats = useCallback(async () => {
     try {
-      setLoading(true)
-      setError(null)
-      const response = await api.listMaterials({
-        query: search || undefined,
-        limit: 100,
-      })
-      setMaterials(response.materials)
-      setTotal(response.total)
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load materials')
-    } finally {
-      setLoading(false)
+      const stats = await api.materialsStats()
+      setCpses(stats.cpse_list || [])
+      const cats = Object.keys(stats.category_distribution || {})
+        .filter(Boolean)
+        .sort()
+      setCategories(cats)
+    } catch {
+      // Non-blocking fallback
     }
-  }, [query])
+  }, [])
 
   useEffect(() => {
     let active = true
-    api.listMaterials({
-      query: query || undefined,
-      limit: 100,
-    }).then((response) => {
-      if (active) {
-        setMaterials(response.materials)
-        setTotal(response.total)
-        setLoading(false)
-      }
-    }).catch((err) => {
-      if (active) {
-        setError(err instanceof Error ? err.message : 'Failed to load materials')
-        setLoading(false)
-      }
-    })
+    api.materialsStats()
+      .then((stats) => {
+        if (active) {
+          setCpses(stats.cpse_list || [])
+          const cats = Object.keys(stats.category_distribution || {})
+            .filter(Boolean)
+            .sort()
+          setCategories(cats)
+        }
+      })
+      .catch(() => {
+        // Non-blocking fallback
+      })
     return () => {
       active = false
     }
-  }, [query])
+  }, [])
+
+  const loadMaterials = useCallback(
+    async (
+      search = query,
+      cpse = selectedCpse,
+      category = selectedCategory,
+      offset = skip,
+    ) => {
+      try {
+        setLoading(true)
+        setError(null)
+        const response = await api.listMaterials({
+          query: search.trim() || undefined,
+          cpse: cpse || undefined,
+          category: category || undefined,
+          skip: offset,
+          limit,
+        })
+        setMaterials(response.materials)
+        setTotal(response.total)
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to load materials')
+      } finally {
+        setLoading(false)
+      }
+    },
+    [query, selectedCpse, selectedCategory, skip, limit],
+  )
+
+  useEffect(() => {
+    let active = true
+    api
+      .listMaterials({
+        query: query.trim() || undefined,
+        cpse: selectedCpse || undefined,
+        category: selectedCategory || undefined,
+        skip,
+        limit,
+      })
+      .then((response) => {
+        if (active) {
+          setMaterials(response.materials)
+          setTotal(response.total)
+          setLoading(false)
+        }
+      })
+      .catch((err) => {
+        if (active) {
+          setError(err instanceof Error ? err.message : 'Failed to load materials')
+          setLoading(false)
+        }
+      })
+    return () => {
+      active = false
+    }
+  }, [query, selectedCpse, selectedCategory, skip, limit])
+
+  const handleSearchChange = (event: ChangeEvent<HTMLInputElement>) => {
+    setQuery(event.target.value)
+    setSkip(0)
+  }
+
+  const handleCpseChange = (newCpse: string) => {
+    setSelectedCpse(newCpse)
+    setSkip(0)
+  }
+
+  const handleCategoryChange = (newCat: string) => {
+    setSelectedCategory(newCat)
+    setSkip(0)
+  }
+
+  const handleResetFilters = () => {
+    setQuery('')
+    setSelectedCpse('')
+    setSelectedCategory('')
+    setSkip(0)
+  }
 
   const handleUpload = async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
@@ -63,7 +143,8 @@ function Materials() {
       setMessage(
         `Uploaded ${result.records_ingested} records (${formatNumber(result.total_materials)} total)`,
       )
-      await loadMaterials()
+      setSkip(0)
+      await Promise.all([loadStats(), loadMaterials(query, selectedCpse, selectedCategory, 0)])
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Upload failed')
     } finally {
@@ -86,6 +167,14 @@ function Materials() {
       setMatching(false)
     }
   }
+
+  const start = total === 0 ? 0 : skip + 1
+  const end = Math.min(skip + limit, total)
+  const isFirstPage = skip === 0
+  const isLastPage = skip + limit >= total || materials.length === 0
+  const currentPage = Math.floor(skip / limit) + 1
+  const totalPages = Math.ceil(total / limit) || 1
+  const hasActiveFilters = Boolean(query || selectedCpse || selectedCategory)
 
   return (
     <div className="page">
@@ -140,18 +229,53 @@ function Materials() {
             type="text"
             placeholder="Search description or material code…"
             value={query}
-            onChange={(event) => setQuery(event.target.value)}
+            onChange={handleSearchChange}
             onKeyDown={(event) => {
-              if (event.key === 'Enter') loadMaterials(query)
+              if (event.key === 'Enter') loadMaterials()
             }}
           />
+          <select
+            className="mapping-select"
+            value={selectedCpse}
+            onChange={(event) => handleCpseChange(event.target.value)}
+            aria-label="Filter by CPSE"
+          >
+            <option value="">All CPSEs</option>
+            {cpses.map((cpse) => (
+              <option key={cpse} value={cpse}>
+                {cpse}
+              </option>
+            ))}
+          </select>
+          <select
+            className="mapping-select"
+            value={selectedCategory}
+            onChange={(event) => handleCategoryChange(event.target.value)}
+            aria-label="Filter by Category"
+          >
+            <option value="">All Categories</option>
+            {categories.map((cat) => (
+              <option key={cat} value={cat}>
+                {cat}
+              </option>
+            ))}
+          </select>
           <button
             className="mapping-secondary-button"
             type="button"
-            onClick={() => loadMaterials(query)}
+            onClick={() => loadMaterials()}
           >
             Search
           </button>
+          {hasActiveFilters && (
+            <button
+              className="mapping-secondary-button"
+              type="button"
+              onClick={handleResetFilters}
+            >
+              Reset
+            </button>
+          )}
         </div>
 
         <div className="mapping-table-wrapper">
@@ -175,7 +299,9 @@ function Materials() {
               ) : materials.length === 0 ? (
                 <tr>
                   <td colSpan={5} className="mapping-empty">
-                    No materials yet. Upload a CSV to get started.
+                    {hasActiveFilters
+                      ? 'No materials match the selected filter criteria.'
+                      : 'No materials yet. Upload a CSV to get started.'}
                   </td>
                 </tr>
               ) : (
@@ -198,7 +324,30 @@ function Materials() {
         </div>
 
         <div className="mapping-footer">
-          Showing {materials.length} of {formatNumber(total)} materials
+          <span>
+            Showing {total === 0 ? 0 : `${formatNumber(start)}–${formatNumber(end)}`} of {formatNumber(total)} materials
+          </span>
+          <div className="mapping-pagination">
+            <button
+              className="mapping-pagination-btn"
+              type="button"
+              disabled={isFirstPage || loading}
+              onClick={() => setSkip((prev) => Math.max(0, prev - limit))}
+            >
+              Previous
+            </button>
+            <span className="mapping-page-indicator">
+              Page {formatNumber(currentPage)} of {formatNumber(totalPages)}
+            </span>
+            <button
+              className="mapping-pagination-btn"
+              type="button"
+              disabled={isLastPage || loading}
+              onClick={() => setSkip((prev) => prev + limit)}
+            >
+              Next
+            </button>
+          </div>
         </div>
       </div>
     </div>
