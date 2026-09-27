@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState, type ChangeEvent } from 'react'
 
 import Button from '../../components/UI/Button'
+import CnmcMatchModal from '../../components/Matching/CnmcMatchModal'
 import { api, formatNumber, type Material } from '../../lib/api'
 
 const PAGE_SIZE = 50
@@ -18,6 +19,8 @@ function Materials() {
   const [loading, setLoading] = useState(true)
   const [uploading, setUploading] = useState(false)
   const [matching, setMatching] = useState(false)
+  const [cnmcMatching, setCnmcMatching] = useState(false)
+  const [selectedMaterialForCnmc, setSelectedMaterialForCnmc] = useState<Material | null>(null)
   const [message, setMessage] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
 
@@ -159,12 +162,31 @@ function Materials() {
       setError(null)
       const result = await api.runBatchMatching(false)
       setMessage(
-        `Matching complete: ${result.new_candidates_stored} new candidates in ${result.elapsed_ms}ms`,
+        `Pairwise matching complete: ${result.new_candidates_stored} new candidates in ${result.elapsed_ms}ms`,
       )
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Matching failed')
     } finally {
       setMatching(false)
+    }
+  }
+
+  const handleRunCnmcMatching = async () => {
+    try {
+      setCnmcMatching(true)
+      setError(null)
+      const result = await api.runCnmcBatchMatching(5, 0.65)
+      if (result.status === 'no_existing_cnmc') {
+        setMessage('No registered CNMCs found in catalog. Run standard pairwise matching and mapping generation first.')
+      } else {
+        setMessage(
+          `CNMC matching complete: ${result.proposals_generated} candidate proposals generated across ${result.materials_evaluated} materials. Review them in Match Review.`,
+        )
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'CNMC matching failed')
+    } finally {
+      setCnmcMatching(false)
     }
   }
 
@@ -185,7 +207,7 @@ function Materials() {
           <p>Upload CPSE CSV files and browse ingested material records.</p>
         </div>
 
-        <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+        <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap' }}>
           <label className="materials-upload-button">
             {uploading ? 'Uploading…' : 'Upload File'}
             <input
@@ -196,8 +218,11 @@ function Materials() {
               disabled={uploading}
             />
           </label>
-          <Button onClick={handleRunMatching} disabled={matching || total === 0}>
+          <Button onClick={handleRunMatching} disabled={matching || cnmcMatching || total === 0}>
             {matching ? 'Running…' : 'Run Matching'}
+          </Button>
+          <Button onClick={handleRunCnmcMatching} disabled={cnmcMatching || matching || total === 0}>
+            {cnmcMatching ? 'Matching CNMCs…' : 'Match to CNMCs'}
           </Button>
         </div>
       </div>
@@ -287,18 +312,19 @@ function Materials() {
                 <th>Description</th>
                 <th>Category</th>
                 <th>Grade</th>
+                <th style={{ width: '130px', textAlign: 'right' }}>CNMC</th>
               </tr>
             </thead>
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan={5} className="mapping-empty">
+                  <td colSpan={6} className="mapping-empty">
                     Loading materials…
                   </td>
                 </tr>
               ) : materials.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="mapping-empty">
+                  <td colSpan={6} className="mapping-empty">
                     {hasActiveFilters
                       ? 'No materials match the selected filter criteria.'
                       : 'No materials yet. Upload a CSV to get started.'}
@@ -316,6 +342,22 @@ function Materials() {
                     <td className="mapping-description">{material.description}</td>
                     <td>{material.category}</td>
                     <td>{material.material_grade ?? '—'}</td>
+                    <td style={{ textAlign: 'right' }}>
+                      <button
+                        className="mapping-secondary-button"
+                        type="button"
+                        style={{
+                          height: '28px',
+                          padding: '0 10px',
+                          fontSize: '11px',
+                          fontWeight: 600,
+                        }}
+                        onClick={() => setSelectedMaterialForCnmc(material)}
+                        title="Search established CNMC catalog for matches"
+                      >
+                        Find CNMC
+                      </button>
+                    </td>
                   </tr>
                 ))
               )}
@@ -350,6 +392,14 @@ function Materials() {
           </div>
         </div>
       </div>
+
+      {selectedMaterialForCnmc && (
+        <CnmcMatchModal
+          material={selectedMaterialForCnmc}
+          onClose={() => setSelectedMaterialForCnmc(null)}
+          onAttached={() => loadMaterials()}
+        />
+      )}
     </div>
   )
 }
