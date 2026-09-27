@@ -1,8 +1,10 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 
+import { useAuth } from '../../context/AuthContext'
 import { api, formatTimestamp, type Mapping } from '../../lib/api'
 
 type FlatRow = {
+  mappingId: number
   cpse: string
   materialCode: string
   originalDescription: string
@@ -35,10 +37,12 @@ function StatusBadge({ status }: { status: string }) {
 }
 
 export default function Mappings() {
+  const { isDataSteward } = useAuth()
   const [mappings, setMappings] = useState<Mapping[]>([])
   const [search, setSearch] = useState('')
   const [loading, setLoading] = useState(true)
   const [generating, setGenerating] = useState(false)
+  const [approvingId, setApprovingId] = useState<number | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [message, setMessage] = useState<string | null>(null)
 
@@ -78,6 +82,7 @@ export default function Mappings() {
     for (const mapping of mappings) {
       for (const entry of mapping.cpse_mappings) {
         rows.push({
+          mappingId: mapping.id,
           cpse: entry.cpse,
           materialCode: entry.material_code,
           originalDescription: entry.description,
@@ -119,6 +124,24 @@ export default function Mappings() {
       setError(err instanceof Error ? err.message : 'Failed to generate mappings')
     } finally {
       setGenerating(false)
+    }
+  }
+
+  const handleApprove = async (mappingId: number) => {
+    try {
+      setApprovingId(mappingId)
+      setError(null)
+      const result = await api.approveMapping(mappingId)
+      setMessage(
+        result.status === 'already_approved'
+          ? `Mapping ${result.mapping.cnmc || result.mapping.nmc} is already approved.`
+          : `Mapping ${result.mapping.cnmc || result.mapping.nmc} approved successfully.`,
+      )
+      await loadMappings()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to approve mapping')
+    } finally {
+      setApprovingId(null)
     }
   }
 
@@ -259,18 +282,19 @@ export default function Mappings() {
                 <th>Common National Code (CNMC)</th>
                 <th>Category</th>
                 <th>Status</th>
+                {isDataSteward && <th style={{ width: '130px', textAlign: 'right' }}>Action</th>}
               </tr>
             </thead>
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan={6} className="mapping-empty">
+                  <td colSpan={isDataSteward ? 7 : 6} className="mapping-empty">
                     Loading mappings…
                   </td>
                 </tr>
               ) : filteredRows.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="mapping-empty">
+                  <td colSpan={isDataSteward ? 7 : 6} className="mapping-empty">
                     No mappings yet. Approve matches in Match Review, then click Generate Mappings.
                   </td>
                 </tr>
@@ -291,6 +315,36 @@ export default function Mappings() {
                     <td>
                       <StatusBadge status={row.status} />
                     </td>
+                    {isDataSteward && (
+                      <td style={{ textAlign: 'right' }}>
+                        {row.status.toUpperCase() === 'PROVISIONAL' ? (
+                          <button
+                            className="mapping-secondary-button"
+                            type="button"
+                            style={{
+                              height: '28px',
+                              padding: '0 12px',
+                              fontSize: '11px',
+                              fontWeight: 600,
+                            }}
+                            disabled={approvingId === row.mappingId}
+                            onClick={() => handleApprove(row.mappingId)}
+                          >
+                            {approvingId === row.mappingId ? 'Approving…' : 'Approve'}
+                          </button>
+                        ) : (
+                          <span
+                            style={{
+                              fontSize: '11px',
+                              color: 'var(--success, #16a34a)',
+                              fontWeight: 600,
+                            }}
+                          >
+                            ✓ Approved
+                          </span>
+                        )}
+                      </td>
+                    )}
                   </tr>
                 ))
               )}

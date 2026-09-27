@@ -441,6 +441,13 @@ export const api = {
       message?: string
     }>('/api/mappings/generate', { method: 'POST' }),
 
+  approveMapping: (mappingId: number) =>
+    request<{
+      status: string
+      mapping: Mapping
+      message?: string
+    }>(`/api/mappings/${mappingId}/approve`, { method: 'POST' }),
+
   exportMappingsFlat: () =>
     request<{
       total_rows: number

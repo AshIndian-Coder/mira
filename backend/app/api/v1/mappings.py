@@ -149,6 +149,64 @@ def generate_mappings(current_user: User = Depends(require_permission("create_ma
     }
 
 
+@router.post("/{mapping_id}/approve")
+def approve_mapping(
+    mapping_id: int,
+    current_user: User = Depends(require_permission("create_mapping")),
+):
+    """
+    Data steward / Admin approves a PROVISIONAL mapping and its Common Material Record.
+    - Sets mapping status to APPROVED.
+    - Sets common_material_record approval_status to APPROVED.
+    - Emits a MAPPING_APPROVED audit log event.
+    """
+    target_mapping = None
+    for m in MAPPINGS:
+        if m["id"] == mapping_id:
+            target_mapping = m
+            break
+
+    if target_mapping is None:
+        raise HTTPException(status_code=404, detail=f"Mapping {mapping_id} not found")
+
+    if target_mapping.get("status") == "APPROVED":
+        return {
+            "status": "already_approved",
+            "mapping": target_mapping,
+            "message": f"Mapping {mapping_id} is already approved",
+        }
+
+    from datetime import datetime, timezone
+    now = datetime.now(timezone.utc).isoformat()
+    actor_identity = current_user.email if (current_user and current_user.email) else "steward"
+
+    target_mapping["status"] = "APPROVED"
+
+    cmr = dict(target_mapping.get("common_material_record") or {})
+    if cmr:
+        cmr["approval_status"] = "APPROVED"
+        target_mapping["common_material_record"] = cmr
+
+    from app.api.v1.audit import AUDIT_EVENTS
+    AUDIT_EVENTS.append({
+        "event_type": "MAPPING_APPROVED",
+        "candidate_id": None,
+        "source_code": target_mapping.get("nmc"),
+        "target_code": target_mapping.get("nmc"),
+        "source_cpse": "MIRA",
+        "target_cpse": "MIRA",
+        "actor": actor_identity,
+        "comments": f"Mapping cluster {mapping_id} ({target_mapping.get('nmc')}) approved by data steward.",
+        "final_score": 1.0,
+        "timestamp": now,
+    })
+
+    return {
+        "status": "success",
+        "mapping": target_mapping,
+    }
+
+
 @router.get("/{mapping_id}")
 def get_mapping(
     mapping_id: int,
