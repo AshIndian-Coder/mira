@@ -180,42 +180,48 @@ def generate_candidates(
                 )
             target_map = {t.id: t for t in targets}
 
-        matching_ids: set[int] = set()
+        key_counts: dict[int, int] = {}
         for key in source_keys:
             for tid in block_index.get(key, ()):
                 if tid != source.id and tid in target_map:
-                    matching_ids.add(tid)
+                    key_counts[tid] = key_counts.get(tid, 0) + 1
 
-        if not matching_ids:
+        if not key_counts:
             return []
 
         if target_order is not None:
             sorted_ids = sorted(
-                matching_ids, key=lambda tid: target_order.get(tid, 0)
+                key_counts.keys(),
+                key=lambda tid: (-key_counts[tid], target_order.get(tid, 0)),
             )
         elif targets is not None:
             order_map = {t.id: i for i, t in enumerate(targets)}
             sorted_ids = sorted(
-                matching_ids, key=lambda tid: order_map.get(tid, 0)
+                key_counts.keys(),
+                key=lambda tid: (-key_counts[tid], order_map.get(tid, 0)),
             )
         else:
-            sorted_ids = sorted(matching_ids)
+            sorted_ids = sorted(
+                key_counts.keys(),
+                key=lambda tid: (-key_counts[tid], tid),
+            )
 
         return [target_map[tid] for tid in sorted_ids]
 
     if targets is None:
         return []
 
-    candidates = []
+    scored_candidates = []
 
-    for target in targets:
-
+    for idx, target in enumerate(targets):
         if source.id == target.id:
             continue
 
         target_keys = generate_block_keys(target)
+        overlap = len(source_keys.intersection(target_keys))
 
-        if source_keys.intersection(target_keys):
-            candidates.append(target)
+        if overlap > 0:
+            scored_candidates.append((overlap, idx, target))
 
-    return candidates
+    scored_candidates.sort(key=lambda x: (-x[0], x[1]))
+    return [c[2] for c in scored_candidates]
