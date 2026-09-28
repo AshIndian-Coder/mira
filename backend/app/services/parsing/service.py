@@ -531,6 +531,106 @@ def extract_metric_thread(
 
 
 # ---------------------------------------------------------
+# FASTENER DIMENSIONS
+# ---------------------------------------------------------
+
+FASTENER_CONTEXT_PATTERN = re.compile(
+    r"\b(?:HEX\s+HEAD\s+BOLT|HEXAGONAL\s+HEAD\s+BOLT|HEX\s+HD\s+BOLT|HEX\s+BOLT|HEX\s+HD|HEX\s+HEAD|HEXAGONAL|"
+    r"BOLT|SCREW|STUD|FASTENER|CAP\s*SCREW|CAPSCREW|SOCKET\s+HEAD|CSK|COUNTERSUNK|GRUB|ANCHOR|"
+    r"THREADED\s+ROD|TIE\s+ROD|WASHER|NUT|IS\s*[:\-]?\s*136[34]|IS\s*[:\-]?\s*2269)\b",
+    re.IGNORECASE,
+)
+
+M_PITCH_LENGTH_PATTERN = re.compile(
+    r"\bM\s*(\d+(?:\.\d+)?)"
+    r"\s*[*Xx×\u00d7\u2715]\s*"
+    r"(\d+(?:\.\d+)?)"
+    r"\s*[*Xx×\u00d7\u2715]\s*"
+    r"(\d+(?:\.\d+)?)"
+    r"(?:\s*MM)?\b",
+    re.IGNORECASE,
+)
+
+M_FASTENER_PATTERN = re.compile(
+    r"(?:\bSIZE\s*[:\-]?\s*)?"
+    r"\bM\s*(\d+(?:\.\d+)?)"
+    r"\s*[*Xx×\u00d7\u2715]\s*"
+    r"(\d+(?:\.\d+)?)"
+    r"(?:\s*MM)?\b",
+    re.IGNORECASE,
+)
+
+PLAIN_FASTENER_PATTERN = re.compile(
+    r"(?<![\w.])"
+    r"(\d+(?:\.\d+)?)"
+    r"\s*[*Xx×\u00d7\u2715]\s*"
+    r"(\d+(?:\.\d+)?)"
+    r"\s*MM\b",
+    re.IGNORECASE,
+)
+
+
+def extract_fastener_dimensions(text: str) -> dict[str, Any] | None:
+    text = text or ""
+
+    # 1. 3-part chain: M<dia> x <pitch> x <length> (e.g. M140X4X810)
+    m3 = M_PITCH_LENGTH_PATTERN.search(text)
+    if m3:
+        dia = float(m3.group(1))
+        pitch = float(m3.group(2))
+        length = float(m3.group(3))
+        return {
+            "diameter": {"value": dia, "unit": "MM"},
+            "pitch": {"value": pitch, "unit": "MM"},
+            "length": {"value": length, "unit": "MM"},
+        }
+
+    # 2. Metric bolt callout: M<dia> x <length> (e.g. M8 X 25 MM, M8x25, M8×30, SIZE M8×30)
+    m2 = M_FASTENER_PATTERN.search(text)
+    if m2:
+        dia = float(m2.group(1))
+        second_val = float(m2.group(2))
+        has_explicit_mm = bool(
+            re.search(
+                r"[*Xx×\u00d7\u2715]\s*" + re.escape(m2.group(2)) + r"\s*MM\b",
+                text,
+                re.IGNORECASE,
+            )
+        )
+        has_context = bool(FASTENER_CONTEXT_PATTERN.search(text)) or bool(
+            re.search(r"\bSIZE\b", text, re.IGNORECASE)
+        )
+
+        is_length = False
+        if has_explicit_mm:
+            is_length = True
+        elif second_val > dia * 0.35:
+            is_length = True
+        elif has_context and second_val >= 5.0 and second_val > dia * 0.30:
+            is_length = True
+
+        if is_length:
+            return {
+                "diameter": {"value": dia, "unit": "MM"},
+                "length": {"value": second_val, "unit": "MM"},
+            }
+
+    # 3. Plain <dia> x <length> MM in explicit fastener context (e.g. "MS HEX HD BOLT WITH NUT IS:1363 6X25MM")
+    if FASTENER_CONTEXT_PATTERN.search(text):
+        m_plain = PLAIN_FASTENER_PATTERN.search(text)
+        if m_plain:
+            dia = float(m_plain.group(1))
+            length = float(m_plain.group(2))
+            if dia <= 64.0 and length >= 4.0:
+                return {
+                    "diameter": {"value": dia, "unit": "MM"},
+                    "length": {"value": length, "unit": "MM"},
+                }
+
+    return None
+
+
+# ---------------------------------------------------------
 # DIMENSIONS
 # ---------------------------------------------------------
 
@@ -569,6 +669,10 @@ def extract_dimension_tokens(
 
     text = text or ""
     results: list[dict[str, Any]] = []
+
+    fastener_dims = extract_fastener_dimensions(text)
+    if fastener_dims:
+        results.append(fastener_dims)
 
     for pattern in DIMENSION_TOKEN_PATTERNS:
 
@@ -661,6 +765,10 @@ def extract_dished_end_dimensions(
 
 
 def extract_dimensions(text: str):
+    fastener_dims = extract_fastener_dimensions(text)
+    if fastener_dims:
+        return fastener_dims
+
     tokens = extract_dimension_tokens(text)
 
     if tokens:
