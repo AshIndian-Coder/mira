@@ -326,3 +326,164 @@ BHEL,BHEL-E2E-003,SS 304 GATE VALVE 2 IN 150 LB,Valve,SS304
         store.reset_stores()
         MAPPINGS.clear()
         AUDIT_EVENTS.clear()
+
+
+def test_late_appended_bhel_material_participates_in_batch_matching(auth_headers):
+    """
+    Verify that a BHEL material appended after many NTPC materials is not starved
+    by same-CPSE materials or high material IDs, and successfully generates candidates.
+    """
+    store.reset_stores()
+    MAPPINGS.clear()
+    AUDIT_EVENTS.clear()
+
+    try:
+        # Generate 60 generic NTPC materials + 1 matching NTPC dished end
+        lines = ["cpse,material_code,description,category,material_grade"]
+        for i in range(1, 61):
+            lines.append(f"NTPC,NTPC-GEN-{i:03d},GENERIC UNRELATED ITEM TYPE {i},General,")
+        lines.append("NTPC,NTPC-DISHED-01,DISHED END 2:1 ELLIP ID1700X25THK,General,")
+
+        # 1 BHEL real material appended later
+        lines.append("BHEL,HE9711823020,DISHED END 2:1 ELLIP ID1700X25THK(MIN),General,")
+
+        upload_response = client.post(
+            "/api/materials/upload",
+            headers=auth_headers,
+            files={"file": ("dataset.csv", "\n".join(lines), "text/csv")},
+        )
+        assert upload_response.status_code == 200
+        assert upload_response.json()["records_ingested"] == 62
+
+        batch_response = client.post(
+            "/api/matching/run-batch",
+            headers=auth_headers,
+            json={"max_candidates_per_material": 50, "overwrite": True},
+        )
+        assert batch_response.status_code == 200
+        data = batch_response.json()
+        assert data["status"] == "complete"
+
+        # Query candidates for HE9711823020
+        cands_resp = client.get(
+            "/api/matching/candidates?limit=100",
+            headers=auth_headers,
+        )
+        assert cands_resp.status_code == 200
+        all_cands = cands_resp.json()["candidates"]
+
+        he_candidates = [
+            c for c in all_cands
+            if c["source_code"] == "HE9711823020" or c["target_code"] == "HE9711823020"
+        ]
+        assert len(he_candidates) >= 1, "HE9711823020 must participate in candidate generation"
+
+        # The candidate with NTPC-DISHED-01 must be present
+        dished_pair = [
+            c for c in he_candidates
+            if "NTPC-DISHED-01" in (c["source_code"], c["target_code"])
+        ]
+        assert len(dished_pair) == 1
+        assert dished_pair[0]["engine_decision"] in {"HIGH_CONFIDENCE", "REVIEW"}
+
+    finally:
+        store.reset_stores()
+        MAPPINGS.clear()
+        AUDIT_EVENTS.clear()
+
+
+def test_existing_test_pair_bolt_behavior(auth_headers):
+    """
+    Verify that the existing test pair:
+      NTPC:TEST-001 (BOLT HEX M24 X 40 MM SS 304)
+      BHEL:TEST-002 (HEX BOLT M24X40 SS304)
+    generates a candidate evaluated as REVIEW with the expected score and safe gating.
+    """
+    store.reset_stores()
+    MAPPINGS.clear()
+    AUDIT_EVENTS.clear()
+
+    try:
+        csv_content = """cpse,material_code,description,category,material_grade
+NTPC,TEST-001,BOLT HEX M24 X 40 MM SS 304,Fastener,SS304
+BHEL,TEST-002,HEX BOLT M24X40 SS304,Fastener,SS304
+"""
+        upload_resp = client.post(
+            "/api/materials/upload",
+            headers=auth_headers,
+            files={"file": ("bolt_test.csv", csv_content, "text/csv")},
+        )
+        assert upload_resp.status_code == 200
+
+        batch_resp = client.post(
+            "/api/matching/run-batch",
+            headers=auth_headers,
+            json={"overwrite": True},
+        )
+        assert batch_resp.status_code == 200
+
+        cands_resp = client.get("/api/matching/candidates", headers=auth_headers)
+        assert cands_resp.status_code == 200
+        candidates = cands_resp.json()["candidates"]
+
+        bolt_pair = [
+            c for c in candidates
+            if ("TEST-001" in (c["source_code"], c["target_code"])
+                and "TEST-002" in (c["source_code"], c["target_code"]))
+        ]
+        assert len(bolt_pair) == 1
+        cand = bolt_pair[0]
+        assert cand["engine_decision"] in {"HIGH_CONFIDENCE", "REVIEW"}
+        assert cand["review_status"] == "PENDING"
+        assert cand["scores"]["final_score"] > 0.60
+        assert isinstance(cand["critical_checks"], list)
+        assert not any(c.get("status") == "CONFLICT" for c in cand["critical_checks"])
+
+    finally:
+        store.reset_stores()
+        MAPPINGS.clear()
+        AUDIT_EVENTS.clear()
+
+
+def test_batch_matching_respects_max_candidates_per_material(auth_headers):
+    """Verify that max_candidates_per_material cap is strictly respected per source."""
+    store.reset_stores()
+    MAPPINGS.clear()
+    AUDIT_EVENTS.clear()
+
+    try:
+        lines = ["cpse,material_code,description,category,material_grade"]
+        lines.append("BHEL,BHEL-SRC-1,GATE VALVE SS304 2 IN 150 LB,Valve,SS304")
+        for i in range(1, 20):
+            lines.append(f"NTPC,NTPC-TGT-{i},GATE VALVE SS304 2 IN 150 LB VARIANT {i},Valve,SS304")
+
+        upload_resp = client.post(
+            "/api/materials/upload",
+            headers=auth_headers,
+            files={"file": ("cap_test.csv", "\n".join(lines), "text/csv")},
+        )
+        assert upload_resp.status_code == 200
+
+        # Cap at 5 with source_cpse BHEL
+        batch_resp = client.post(
+            "/api/matching/run-batch",
+            headers=auth_headers,
+            json={"max_candidates_per_material": 5, "source_cpse": "BHEL", "overwrite": True},
+        )
+        assert batch_resp.status_code == 200
+
+        cands_resp = client.get("/api/matching/candidates?limit=100", headers=auth_headers)
+        candidates = cands_resp.json()["candidates"]
+
+        src_candidates = [
+            c for c in candidates
+            if c["source_code"] == "BHEL-SRC-1" or c["target_code"] == "BHEL-SRC-1"
+        ]
+        # BHEL-SRC-1 had 19 potential targets, but capped at 5
+        assert len(src_candidates) <= 5
+        assert len(src_candidates) == 5
+
+    finally:
+        store.reset_stores()
+        MAPPINGS.clear()
+        AUDIT_EVENTS.clear()

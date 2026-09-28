@@ -7,6 +7,7 @@ from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
 
 from app.core.rbac import require_permission
 from app.core.security import get_current_active_user
+from app.db_adapter import materials_table, next_id
 from app.models.user import User
 from app.services.ingestion.provenance import resolve_provenance
 from app.services.ingestion.service import parse_legacy_file
@@ -34,6 +35,7 @@ async def upload_materials_csv(
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
 
+    start_id = next_id(materials_table)
     new_records: list[dict[str, Any]] = []
     for row in raw_rows:
         sheet_name = row.get("_sheet_name")
@@ -54,7 +56,7 @@ async def upload_materials_csv(
         parsed = parse_specifications(raw_desc)
 
         record: dict[str, Any] = {
-            "id": len(store.MATERIALS) + len(new_records) + 1,
+            "id": start_id + len(new_records),
             "cpse": cpse,
             "provenance_level": prov.level.value,
             "provenance_confidence": prov.confidence,

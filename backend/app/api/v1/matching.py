@@ -29,7 +29,7 @@ from app.services.matching.cnmc_matcher import (
     find_cnmc_candidates_for_material,
     match_new_materials_against_cnmcs,
 )
-from app.services.matching.embeddings import precompute_embeddings
+from app.services.matching.embeddings import EmbeddingCache, precompute_embeddings
 from app.services.matching.vector_search import search_similar_materials
 from app.services.normalization.service import normalize_material_description
 from app.services.parsing.service import parse_specifications
@@ -73,6 +73,14 @@ class BatchRunRequest(BaseModel):
     overwrite: bool = Field(
         default=False,
         description="If True, clear existing candidates before running.",
+    )
+    source_cpse: str | None = Field(
+        default=None,
+        description="Optional filter to only process source materials from this CPSE.",
+    )
+    target_cpse: str | None = Field(
+        default=None,
+        description="Optional filter to only match against candidate materials from this CPSE.",
     )
 
 
@@ -152,7 +160,7 @@ def run_batch_matching(
 
     1. Convert all ingested materials to blocker objects.
     2. Build the block index (key → list of material IDs).
-    3. For each material generate candidates via blocking.
+    3. For each material generate cross-CPSE candidates via blocking.
     4. Score and classify each unique candidate pair.
     5. Store results in the shared CANDIDATES store.
 
@@ -169,9 +177,19 @@ def run_batch_matching(
 
     started_at = datetime.now(timezone.utc)
 
-    # --- Build blocker objects ---
+    # --- Build blocker objects & index maps ---
     blocker_objects = [_store_material_to_blocker(m) for m in store.MATERIALS]
     material_index: dict[int, dict[str, Any]] = {m["id"]: m for m in store.MATERIALS}
+    material_cpse: dict[int, str] = {
+        m["id"]: (m.get("cpse") or "CPSE_GENERIC").strip().upper()
+        for m in store.MATERIALS
+    }
+
+    # Filter source materials if requested
+    filtered_sources = blocker_objects
+    if request.source_cpse:
+        req_sc = request.source_cpse.strip().upper()
+        filtered_sources = [bo for bo in blocker_objects if material_cpse.get(bo.id) == req_sc]
 
     # --- Build inverted block index and precompute keys ---
     block_index: dict[str, list[int]] = {}
@@ -193,43 +211,54 @@ def run_batch_matching(
         for c in store.CANDIDATES
     }
 
-    # --- Precompute unique description embeddings for batch ---
-    unique_descriptions = {
-        m.get("normalized_description") or m.get("description", "")
-        for m in store.MATERIALS
-        if m.get("normalized_description") or m.get("description")
-    }
-    embedding_cache = precompute_embeddings(unique_descriptions)
+    # Pre-partition blockers by CPSE for fast cross-CPSE target mapping
+    cpse_blockers: dict[str, dict[int, MaterialForBlocking]] = {}
+    for bo in blocker_objects:
+        c = material_cpse.get(bo.id, "CPSE_GENERIC")
+        cpse_blockers.setdefault(c, {})[bo.id] = bo
 
+    target_map_by_source_cpse: dict[str, dict[int, MaterialForBlocking]] = {}
+    for s_cpse in cpse_blockers:
+        t_map: dict[int, MaterialForBlocking] = {}
+        for t_cpse, t_dict in cpse_blockers.items():
+            if t_cpse == s_cpse:
+                continue
+            if request.target_cpse and t_cpse != request.target_cpse.strip().upper():
+                continue
+            t_map.update(t_dict)
+        target_map_by_source_cpse[s_cpse] = t_map
+
+    embedding_cache = EmbeddingCache()
     new_candidates: list[dict[str, Any]] = []
     total_pairs_evaluated = 0
 
-    for source_bo in blocker_objects:
+    for source_bo in filtered_sources:
         source_keys = material_block_keys[source_bo.id]
+        s_cpse = material_cpse.get(source_bo.id, "CPSE_GENERIC")
+        cross_target_map = target_map_by_source_cpse.get(s_cpse)
+        if not cross_target_map:
+            continue
+
         raw_candidates = blocking_generate_candidates(
             source_bo,
             block_index=block_index,
-            target_map=blocker_by_id,
+            target_map=cross_target_map,
             target_order=target_order,
             source_keys=source_keys,
         )
 
-        # Cap per source material to avoid O(n²) explosion on large datasets
+        # Cap cross-CPSE candidates per source material
         raw_candidates = raw_candidates[: request.max_candidates_per_material]
 
         for target_bo in raw_candidates:
-            source_mat = material_index[source_bo.id]
-            target_mat = material_index[target_bo.id]
-
-            # Batch harmonization is cross-CPSE only.
-            if source_mat["cpse"].upper() == target_mat["cpse"].upper():
-                continue
-
             pk = _pair_key(source_bo.id, target_bo.id)
             if pk in seen_pairs:
                 continue
             seen_pairs.add(pk)
             total_pairs_evaluated += 1
+
+            source_mat = material_index[source_bo.id]
+            target_mat = material_index[target_bo.id]
 
             result = classify_match(source_mat, target_mat, embedding_cache=embedding_cache)
 

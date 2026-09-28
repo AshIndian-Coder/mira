@@ -8,15 +8,27 @@ type MatchListProps = {
   selectedId: number | null
   onSelect: (candidate: Candidate) => void
   loading?: boolean
+  skip?: number
+  limit?: number
+  totalPending?: number
+  onPrevPage?: () => void
+  onNextPage?: () => void
 }
 
 type FilterType = 'ALL' | 'CONFLICT' | 'REVIEW' | 'HIGH_CONFIDENCE'
+
+const formatNumber = (val: number) => val.toLocaleString()
 
 function MatchList({
   candidates,
   selectedId,
   onSelect,
   loading = false,
+  skip = 0,
+  limit = 50,
+  totalPending,
+  onPrevPage,
+  onNextPage,
 }: MatchListProps) {
   const [filterType, setFilterType] = useState<FilterType>('ALL')
   const [searchQuery, setSearchQuery] = useState('')
@@ -99,13 +111,22 @@ function MatchList({
 
   const isFiltered = filterType !== 'ALL' || searchQuery.trim() !== '' || cpseFilter !== 'ALL'
 
+  const effectiveTotal = totalPending ?? candidates.length
+  const currentPage = Math.floor(skip / limit) + 1
+  const totalPages = Math.max(1, Math.ceil(effectiveTotal / limit))
+  const isFirstPage = skip <= 0
+  const isLastPage = skip + limit >= effectiveTotal
+  const start = effectiveTotal === 0 ? 0 : skip + 1
+  const end = Math.min(skip + candidates.length, effectiveTotal)
+
   return (
     <div className="section-card match-list" style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
       <div className="section-header" style={{ marginBottom: '4px' }}>
         <div>
           <h2>Candidate Matches</h2>
           <p>
-            {filteredCandidates.length} of {candidates.length} in queue
+            {filteredCandidates.length} of {candidates.length} on page
+            {totalPending !== undefined && totalPending !== candidates.length ? ` (${formatNumber(totalPending)} total pending)` : ''}
           </p>
         </div>
       </div>
@@ -414,6 +435,50 @@ function MatchList({
             )
           })
         )}
+      </div>
+
+      {/* Pagination Footer */}
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          paddingTop: '10px',
+          borderTop: '1px solid var(--border-subtle)',
+          fontSize: '11.5px',
+          color: 'var(--text-muted)',
+          flexWrap: 'wrap',
+          gap: '8px',
+        }}
+      >
+        <span>
+          {effectiveTotal === 0
+            ? '0 items'
+            : `Showing ${formatNumber(start)}–${formatNumber(end)} of ${formatNumber(effectiveTotal)}`}
+        </span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <button
+            type="button"
+            className="mapping-pagination-btn"
+            disabled={isFirstPage || loading}
+            onClick={onPrevPage}
+            style={{ padding: '0 8px', height: '26px', fontSize: '11px' }}
+          >
+            Previous
+          </button>
+          <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
+            Page {formatNumber(currentPage)} of {formatNumber(totalPages)}
+          </span>
+          <button
+            type="button"
+            className="mapping-pagination-btn"
+            disabled={isLastPage || loading}
+            onClick={onNextPage}
+            style={{ padding: '0 8px', height: '26px', fontSize: '11px' }}
+          >
+            Next
+          </button>
+        </div>
       </div>
     </div>
   )

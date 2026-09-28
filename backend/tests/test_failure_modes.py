@@ -610,3 +610,87 @@ def test_export_large_dataset():
     data = resp.json()
     assert data["total_rows"] == 2000
     assert len(data["rows"]) == 2000
+
+
+def test_review_queue_server_side_pagination():
+    headers = auth_header("reviewer@mira.gov.in", "reviewer")
+    store.CANDIDATES.clear()
+
+    # Ensure valid source and target materials exist for foreign keys
+    m1_id = 9101
+    m2_id = 9102
+    existing_ids = {m["id"] for m in store.MATERIALS}
+    if m1_id not in existing_ids:
+        store.MATERIALS.append({
+            "id": m1_id, "cpse": "NTPC", "material_code": "MAT-NTPC-9101", "description": "Valve Component NTPC",
+        })
+    if m2_id not in existing_ids:
+        store.MATERIALS.append({
+            "id": m2_id, "cpse": "BHEL", "material_code": "MAT-BHEL-9102", "description": "Valve Component BHEL",
+        })
+
+    # Populate 55 review candidates
+    for i in range(1, 56):
+        store.CANDIDATES.append({
+            "id": 1000 + i,
+            "source_material_id": m1_id,
+            "target_material_id": m2_id,
+            "source_code": f"MAT-A-{i}",
+            "target_code": f"MAT-B-{i}",
+            "source_cpse": "NTPC",
+            "target_cpse": "BHEL",
+            "source_description": f"Valve Component {i}",
+            "target_description": f"Valve Component {i} Equiv",
+            "engine_decision": "REVIEW",
+            "review_status": "PENDING",
+            "scores": {"final_score": 0.82},
+            "critical_checks": [],
+        })
+
+    # Page 1 (skip=0, limit=50)
+    p1 = client.get("/api/review/queue?skip=0&limit=50", headers=headers)
+    assert p1.status_code == 200
+    d1 = p1.json()
+    assert d1["total_pending"] == 55
+    assert d1["skip"] == 0
+    assert d1["limit"] == 50
+    assert len(d1["queue"]) == 50
+
+    # Page 2 (skip=50, limit=50)
+    p2 = client.get("/api/review/queue?skip=50&limit=50", headers=headers)
+    assert p2.status_code == 200
+    d2 = p2.json()
+    assert d2["total_pending"] == 55
+    assert d2["skip"] == 50
+    assert len(d2["queue"]) == 5
+
+    p1_ids = {c["id"] for c in d1["queue"]}
+    p2_ids = {c["id"] for c in d2["queue"]}
+    assert len(p1_ids) == 50
+    assert len(p2_ids) == 5
+    assert len(p1_ids & p2_ids) == 0
+    assert p1_ids | p2_ids == {1000 + i for i in range(1, 56)}
+
+    # Out of bounds (skip=100, limit=50)
+    p3 = client.get("/api/review/queue?skip=100&limit=50", headers=headers)
+    assert p3.status_code == 200
+    d3 = p3.json()
+    assert d3["total_pending"] == 55
+    assert len(d3["queue"]) == 0
+
+    # Approve first candidate on page 2
+    cand_to_approve = d2["queue"][0]["id"]
+    action_resp = client.post(
+        f"/api/review/queue/{cand_to_approve}/action",
+        json={"action": "APPROVE", "reviewer_comments": "Verified"},
+        headers=headers,
+    )
+    assert action_resp.status_code == 200
+
+    # Total pending is now 54; page 2 now has 4 items
+    p2_after = client.get("/api/review/queue?skip=50&limit=50", headers=headers)
+    assert p2_after.status_code == 200
+    d2_after = p2_after.json()
+    assert d2_after["total_pending"] == 54
+    assert len(d2_after["queue"]) == 4
+    assert all(c["id"] != cand_to_approve for c in d2_after["queue"])
