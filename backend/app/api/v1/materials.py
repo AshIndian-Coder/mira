@@ -14,6 +14,7 @@ from app.services.ingestion.service import parse_legacy_file
 from app.services.normalization.service import normalize_material_description
 from app.services.parsing.service import parse_specifications
 from app import store
+from app.services.matching.milvus_client import insert_material_embeddings
 
 router = APIRouter(prefix="/materials", tags=["Materials"])
 
@@ -83,6 +84,16 @@ async def upload_materials_csv(
         new_records.append(record)
 
     store.MATERIALS.extend(new_records)
+
+    insert_material_embeddings([
+        {
+            "id": r["id"],
+            "description": r["description"],
+            "cpse": r["cpse"],
+            "category": r.get("category"),
+        }
+        for r in new_records
+    ])
 
     return {
         "status": "success",
