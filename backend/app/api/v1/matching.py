@@ -228,7 +228,11 @@ def run_batch_matching(
             t_map.update(t_dict)
         target_map_by_source_cpse[s_cpse] = t_map
 
-    embedding_cache = EmbeddingCache()
+    all_descriptions = [
+        m.get("normalized_description") or m.get("description") or ""
+        for m in store.MATERIALS
+    ]
+    embedding_cache = precompute_embeddings(all_descriptions, batch_size=64)
     new_candidates: list[dict[str, Any]] = []
     total_pairs_evaluated = 0
 
@@ -262,6 +266,15 @@ def run_batch_matching(
 
             result = classify_match(source_mat, target_mat, embedding_cache=embedding_cache)
 
+            engine_dec = result["decision"]
+            review_st = (
+                "AUTO_APPROVED"
+                if engine_dec == "HIGH_CONFIDENCE"
+                else "PENDING"
+                if engine_dec == "REVIEW"
+                else "DIFFERENT"
+            )
+
             candidate: dict[str, Any] = {
                 "id": store.next_candidate_id(),
                 "source_material_id": source_bo.id,
@@ -274,13 +287,11 @@ def run_batch_matching(
                 "target_description": target_mat["description"],
                 "scores": result["scores"],
                 "critical_checks": result["critical_checks"],
-                "engine_decision": result["decision"],
-                "review_status": "PENDING"
-                if result["decision"] in {"HIGH_CONFIDENCE", "REVIEW"}
-                else result["decision"],
-                "reviewer_id": None,
-                "reviewer_comments": None,
-                "reviewed_at": None,
+                "engine_decision": engine_dec,
+                "review_status": review_st,
+                "reviewer_id": "system:engine" if review_st == "AUTO_APPROVED" else None,
+                "reviewer_comments": "Automatically approved by MIRA matching engine (High Confidence)" if review_st == "AUTO_APPROVED" else None,
+                "reviewed_at": started_at.isoformat() if review_st == "AUTO_APPROVED" else None,
                 "created_at": started_at.isoformat(),
             }
             new_candidates.append(candidate)
@@ -296,6 +307,7 @@ def run_batch_matching(
                 description=source_mat.get("normalized_description", ""),
                 category=source_mat.get("category"),
                 top_k=50,
+                embedding_cache=embedding_cache,
             )
         except Exception:
             continue
@@ -316,6 +328,14 @@ def run_batch_matching(
             total_pairs_evaluated += 1
 
             result = classify_match(source_mat, target_mat, embedding_cache=embedding_cache)
+            engine_dec = result["decision"]
+            review_st = (
+                "AUTO_APPROVED"
+                if engine_dec == "HIGH_CONFIDENCE"
+                else "PENDING"
+                if engine_dec == "REVIEW"
+                else "DIFFERENT"
+            )
 
             candidate = {
                 "id": store.next_candidate_id(),
@@ -329,18 +349,33 @@ def run_batch_matching(
                 "target_description": target_mat["description"],
                 "scores": result["scores"],
                 "critical_checks": result["critical_checks"],
-                "engine_decision": result["decision"],
-                "review_status": "PENDING"
-                if result["decision"] in {"HIGH_CONFIDENCE", "REVIEW"}
-                else result["decision"],
-                "reviewer_id": None,
-                "reviewer_comments": None,
-                "reviewed_at": None,
+                "engine_decision": engine_dec,
+                "review_status": review_st,
+                "reviewer_id": "system:engine" if review_st == "AUTO_APPROVED" else None,
+                "reviewer_comments": "Automatically approved by MIRA matching engine (High Confidence)" if review_st == "AUTO_APPROVED" else None,
+                "reviewed_at": started_at.isoformat() if review_st == "AUTO_APPROVED" else None,
                 "created_at": started_at.isoformat(),
             }
             new_candidates.append(candidate)
 
     store.CANDIDATES.extend(new_candidates)
+
+    # Record audit events for auto-approved candidates
+    from app.api.v1.audit import AUDIT_EVENTS
+    for c in new_candidates:
+        if c["review_status"] == "AUTO_APPROVED":
+            AUDIT_EVENTS.append({
+                "event_type": "MATCH_AUTO_APPROVED",
+                "candidate_id": c["id"],
+                "source_code": c["source_code"],
+                "target_code": c["target_code"],
+                "source_cpse": c["source_cpse"],
+                "target_cpse": c["target_cpse"],
+                "actor": "system:engine",
+                "comments": "High-confidence technical match auto-approved by MIRA engine",
+                "final_score": c["scores"].get("final_score"),
+                "timestamp": started_at.isoformat(),
+            })
 
     finished_at = datetime.now(timezone.utc)
     elapsed_ms = int((finished_at - started_at).total_seconds() * 1000)

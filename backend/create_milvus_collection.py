@@ -8,32 +8,49 @@ Run once before using vector search:
 Safe to re-run -- skips creation if the collection already exists.
 """
 
-from pymilvus import (
-    connections,
-    utility,
-    FieldSchema,
-    CollectionSchema,
-    DataType,
-    Collection,
-)
+import argparse
+import sys
+from pathlib import Path
+
+# Add backend directory to sys.path if invoked directly
+backend_dir = Path(__file__).resolve().parent
+if str(backend_dir) not in sys.path:
+    sys.path.insert(0, str(backend_dir))
+
+try:
+    from app.services.matching.embeddings import get_embedding_dimension
+    EMBEDDING_DIM = get_embedding_dimension()
+except Exception:
+    EMBEDDING_DIM = 1024
 
 COLLECTION_NAME = "material_embeddings"
-# all-MiniLM-L6-v2 (this repo's DEFAULT_MODEL_NAME in embeddings.py) emits
-# 384-dim vectors. If you ever switch the model, this MUST be updated to
-# match, and the collection must be dropped and recreated -- Milvus cannot
-# resize an existing vector field.
-EMBEDDING_DIM = 384
-
 MILVUS_HOST = "localhost"
 MILVUS_PORT = "19530"
 
 
-def create_collection() -> None:
+def create_collection(recreate: bool = False) -> None:
+    try:
+        from pymilvus import (
+            connections,
+            utility,
+            FieldSchema,
+            CollectionSchema,
+            DataType,
+            Collection,
+        )
+    except ImportError as exc:
+        print(f"Cannot create Milvus collection: pymilvus is not installed ({exc}).")
+        return
+
     connections.connect(host=MILVUS_HOST, port=MILVUS_PORT)
 
     if utility.has_collection(COLLECTION_NAME):
-        print(f"Collection '{COLLECTION_NAME}' already exists -- skipping.")
-        return
+        if recreate:
+            print(f"Dropping existing collection '{COLLECTION_NAME}' (recreate requested)...")
+            utility.drop_collection(COLLECTION_NAME)
+        else:
+            print(f"Collection '{COLLECTION_NAME}' already exists -- skipping (use --recreate to drop and rebuild).")
+            return
 
     fields = [
         FieldSchema(name="id", dtype=DataType.INT64, is_primary=True),
@@ -54,8 +71,11 @@ def create_collection() -> None:
     }
     collection.create_index(field_name="embedding", index_params=index_params)
 
-    print(f"Created collection '{COLLECTION_NAME}' with dim={EMBEDDING_DIM}.")
+    print(f"Created collection '{COLLECTION_NAME}' with dynamic dim={EMBEDDING_DIM}.")
 
 
 if __name__ == "__main__":
-    create_collection()
+    parser = argparse.ArgumentParser(description="Create or recreate Milvus material_embeddings collection")
+    parser.add_argument("--recreate", action="store_true", help="Drop existing collection and recreate with new vector dimension")
+    args = parser.parse_args()
+    create_collection(recreate=args.recreate)

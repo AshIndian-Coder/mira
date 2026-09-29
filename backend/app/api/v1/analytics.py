@@ -25,22 +25,29 @@ def analytics_overview(current_user: User = Depends(get_current_active_user)):
     high_confidence = sum(
         1 for c in store.CANDIDATES if c["engine_decision"] == "HIGH_CONFIDENCE"
     )
+    auto_approved = sum(
+        1 for c in store.CANDIDATES if c["review_status"] == "AUTO_APPROVED"
+    )
+    human_approved = sum(
+        1 for c in store.CANDIDATES if c["review_status"] == "APPROVED"
+    )
     review_pending = sum(
         1 for c in store.CANDIDATES
         if c["engine_decision"] == "REVIEW" and c["review_status"] == "PENDING"
     )
-    approved = sum(
-        1 for c in store.CANDIDATES if c["review_status"] == "APPROVED"
-    )
+    approved = human_approved
     rejected = sum(
         1 for c in store.CANDIDATES if c["review_status"] == "REJECTED"
     )
-
-    # Automation rate: pairs resolved without human (HC) / all actionable pairs
-    actionable = high_confidence + sum(
-        1 for c in store.CANDIDATES if c["engine_decision"] == "REVIEW"
+    different = sum(
+        1 for c in store.CANDIDATES
+        if c["engine_decision"] == "DIFFERENT" or c["review_status"] == "DIFFERENT"
     )
-    automation_rate = round(high_confidence / actionable, 4) if actionable else None
+
+    # Automation rate: pairs resolved automatically without human review (AUTO_APPROVED)
+    # over all actionable pairs (AUTO_APPROVED + human decisions/pending)
+    actionable = auto_approved + review_pending + human_approved + rejected
+    automation_rate = round(auto_approved / actionable, 4) if actionable else None
 
     cpse_count = len({m["cpse"] for m in store.MATERIALS})
 
@@ -49,6 +56,11 @@ def analytics_overview(current_user: User = Depends(get_current_active_user)):
         "cpse_count": cpse_count,
         "total_candidate_pairs": total_candidates,
         "high_confidence": high_confidence,
+        "auto_approved": auto_approved,
+        "auto_approved_count": auto_approved,
+        "human_approved_count": human_approved,
+        "pending_review_count": review_pending,
+        "different_count": different,
         "review_pending": review_pending,
         "approved": approved,
         "rejected": rejected,

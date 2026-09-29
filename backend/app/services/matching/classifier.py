@@ -58,16 +58,16 @@ def classify_match(
         critical_checks
     )
 
-    if (
+    if has_conflict:
+        decision = "DIFFERENT"
+
+    elif (
         final_score >= HIGH_CONFIDENCE_SCORE
         and gates_pass
     ):
         decision = "HIGH_CONFIDENCE"
 
-    elif has_unknown or has_conflict:
-        decision = "REVIEW"
-
-    elif final_score > DIFFERENT_SCORE:
+    elif has_unknown or final_score > DIFFERENT_SCORE:
         decision = "REVIEW"
 
     else:

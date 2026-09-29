@@ -38,7 +38,7 @@ def get_review_queue(
     """
     pending = [
         c for c in store.CANDIDATES
-        if c["engine_decision"] in {"HIGH_CONFIDENCE", "REVIEW"}
+        if c["engine_decision"] == "REVIEW"
         and c["review_status"] == "PENDING"
     ]
     total = len(pending)
@@ -136,10 +136,13 @@ def review_summary(current_user: User = Depends(get_current_active_user)):
     approved = sum(1 for c in review_candidates if c["review_status"] == "APPROVED")
     rejected = sum(1 for c in review_candidates if c["review_status"] == "REJECTED")
 
-    # HIGH_CONFIDENCE recommendations are still subject to human validation.
     high_confidence = sum(
         1 for c in store.CANDIDATES
         if c["engine_decision"] == "HIGH_CONFIDENCE"
+    )
+    auto_approved = sum(
+        1 for c in store.CANDIDATES
+        if c["review_status"] == "AUTO_APPROVED"
     )
 
     return {
@@ -148,4 +151,5 @@ def review_summary(current_user: User = Depends(get_current_active_user)):
         "approved": approved,
         "rejected": rejected,
         "high_confidence": high_confidence,
+        "auto_approved": auto_approved,
     }

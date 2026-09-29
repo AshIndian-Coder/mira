@@ -64,13 +64,16 @@ def generate_mappings(current_user: User = Depends(require_permission("create_ma
 
     CRITICAL: Source CPSE codes are preserved; NMC is additive, not replacing.
     """
-    approved = [c for c in store.CANDIDATES if c["review_status"] == "APPROVED"]
+    approved = [
+        c for c in store.CANDIDATES
+        if c["review_status"] in {"APPROVED", "AUTO_APPROVED"}
+    ]
 
     if not approved:
         return {
             "status": "no_approved_candidates",
             "mappings_created": 0,
-            "message": "Approve candidates via POST /api/review/queue/{id}/action first.",
+            "message": "No approved or auto-approved candidates available to generate mappings.",
         }
 
     clusters = cluster_approved_pairs(approved)

@@ -173,8 +173,8 @@ def test_rbac_permissions():
 
     # 5. Steward can upload data (200)
     csv_content = """cpse,material_code,description,category,material_grade
-NTPC,NTPC-V1,SS 304 GATE VALVE 2 IN 150 LB,Valve,SS304
-BHEL,BHEL-V1,SS 304 GATE VALVE 2 IN 300 LB,Valve,SS304
+NTPC,NTPC-V1,SS 304 GATE VALVE 2 IN,Valve,SS304
+BHEL,BHEL-V1,GATE VALVE SS304 2 INCH,Valve,SS304
 """
     upload_resp = client.post(
         "/api/materials/upload",

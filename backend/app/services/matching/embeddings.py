@@ -8,30 +8,113 @@ import numpy as np
 from sentence_transformers import SentenceTransformer
 
 DEFAULT_MODEL_NAME = "all-MiniLM-L6-v2"
-TRAINED_MODEL_PATH = Path(__file__).resolve().parents[4] / "models" / "trained" / "minilm_cpse_v1"
-QWEN_MODEL_PATH = Path("/home/shikhar/mira-model-test/Mira.ai")
+
+
+def _get_project_root() -> Path:
+    """Find the MIRA workspace root portably across operating systems."""
+    cur = Path(__file__).resolve().parent
+    for parent in [cur] + list(cur.parents):
+        if (parent / "backend").exists() and (parent / "models").exists():
+            return parent
+        if (parent / ".git").exists():
+            return parent
+    return Path(__file__).resolve().parents[3]
+
+
+PROJECT_ROOT = _get_project_root()
+TRAINED_MODEL_PATH = PROJECT_ROOT / "models" / "trained" / "minilm_cpse_v1"
+
+
+def get_qwen_candidate_paths() -> list[Path]:
+    """Return prioritized candidate search paths for the local Qwen model across OSes."""
+    env_paths = [
+        Path(os.getenv("MIRA_QWEN_MODEL_PATH", "").strip()),
+        Path(os.getenv("MIRA_MODEL_PATH", "").strip()),
+    ]
+    models_dir = os.getenv("MIRA_MODELS_DIR", "").strip()
+    if models_dir:
+        env_paths.append(Path(models_dir) / "Mira.ai")
+
+    home = Path.home()
+    standard_paths = [
+        home / "mira-model-test" / "Mira.ai",
+        home / "Desktop" / "mira-model-test" / "Mira.ai",
+        home / ".mira" / "models" / "Mira.ai",
+        home / "models" / "Mira.ai",
+        PROJECT_ROOT / "models" / "Mira.ai",
+        PROJECT_ROOT / "models" / "trained" / "Mira.ai",
+        PROJECT_ROOT / "models" / "trained" / "qwen",
+        PROJECT_ROOT / "models" / "qwen",
+    ]
+
+    candidates: list[Path] = []
+    for p in env_paths + standard_paths:
+        if p and str(p) != "." and p not in candidates:
+            candidates.append(p)
+    return candidates
+
+
+def find_qwen_model_path() -> Path | None:
+    """Locate the Qwen embedding directory on the current filesystem."""
+    for p in get_qwen_candidate_paths():
+        try:
+            if p.exists() and (p / "config.json").exists():
+                return p
+        except (OSError, PermissionError):
+            continue
+    return None
+
+
+def get_embedding_dimension(model_name: str | None = None) -> int:
+    """Derive embedding dimension dynamically from the active or specified model."""
+    model = get_embedding_model(model_name)
+    if hasattr(model, "get_embedding_dimension"):
+        try:
+            dim = model.get_embedding_dimension()
+            if dim is not None:
+                return int(dim)
+        except Exception:
+            pass
+    if hasattr(model, "get_sentence_embedding_dimension"):
+        try:
+            dim = model.get_sentence_embedding_dimension()
+            if dim is not None:
+                return int(dim)
+        except Exception:
+            pass
+    return 1024
 
 
 def resolve_model_name(name_or_alias: str | None = None) -> str:
     """
     Resolve model alias or environment variable into a valid model path or identifier.
 
-    Supported aliases:
-      - 'qwen': fine-tuned Qwen INT8 checkpoint
-      - 'minilm': fine-tuned MiniLM checkpoint if available, else all-MiniLM-L6-v2
-      - 'base-minilm' / 'base_minilm': all-MiniLM-L6-v2
+    Resolution hierarchy:
+      1. Explicit or env-specified alias:
+         - 'qwen' / 'production' / 'default': local Qwen INT8 model if present, else fallback
+         - 'minilm': fine-tuned MiniLM checkpoint if available, else all-MiniLM-L6-v2
+         - 'base-minilm' / 'base_minilm': all-MiniLM-L6-v2
+      2. If unset:
+         - Priority 1: local Qwen INT8 model (~/Desktop/mira-model-test/Mira.ai or ~/mira-model-test/Mira.ai)
+         - Priority 2: local fine-tuned MiniLM checkpoint
+         - Priority 3: base all-MiniLM-L6-v2
     """
     target = name_or_alias if name_or_alias is not None else os.getenv("MIRA_EMBEDDING_MODEL", "")
     target = target.strip()
-    if not target:
+
+    qwen_path = find_qwen_model_path()
+
+    if not target or target.lower() in ("default", "production"):
+        if qwen_path is not None:
+            return str(qwen_path)
         if TRAINED_MODEL_PATH.exists() and (TRAINED_MODEL_PATH / "model.safetensors").exists():
             return str(TRAINED_MODEL_PATH)
         return DEFAULT_MODEL_NAME
 
     target_lower = target.lower()
     if target_lower == "qwen":
-        if QWEN_MODEL_PATH.exists():
-            return str(QWEN_MODEL_PATH)
+        if qwen_path is not None:
+            return str(qwen_path)
         return "qwen"
     elif target_lower == "minilm":
         if TRAINED_MODEL_PATH.exists() and (TRAINED_MODEL_PATH / "model.safetensors").exists():
