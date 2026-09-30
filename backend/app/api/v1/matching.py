@@ -1,11 +1,11 @@
-"""
+﻿"""
 Matching routes.
 
-POST /api/matching/compare   — single pair comparison (existing, unchanged)
-POST /api/matching/run-batch — dataset-level: block → score → classify all
-GET  /api/matching/candidates — list generated candidates with filters
-GET  /api/matching/candidates/{id} — single candidate detail
-GET  /api/matching/stats     — blocking / recall / score summary stats
+POST /api/matching/compare   â€” single pair comparison (existing, unchanged)
+POST /api/matching/run-batch â€” dataset-level: block â†’ score â†’ classify all
+GET  /api/matching/candidates â€” list generated candidates with filters
+GET  /api/matching/candidates/{id} â€” single candidate detail
+GET  /api/matching/stats     â€” blocking / recall / score summary stats
 """
 
 from datetime import datetime, timezone
@@ -30,7 +30,9 @@ from app.services.matching.cnmc_matcher import (
     match_new_materials_against_cnmcs,
 )
 from app.services.matching.embeddings import EmbeddingCache, precompute_embeddings
-from app.services.matching.vector_search import search_similar_materials
+from app.services.matching.hybrid_retrieval import (
+    retrieve_candidates,
+)
 from app.services.normalization.service import normalize_material_description
 from app.services.parsing.service import parse_specifications
 
@@ -126,7 +128,7 @@ def _store_material_to_blocker(m: dict[str, Any]) -> MaterialForBlocking:
 
 
 def _pair_key(a: int, b: int) -> tuple[int, int]:
-    """Canonical unordered pair key — avoids A-B and B-A duplicates."""
+    """Canonical unordered pair key â€” avoids A-B and B-A duplicates."""
     return (min(a, b), max(a, b))
 
 
@@ -159,7 +161,7 @@ def run_batch_matching(
     Dataset-level matching.
 
     1. Convert all ingested materials to blocker objects.
-    2. Build the block index (key → list of material IDs).
+    2. Build the block index (key â†’ list of material IDs).
     3. For each material generate cross-CPSE candidates via blocking.
     4. Score and classify each unique candidate pair.
     5. Store results in the shared CANDIDATES store.
@@ -228,7 +230,11 @@ def run_batch_matching(
             t_map.update(t_dict)
         target_map_by_source_cpse[s_cpse] = t_map
 
-    embedding_cache = EmbeddingCache()
+    all_descriptions = [
+        m.get("normalized_description") or m.get("description") or ""
+        for m in store.MATERIALS
+    ]
+    embedding_cache = precompute_embeddings(all_descriptions, batch_size=64)
     new_candidates: list[dict[str, Any]] = []
     total_pairs_evaluated = 0
 
@@ -262,6 +268,16 @@ def run_batch_matching(
 
             result = classify_match(source_mat, target_mat, embedding_cache=embedding_cache)
 
+            engine_dec = result["decision"]
+            review_st = (
+                "PENDING"
+                if engine_dec in (
+                    "HIGH_CONFIDENCE",
+                    "REVIEW",
+                )
+                else "DIFFERENT"
+            )
+
             candidate: dict[str, Any] = {
                 "id": store.next_candidate_id(),
                 "source_material_id": source_bo.id,
@@ -273,54 +289,102 @@ def run_batch_matching(
                 "source_description": source_mat["description"],
                 "target_description": target_mat["description"],
                 "scores": result["scores"],
+                "text_similarity": result["scores"].get(
+                    "text_similarity",
+                    0.0,
+                ),
+                "semantic_similarity": result["scores"].get(
+                    "semantic_similarity",
+                    0.0,
+                ),
+                "specification_similarity": result["scores"].get(
+                    "specification_similarity",
+                    0.0,
+                ),
+                "material_grade_similarity": result["scores"].get(
+                    "material_grade_similarity",
+                    0.0,
+                ),
+                "other_attributes_similarity": result["scores"].get(
+                    "other_attributes_similarity",
+                    0.0,
+                ),
+                "final_score": result["scores"].get(
+                    "final_score",
+                    0.0,
+                ),
                 "critical_checks": result["critical_checks"],
-                "engine_decision": result["decision"],
-                "review_status": "PENDING"
-                if result["decision"] in {"HIGH_CONFIDENCE", "REVIEW"}
-                else result["decision"],
-                "reviewer_id": None,
-                "reviewer_comments": None,
-                "reviewed_at": None,
+                "engine_decision": engine_dec,
+                "review_status": review_st,
+                "reviewer_id": "system:engine" if review_st == "AUTO_APPROVED" else None,
+                "reviewer_comments": "Automatically approved by MIRA matching engine (High Confidence)" if review_st == "AUTO_APPROVED" else None,
+                "reviewed_at": started_at.isoformat() if review_st == "AUTO_APPROVED" else None,
                 "created_at": started_at.isoformat(),
             }
             new_candidates.append(candidate)
 
-    # --- Additional candidates from vector search (Milvus) ---
-    # Runs AFTER the rule-based blocking above, and only ever ADDS
-    # candidates -- never removes or changes anything the rule-based loop
-    # already found. If Milvus is unavailable, this is skipped silently.
-    for source_bo in blocker_objects:
+    # --- Fast MiniLM candidate retrieval ---
+    #
+    # MiniLM is used only to rank likely candidates quickly.
+    # MIRA.ai remains responsible for final scoring and
+    # technical validation through classify_match().
+    #
+    # MiniLM vectors are kept in memory and are never sent
+    # to the 1024-dimensional Milvus collection.
+
+    for source_bo in filtered_sources:
         source_mat = material_index[source_bo.id]
-        try:
-            vector_ids = search_similar_materials(
-                description=source_mat.get("normalized_description", ""),
-                category=source_mat.get("category"),
-                top_k=50,
+
+        target_materials = [
+            material
+            for material in store.MATERIALS
+            if (
+                material["id"] != source_bo.id
+                and material_cpse.get(material["id"])
+                != material_cpse.get(source_bo.id)
             )
-        except Exception:
-            continue
+        ]
 
-        for target_id in vector_ids:
-            if target_id == source_bo.id or target_id not in material_index:
-                continue
+        ranked_targets = retrieve_candidates(
+            source=source_mat,
+            targets=target_materials,
+            embedding_cache=embedding_cache,
+            top_k=10,
+        )
 
-            target_mat = material_index[target_id]
+        for target_mat in ranked_targets:
+            pk = _pair_key(
+                source_bo.id,
+                target_mat["id"],
+            )
 
-            if source_mat["cpse"].upper() == target_mat["cpse"].upper():
-                continue
-
-            pk = _pair_key(source_bo.id, target_id)
             if pk in seen_pairs:
                 continue
+
             seen_pairs.add(pk)
             total_pairs_evaluated += 1
 
-            result = classify_match(source_mat, target_mat, embedding_cache=embedding_cache)
+            result = classify_match(
+                source_mat,
+                target_mat,
+                embedding_cache=embedding_cache,
+            )
+
+            engine_dec = result["decision"]
+
+            review_st = (
+                "PENDING"
+                if engine_dec in (
+                    "HIGH_CONFIDENCE",
+                    "REVIEW",
+                )
+                else "DIFFERENT"
+            )
 
             candidate = {
                 "id": store.next_candidate_id(),
-                "source_material_id": source_bo.id,
-                "target_material_id": target_id,
+                "source_material_id": source_mat["id"],
+                "target_material_id": target_mat["id"],
                 "source_cpse": source_mat["cpse"],
                 "target_cpse": target_mat["cpse"],
                 "source_code": source_mat["material_code"],
@@ -328,19 +392,71 @@ def run_batch_matching(
                 "source_description": source_mat["description"],
                 "target_description": target_mat["description"],
                 "scores": result["scores"],
+                "text_similarity": result["scores"].get(
+                    "text_similarity",
+                    0.0,
+                ),
+                "semantic_similarity": result["scores"].get(
+                    "semantic_similarity",
+                    0.0,
+                ),
+                "specification_similarity": result["scores"].get(
+                    "specification_similarity",
+                    0.0,
+                ),
+                "material_grade_similarity": result["scores"].get(
+                    "material_grade_similarity",
+                    0.0,
+                ),
+                "other_attributes_similarity": result["scores"].get(
+                    "other_attributes_similarity",
+                    0.0,
+                ),
+                "final_score": result["scores"].get(
+                    "final_score",
+                    0.0,
+                ),
                 "critical_checks": result["critical_checks"],
-                "engine_decision": result["decision"],
-                "review_status": "PENDING"
-                if result["decision"] in {"HIGH_CONFIDENCE", "REVIEW"}
-                else result["decision"],
-                "reviewer_id": None,
-                "reviewer_comments": None,
-                "reviewed_at": None,
+                "engine_decision": engine_dec,
+                "review_status": review_st,
+                "reviewer_id": (
+                    "system:engine"
+                    if review_st == "AUTO_APPROVED"
+                    else None
+                ),
+                "reviewer_comments": (
+                    "Automatically approved by MIRA "
+                    "matching engine (High Confidence)"
+                    if review_st == "AUTO_APPROVED"
+                    else None
+                ),
+                "reviewed_at": (
+                    started_at.isoformat()
+                    if review_st == "AUTO_APPROVED"
+                    else None
+                ),
                 "created_at": started_at.isoformat(),
             }
-            new_candidates.append(candidate)
 
+            new_candidates.append(candidate)
     store.CANDIDATES.extend(new_candidates)
+
+    # Record audit events for auto-approved candidates
+    from app.api.v1.audit import AUDIT_EVENTS
+    for c in new_candidates:
+        if c["review_status"] == "AUTO_APPROVED":
+            AUDIT_EVENTS.append({
+                "event_type": "MATCH_AUTO_APPROVED",
+                "candidate_id": c["id"],
+                "source_code": c["source_code"],
+                "target_code": c["target_code"],
+                "source_cpse": c["source_cpse"],
+                "target_cpse": c["target_cpse"],
+                "actor": "system:engine",
+                "comments": "High-confidence technical match auto-approved by MIRA engine",
+                "final_score": c["scores"].get("final_score"),
+                "created_at": started_at,
+            })
 
     finished_at = datetime.now(timezone.utc)
     elapsed_ms = int((finished_at - started_at).total_seconds() * 1000)
@@ -520,3 +636,8 @@ def run_cnmc_batch_matching(
         current_user=current_user,
     )
     return res
+
+
+
+
+
