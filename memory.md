@@ -1072,3 +1072,52 @@ Migrated MIRA's production semantic embedding pipeline from the legacy 384D Mini
   - Synthetic master manifest test suite [`backend/tests/test_synthetic_material_master_manifest.py`](file:///home/shikhar/Desktop/mira/backend/tests/test_synthetic_material_master_manifest.py): **7/7 passed**.
   - Full backend regression test suite: **270/270 passed** (100% pass rate).
   - Frontend production build: **0 errors** (`dist/` built cleanly).
+
+## Selective MilvusSearch Integration & Production Resolver Hardening — 2026-09-30
+
+Following comparative analysis between `main` and `origin/MilvusSearch`, selectively integrated high-value components while rejecting regressive changes and hardening the production embedding pipeline to be strictly Qwen-only (1024D INT8):
+
+### 1. Selective Integration from `origin/MilvusSearch`
+- **Batch Embedding Utility (`backend/app/services/matching/batch_embeddings.py`):**
+  - Added `generate_embeddings(texts, batch_size=64, model_name=None)`.
+  - Reuses the authoritative SentenceTransformer model loader (`get_embedding_model()`).
+  - Implements in-memory deduplication of unique string descriptions to avoid redundant tensor forward passes during candidate batch generation.
+  - Normalizes output embeddings ($\|\mathbf{v}\|_2 = 1.0$) and outputs 1024-dimensional vectors.
+- **Milvus Batch Insertion Optimization (`backend/app/services/matching/milvus_client.py`):**
+  - Refactored `insert_material_embeddings(records)` to batch-encode descriptions via `generate_embeddings()` (`EMBEDDING_BATCH_SIZE = 64`) before calling `collection.upsert()`.
+  - Preserves graceful fallback (`_mark_down()`) when Milvus is offline/unreachable and ensures 1024D schema compatibility.
+
+### 2. Explicitly Rejected Remote Invariants
+- **Rejected Manual-Only Review Routing (`8655722`):** Retained automated high-confidence auto-approval (`AUTO_APPROVED`) and hard conflict rejection (`DIFFERENT`), ensuring human operators only review genuine ambiguities (`PENDING`).
+- **Rejected Reverted Scoring Weights:** Retained calibrated production scoring weights (`[0.175, 0.400, 0.250, 0.125, 0.050]`).
+- **Rejected `hybrid_retrieval.py`:** Deliberately rejected adding redundant retrieval logic that introduced a competing 384D baseline model (`all-MiniLM-L6-v2`) in RAM.
+
+### 3. Qwen-Only Production Resolver & Zero Silent Fallbacks (`backend/app/services/matching/embeddings.py`)
+- **Strict Qwen Resolution:**
+  - `DEFAULT_MODEL_NAME = "Mira.ai"`.
+  - `resolve_model_name()` defaults strictly to the local Qwen INT8 model across discovery paths (`MIRA_QWEN_MODEL_PATH`, `MIRA_MODEL_PATH`, `MIRA_MODELS_DIR`, `~/mira-model-test/Mira.ai`, `~/Desktop/mira-model-test/Mira.ai`, etc.).
+- **Actionable Error on Missing Model:**
+  - Replaced legacy silent fallback to MiniLM with an explicit `FileNotFoundError` detailing all searched candidate directories and configuration options.
+  - Production embedding generation and candidate matching can never silently degrade to 384D.
+- **Legacy Compatibility Isolation:**
+  - Explicit non-default aliases (`"minilm"`, `"base-minilm"`) remain isolated for historical offline training and stability scripts (`learned_weights_stability.py`, `train_minilm_cpse.py`) without affecting production runtime defaults.
+
+### 4. Verification & Terminal E2E Pipeline Results
+- **Unit & Regression Testing:**
+  - `backend/tests/test_qwen_embedding_migration.py`: **9/9 passed** (including missing model `FileNotFoundError` assertion and batch embeddings utility tests).
+  - `backend/tests/test_semantic_embedding_cache.py`: **13/13 passed** (including cross-model cache isolation and normalization tests).
+  - Full backend test suite: **273/273 passed** (100% pass rate).
+  - Frontend build: **Built cleanly in 724ms with 0 errors**.
+  - `git diff --check`: Clean (0 errors / 0 trailing whitespace).
+- **Synthetic Material Master E2E Validation (172 items):**
+  - **Resolved Model Path:** `/home/shikhar/mira-model-test/Mira.ai`
+  - **Vector Dimension:** `1024`
+  - **Materials Ingested:** `172`
+  - **Candidate Pairs Evaluated:** `2,574`
+  - **`AUTO_APPROVED`:** `11`
+  - **`PENDING` (Human Review Queue):** `676`
+  - **`DIFFERENT`:** `1,887`
+  - **Mappings Generated:** `7`
+  - **Equivalent Similarity:** `0.8261` (`HEX HEAD BOLT M8 X 25 MM SS304` vs `BOLT HEX SS304 M8 X 25`)
+  - **Unrelated Similarity:** `0.1844` (`HEX HEAD BOLT M8 X 25 MM SS304` vs `ROLLER BEARING 50 MM`)
+  - **Governance Invariants:** Intact (`Governance Check: PASS`).

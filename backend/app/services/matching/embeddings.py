@@ -7,7 +7,7 @@ from typing import Any
 import numpy as np
 from sentence_transformers import SentenceTransformer
 
-DEFAULT_MODEL_NAME = "all-MiniLM-L6-v2"
+DEFAULT_MODEL_NAME = "Mira.ai"
 
 
 def _get_project_root() -> Path:
@@ -22,7 +22,7 @@ def _get_project_root() -> Path:
 
 
 PROJECT_ROOT = _get_project_root()
-TRAINED_MODEL_PATH = PROJECT_ROOT / "models" / "trained" / "minilm_cpse_v1"
+LEGACY_MINILM_PATH = PROJECT_ROOT / "models" / "trained" / "minilm_cpse_v1"
 
 
 def get_qwen_candidate_paths() -> list[Path]:
@@ -89,39 +89,41 @@ def resolve_model_name(name_or_alias: str | None = None) -> str:
     """
     Resolve model alias or environment variable into a valid model path or identifier.
 
-    Resolution hierarchy:
-      1. Explicit or env-specified alias:
-         - 'qwen' / 'production' / 'default': local Qwen INT8 model if present, else fallback
-         - 'minilm': fine-tuned MiniLM checkpoint if available, else all-MiniLM-L6-v2
-         - 'base-minilm' / 'base_minilm': all-MiniLM-L6-v2
-      2. If unset:
-         - Priority 1: local Qwen INT8 model (~/Desktop/mira-model-test/Mira.ai or ~/mira-model-test/Mira.ai)
-         - Priority 2: local fine-tuned MiniLM checkpoint
-         - Priority 3: base all-MiniLM-L6-v2
+    Production defaults exclusively to the local Qwen INT8 1024D model (`Mira.ai`).
+    Silent fallbacks to 384D MiniLM have been removed.
+
+    Resolution rules:
+      1. Default / production (unset, '', 'default', 'production', 'qwen', 'mira', 'mira.ai'):
+         - Locates Qwen INT8 model across candidate paths.
+         - If not found, raises FileNotFoundError with actionable guidance.
+      2. Explicit custom model path / HuggingFace ID / legacy evaluation alias:
+         - 'minilm': legacy fine-tuned MiniLM checkpoint for historical evaluation scripts.
+         - 'base-minilm' / 'base_minilm': 'all-MiniLM-L6-v2' for baseline comparison.
+         - Any other string or Path is passed through directly.
     """
     target = name_or_alias if name_or_alias is not None else os.getenv("MIRA_EMBEDDING_MODEL", "")
     target = target.strip()
 
-    qwen_path = find_qwen_model_path()
-
-    if not target or target.lower() in ("default", "production"):
+    if not target or target.lower() in ("default", "production", "qwen", "mira", "mira.ai"):
+        qwen_path = find_qwen_model_path()
         if qwen_path is not None:
             return str(qwen_path)
-        if TRAINED_MODEL_PATH.exists() and (TRAINED_MODEL_PATH / "model.safetensors").exists():
-            return str(TRAINED_MODEL_PATH)
-        return DEFAULT_MODEL_NAME
+        candidates = get_qwen_candidate_paths()
+        candidate_str = "\n  - ".join(str(p) for p in candidates)
+        raise FileNotFoundError(
+            "MIRA production Qwen embedding model (1024D INT8) could not be located.\n"
+            f"Searched candidate locations:\n  - {candidate_str}\n"
+            "Please ensure the model directory exists at ~/mira-model-test/Mira.ai, "
+            "or configure MIRA_QWEN_MODEL_PATH / MIRA_MODEL_PATH / MIRA_MODELS_DIR / MIRA_EMBEDDING_MODEL."
+        )
 
     target_lower = target.lower()
-    if target_lower == "qwen":
-        if qwen_path is not None:
-            return str(qwen_path)
-        return "qwen"
-    elif target_lower == "minilm":
-        if TRAINED_MODEL_PATH.exists() and (TRAINED_MODEL_PATH / "model.safetensors").exists():
-            return str(TRAINED_MODEL_PATH)
-        return DEFAULT_MODEL_NAME
+    if target_lower == "minilm":
+        if LEGACY_MINILM_PATH.exists() and (LEGACY_MINILM_PATH / "model.safetensors").exists():
+            return str(LEGACY_MINILM_PATH)
+        return "all-MiniLM-L6-v2"
     elif target_lower in ("base-minilm", "base_minilm"):
-        return DEFAULT_MODEL_NAME
+        return "all-MiniLM-L6-v2"
 
     return target
 

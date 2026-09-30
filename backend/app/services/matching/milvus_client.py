@@ -25,6 +25,7 @@ import time
 from typing import Any, Iterable, Sequence
 
 from app.core.config import settings
+from app.services.matching.batch_embeddings import generate_embeddings
 from app.services.matching.embeddings import generate_embedding
 
 logger = logging.getLogger(__name__)
@@ -32,6 +33,7 @@ logger = logging.getLogger(__name__)
 COLLECTION_NAME = settings.milvus_collection
 MILVUS_HOST = settings.milvus_host
 MILVUS_PORT = settings.milvus_port
+EMBEDDING_BATCH_SIZE = 64
 
 _connected = False
 _collection: Any = None
@@ -165,7 +167,7 @@ def insert_material_embedding(
 
 
 def insert_material_embeddings(records: Iterable[dict[str, Any]]) -> int:
-    """Batch variant: embeds and upserts many materials in one round trip."""
+    """Batch variant: embeds in batch and upserts many materials into Milvus in one round trip."""
     rows = [r for r in records if (r.get("description") or "").strip()]
     if not rows:
         return 0
@@ -182,13 +184,21 @@ def insert_material_embeddings(records: Iterable[dict[str, Any]]) -> int:
         logger.warning("Skipping Milvus write, Milvus unreachable: %s", exc)
         return 0
 
+    descriptions = [str(r["description"]).strip() for r in rows]
+    try:
+        embedding_map = generate_embeddings(descriptions, batch_size=EMBEDDING_BATCH_SIZE)
+    except Exception as exc:
+        logger.warning("Batch embedding generation failed during Milvus insert: %s", exc)
+        return 0
+
     ids: list[int] = []
     vectors: list[Sequence[float]] = []
     cpses: list[str] = []
     categories: list[str] = []
 
     for r in rows:
-        vector = generate_embedding(r["description"])
+        desc = str(r["description"]).strip()
+        vector = embedding_map.get(desc)
         if not vector:
             continue
         ids.append(int(r["id"]))
@@ -204,8 +214,10 @@ def insert_material_embeddings(records: Iterable[dict[str, Any]]) -> int:
         collection.flush()
     except Exception as exc:
         logger.warning("Milvus upsert failed for %d rows: %s", len(ids), exc)
+        _mark_down()
         return 0
 
+    logger.info("Milvus batch upsert complete: %d vectors.", len(ids))
     return len(ids)
 
 

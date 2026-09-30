@@ -47,12 +47,33 @@ def test_qwen_model_resolution_and_default():
     resolved_prod = resolve_model_name("production")
     assert resolved_prod == str(qwen_path)
 
-    # Explicit 'minilm' alias -> resolves to minilm checkpoint or all-MiniLM-L6-v2
-    resolved_minilm = resolve_model_name("minilm")
-    assert "minilm" in resolved_minilm.lower() or "safetensors" in resolved_minilm
+    # Explicit 'mira' / 'mira.ai' / 'default' aliases -> resolves to local Qwen model
+    assert resolve_model_name("default") == str(qwen_path)
+    assert resolve_model_name("mira") == str(qwen_path)
+    assert resolve_model_name("mira.ai") == str(qwen_path)
 
     # get_embedding_model_name() uses resolve_model_name()
     assert get_embedding_model_name() == str(qwen_path)
+
+
+def test_qwen_missing_fails_explicitly_without_silent_minilm_fallback(monkeypatch):
+    """Verify that when Qwen model is missing, production resolution fails with FileNotFoundError rather than silently falling back to 384D MiniLM."""
+    import app.services.matching.embeddings as emb_module
+
+    monkeypatch.setattr(emb_module, "find_qwen_model_path", lambda: None)
+
+    # Default / production / qwen / mira must raise FileNotFoundError
+    with pytest.raises(FileNotFoundError, match="MIRA production Qwen embedding model"):
+        resolve_model_name()
+
+    with pytest.raises(FileNotFoundError, match="MIRA production Qwen embedding model"):
+        resolve_model_name("production")
+
+    with pytest.raises(FileNotFoundError, match="MIRA production Qwen embedding model"):
+        resolve_model_name("qwen")
+
+    with pytest.raises(FileNotFoundError, match="MIRA production Qwen embedding model"):
+        resolve_model_name("mira")
 
 
 def test_cross_platform_candidate_discovery_and_env_overrides(monkeypatch):
@@ -186,3 +207,23 @@ def test_qwen_scoring_and_critical_gate_routing():
     result_conflict = classify_match(mat_bolt_a, mat_bolt_conflict)
     assert result_conflict["decision"] == "DIFFERENT"
     assert any(c["status"] == "CONFLICT" for c in result_conflict["critical_checks"])
+
+
+def test_batch_embeddings_utility():
+    """Verify standalone batch_embeddings helper generates deduplicated 1024D vectors."""
+    from app.services.matching.batch_embeddings import generate_embeddings
+
+    texts = [
+        "HEX HEAD BOLT M8 X 25 MM SS304",
+        "HEX HEAD BOLT M8 X 25 MM SS304",  # Duplicate
+        "SEAMLESS PIPE ASTM A106 GRADE B 2 INCH SCH 40",
+        "",  # Empty string
+    ]
+    emb_map = generate_embeddings(texts, batch_size=4)
+    assert len(emb_map) == 2
+    assert "HEX HEAD BOLT M8 X 25 MM SS304" in emb_map
+    assert "SEAMLESS PIPE ASTM A106 GRADE B 2 INCH SCH 40" in emb_map
+    vec = emb_map["HEX HEAD BOLT M8 X 25 MM SS304"]
+    assert isinstance(vec, list)
+    assert len(vec) == 1024
+    assert abs(np.linalg.norm(np.array(vec, dtype=np.float32)) - 1.0) < 1e-2
