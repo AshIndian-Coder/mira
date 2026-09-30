@@ -142,3 +142,52 @@ def test_top_level_none_falls_back_to_parsed_specifications():
 
     assert all(check["status"] == "PASS" for check in checks)
     assert gates_allow_high_confidence(checks)
+
+
+def test_fastener_dimensions_conflict_when_lengths_differ():
+    from app.services.parsing.service import parse_specifications
+
+    mat_iocl = {
+        "category": "Fastener",
+        "parsed_specifications": parse_specifications(
+            "HEX HEAD BOLT M8 X 25 MM SS304 GRADE A2-70"
+        ),
+    }
+    mat_ongc = {
+        "category": "Fastener",
+        "parsed_specifications": parse_specifications(
+            "BOLT, HEX, SS304, A2-70, SIZE M8×30"
+        ),
+    }
+
+    checks = evaluate_critical_gates(mat_iocl, mat_ongc)
+    dim_check = next((c for c in checks if c["field"] == "dimensions"), None)
+    grade_check = next((c for c in checks if c["field"] == "material_grade"), None)
+
+    assert dim_check is not None
+    assert dim_check["status"] == "CONFLICT"
+    assert grade_check is not None
+    assert grade_check["status"] == "PASS"
+    assert not gates_allow_high_confidence(checks)
+
+
+def test_fastener_dimensions_pass_when_matching():
+    from app.services.parsing.service import parse_specifications
+
+    mat_a = {
+        "category": "Fastener",
+        "parsed_specifications": parse_specifications(
+            "HEX HEAD BOLT M8 X 25 MM SS304 GRADE A2-70"
+        ),
+    }
+    mat_b = {
+        "category": "Fastener",
+        "parsed_specifications": parse_specifications(
+            "HEXAGONAL HEAD BOLT, SS304, A2-70, SIZE M8x25"
+        ),
+    }
+
+    checks = evaluate_critical_gates(mat_a, mat_b)
+    assert all(check["status"] == "PASS" for check in checks)
+    assert gates_allow_high_confidence(checks)
+

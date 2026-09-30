@@ -274,7 +274,7 @@ def test_matching_conflicting_specifications():
     checks = {c["field"]: c["status"] for c in res["critical_checks"]}
     assert checks.get("pressure_rating") == "CONFLICT"
     assert checks.get("dimensions") == "CONFLICT"
-    assert res["decision"] == "REVIEW"  # flagged for human review due to conflict
+    assert res["decision"] == "DIFFERENT"  # flagged as different due to hard technical conflict
 
 
 def test_matching_identical_description_conflicting_grade():
@@ -299,7 +299,7 @@ def test_matching_identical_description_conflicting_grade():
     res = classify_match(mat_a, mat_b)
     checks = {c["field"]: c["status"] for c in res["critical_checks"]}
     assert checks.get("material_grade") == "CONFLICT"
-    assert res["decision"] == "REVIEW"
+    assert res["decision"] == "DIFFERENT"
 
 
 # =====================================================================

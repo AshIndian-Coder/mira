@@ -49,7 +49,7 @@ def test_conflicting_pressure_requires_review():
 
     result = classify_match(source, target)
 
-    assert result["decision"] == "REVIEW"
+    assert result["decision"] == "DIFFERENT"
 
     assert any(
         check["field"] == "pressure_rating"
@@ -96,7 +96,7 @@ def test_different_materials_are_not_high_confidence():
 
     result = classify_match(source, target)
 
-    assert result["decision"] == "REVIEW"
+    assert result["decision"] == "DIFFERENT"
     assert result["decision"] != "HIGH_CONFIDENCE"
 
 
@@ -115,3 +115,100 @@ def test_result_contains_frontend_required_data():
     assert "decision" in result
 
     assert "final_score" in result["scores"]
+
+
+def test_hard_conflict_bolt_dimension_is_different():
+    """M8 x 25 SS304 vs M8 x 30 SS304 has a hard dimension conflict -> DIFFERENT."""
+    source = {
+        "category": "Fastener",
+        "description": "HEX HEAD BOLT M8 X 25 MM SS304",
+        "normalized_description": "HEX HEAD BOLT M8 X 25 MM SS304",
+        "material_grade": "SS304",
+        "parsed_specifications": {
+            "thread_size": "M8",
+            "thread_pitch": None,
+            "bolt_length": {"value": 25.0, "unit": "MM"},
+            "dimensions": "M8X25MM",
+            "material_grade": "SS304",
+        },
+        "other_attributes": {},
+    }
+    target = {
+        "category": "Fastener",
+        "description": "HEX HEAD BOLT M8 X 30 MM SS304",
+        "normalized_description": "HEX HEAD BOLT M8 X 30 MM SS304",
+        "material_grade": "SS304",
+        "parsed_specifications": {
+            "thread_size": "M8",
+            "thread_pitch": None,
+            "bolt_length": {"value": 30.0, "unit": "MM"},
+            "dimensions": "M8X30MM",
+            "material_grade": "SS304",
+        },
+        "other_attributes": {},
+    }
+    result = classify_match(source, target)
+    assert result["decision"] == "DIFFERENT"
+    assert any(c["field"] == "dimensions" and c["status"] == "CONFLICT" for c in result["critical_checks"])
+
+
+def test_unknown_dimensions_requires_review():
+    """HEX HEAD BOLT SS304 with missing critical dimensions -> REVIEW."""
+    source = {
+        "category": "Fastener",
+        "description": "HEX HEAD BOLT SS304",
+        "normalized_description": "HEX HEAD BOLT SS304",
+        "material_grade": "SS304",
+        "parsed_specifications": {
+            "material_grade": "SS304",
+        },
+        "other_attributes": {},
+    }
+    target = {
+        "category": "Fastener",
+        "description": "HEX HEAD BOLT SS304",
+        "normalized_description": "HEX HEAD BOLT SS304",
+        "material_grade": "SS304",
+        "parsed_specifications": {
+            "material_grade": "SS304",
+        },
+        "other_attributes": {},
+    }
+    result = classify_match(source, target)
+    assert result["decision"] == "REVIEW"
+    assert any(c["field"] == "dimensions" and c["status"] == "UNKNOWN" for c in result["critical_checks"])
+
+
+def test_obvious_equivalent_is_high_confidence():
+    """HEX HEAD BOLT M8 X 25 MM SS304 vs HEX HEAD BOLT M8 X 25 MM SS 304 -> HIGH_CONFIDENCE."""
+    source = {
+        "category": "Fastener",
+        "description": "HEX HEAD BOLT M8 X 25 MM SS304",
+        "normalized_description": "HEX HEAD BOLT M8 X 25 MM SS304",
+        "material_grade": "SS304",
+        "parsed_specifications": {
+            "thread_size": "M8",
+            "thread_pitch": None,
+            "bolt_length": {"value": 25.0, "unit": "MM"},
+            "dimensions": "M8X25MM",
+            "material_grade": "SS304",
+        },
+        "other_attributes": {},
+    }
+    target = {
+        "category": "Fastener",
+        "description": "HEX HEAD BOLT M8 X 25 MM SS 304",
+        "normalized_description": "HEX HEAD BOLT M8 X 25 MM SS 304",
+        "material_grade": "SS304",
+        "parsed_specifications": {
+            "thread_size": "M8",
+            "thread_pitch": None,
+            "bolt_length": {"value": 25.0, "unit": "MM"},
+            "dimensions": "M8X25MM",
+            "material_grade": "SS304",
+        },
+        "other_attributes": {},
+    }
+    result = classify_match(source, target)
+    assert result["decision"] == "HIGH_CONFIDENCE"
+    assert all(c["status"] == "PASS" for c in result["critical_checks"])

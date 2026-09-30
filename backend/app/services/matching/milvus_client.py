@@ -15,12 +15,10 @@ import time
 from typing import Any, Iterable, Sequence
 
 from app.core.config import settings
-from app.services.matching.batch_embeddings import (
-    generate_embeddings,
-)
+from app.services.matching.batch_embeddings import generate_embeddings
+
 
 logger = logging.getLogger(__name__)
-
 
 COLLECTION_NAME = settings.milvus_collection
 MILVUS_HOST = settings.milvus_host
@@ -181,6 +179,7 @@ def reset_client_state() -> None:
     _connected = False
     _collection = None
     _loaded = False
+
     _probe.update(
         ok=False,
         until=0.0,
@@ -323,6 +322,7 @@ def delete_material_embeddings(
 
     try:
         collection = get_collection()
+
         id_list = ", ".join(
             str(int(material_id))
             for material_id in material_ids

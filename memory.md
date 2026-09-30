@@ -1014,3 +1014,61 @@ $$\mathbf{w}_{\text{Production}} = [0.175, 0.400, 0.250, 0.125, 0.050]$$
 4. **Preservation of Engineering Invariants:**
    * Critical specification gates and decision thresholds (`HIGH_CONFIDENCE = 0.85`, `DIFFERENT = 0.45`) remain 100% intact.
    * Specification weight is firmly locked at $0.250 \ge 0.25$ and material grade at $0.125 \ge 0.10$.
+
+## Automated Decision Routing & Review Queue Governance — 2026-09-29
+
+Refactored MIRA's match candidate evaluation and review queue governance to automate obvious equivalent matches and hard technical conflicts while focusing human operator attention strictly on genuine technical ambiguities:
+
+- **Core Decision Routing Policy:**
+  $$\begin{aligned}
+  \text{Hard Technical Conflict} &\longrightarrow \texttt{DIFFERENT} \quad (\texttt{review\_status = DIFFERENT}) \\
+  \text{Unknown / Ambiguous Critical Spec} &\longrightarrow \texttt{REVIEW} \quad (\texttt{review\_status = PENDING}) \\
+  \text{All Critical Gates Pass} \land \text{Final Score} \ge 0.85 &\longrightarrow \texttt{HIGH\_CONFIDENCE} \quad (\texttt{review\_status = AUTO\_APPROVED})
+  \end{aligned}$$
+- **Mapping Generation & Review Queue Decoupling:**
+  - `POST /api/mappings/generate` consumes both `APPROVED` (human approved) and `AUTO_APPROVED` (system auto-approved) candidates.
+  - `GET /api/review/queue` strictly filters for `review_status == "PENDING"`, removing auto-approved items and hard rejections from the queue.
+  - Audit logs emit distinct `MATCH_AUTO_APPROVED` events with actor `system:engine` to maintain governance separation from human `MATCH_APPROVED` events.
+- **Frontend Badges & UI Integration:**
+  - Added visual badges and styles in `Badge.tsx` and `index.css` for `AUTO_APPROVED` (emerald gradient with sparkle icon) and `DIFFERENT` (subtle slate tag).
+
+## Qwen INT8 1024D Semantic Embedding Migration & Cross-Platform Support — 2026-09-29
+
+Migrated MIRA's production semantic embedding pipeline from the legacy 384D MiniLM model (`minilm_cpse_v1`) to the locally available **Qwen INT8 embedding model** (`Mira.ai`):
+
+- **Model Properties & Verification:**
+  - Architecture: `Qwen3Model` (28 layers), quantized to INT8 via `bitsandbytes`.
+  - Vector Dimension: **1024** (normalized unit vectors, $\|\mathbf{v}\|_2 = 1.0$).
+  - Device: CPU execution verified via `SentenceTransformer`.
+  - Benchmark Similarity:
+    - Equivalent fasteners (`HEX HEAD BOLT M8 X 25 MM SS304` vs `BOLT HEX SS304 M8 X 25`): **0.8366**
+    - Unrelated materials (`HEX HEAD BOLT M8 X 25 MM SS304` vs `ROLLER BEARING 50 MM`): **0.1774**
+- **Cross-Platform Portable Discovery & Resolution:**
+  - In [`backend/app/services/matching/embeddings.py`](file:///home/shikhar/Desktop/mira/backend/app/services/matching/embeddings.py), eliminated hardcoded machine paths in favor of cross-platform path resolution using `Path.home()`, `_get_project_root()`, and standard environment variables:
+    1. `MIRA_EMBEDDING_MODEL` / `MIRA_QWEN_MODEL_PATH` / `MIRA_MODEL_PATH` / `MIRA_MODELS_DIR`
+    2. `Path.home() / "mira-model-test" / "Mira.ai"`
+    3. `Path.home() / "Desktop" / "mira-model-test" / "Mira.ai"`
+    4. `Path.home() / ".mira" / "models" / "Mira.ai"`
+    5. `<project_root>/models/Mira.ai`
+    6. `<project_root>/models/trained/qwen`
+- **Dynamic Dimension & Milvus Vector Index Schema:**
+  - Added `get_embedding_dimension()` to dynamically query vector width directly from the active SentenceTransformer model.
+  - Updated [`backend/create_milvus_collection.py`](file:///home/shikhar/Desktop/mira/backend/create_milvus_collection.py) with `dim=1024` and added `--recreate` CLI support to safely rebuild collections without mixing legacy 384D vectors.
+- **Batch Precomputation & Performance Optimization:**
+  - Implemented batch embedding precomputation and scoped `EmbeddingCache` in [`backend/app/api/v1/matching.py`](file:///home/shikhar/Desktop/mira/backend/app/api/v1/matching.py) and [`backend/app/services/matching/vector_search.py`](file:///home/shikhar/Desktop/mira/backend/app/services/matching/vector_search.py).
+  - Encodes distinct descriptions once per batch, preventing repetitive CPU forward passes across $N \times M$ pairs.
+- **End-to-End Validation on Synthetic Material Master (172 items):**
+  - Dataset: [`data/sample/synthetic_material_master.csv`](file:///home/shikhar/Desktop/mira/data/sample/synthetic_material_master.csv)
+  - Materials ingested: **172**
+  - Candidate pairs evaluated: **2,574**
+  - Candidate pairs stored: **2,574**
+  - `AUTO_APPROVED`: **12**
+  - `PENDING` (Review Queue): **676**
+  - `DIFFERENT`: **1,886**
+  - Mappings generated: **8**
+  - Automated audit events: **12**
+- **Test Suite Verification:**
+  - Dedicated migration test suite [`backend/tests/test_qwen_embedding_migration.py`](file:///home/shikhar/Desktop/mira/backend/tests/test_qwen_embedding_migration.py): **7/7 passed**.
+  - Synthetic master manifest test suite [`backend/tests/test_synthetic_material_master_manifest.py`](file:///home/shikhar/Desktop/mira/backend/tests/test_synthetic_material_master_manifest.py): **7/7 passed**.
+  - Full backend regression test suite: **270/270 passed** (100% pass rate).
+  - Frontend production build: **0 errors** (`dist/` built cleanly).

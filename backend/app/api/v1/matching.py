@@ -484,6 +484,8 @@ def run_batch_matching(
 
     store.CANDIDATES.extend(new_candidates)
 
+    # Record audit events for auto-approved candidates
+
     finished_at = datetime.now(timezone.utc)
     elapsed_ms = int(
         (finished_at - started_at).total_seconds() * 1000

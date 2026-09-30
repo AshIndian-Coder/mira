@@ -1,0 +1,1327 @@
+{
+  "dataset_name": "synthetic_material_master",
+  "record_count": 172,
+  "test_families_count": 95,
+  "manifest": [
+    {
+      "family_id": "FASTENER_EQ_01",
+      "materials": [
+        "NTP-FST-0825",
+        "BHL-FST-8025",
+        "IOC-BLT-0825",
+        "ONG-FST-0825",
+        "GAL-BLT-0825",
+        "SAL-FST-0825",
+        "HPC-BLT-0825"
+      ],
+      "expected_relationship": "EQUIVALENT_CANDIDATE",
+      "critical_fields": [
+        "dimensions",
+        "material_grade"
+      ],
+      "expected_final_decision": "HIGH_CONFIDENCE",
+      "reason": "Cross-CPSE representations of SS304 M8x25 hex head bolts"
+    },
+    {
+      "family_id": "FASTENER_CONF_LEN_01",
+      "materials": [
+        "NTP-FST-0825",
+        "NTP-FST-0830"
+      ],
+      "expected_relationship": "DIFFERENT",
+      "critical_fields": [
+        "dimensions"
+      ],
+      "expected_final_decision": "DIFFERENT",
+      "reason": "Length conflict: 25 mm vs 30 mm"
+    },
+    {
+      "family_id": "FASTENER_CONF_LEN_02",
+      "materials": [
+        "IOC-BLT-0825",
+        "BHL-FST-0840"
+      ],
+      "expected_relationship": "DIFFERENT",
+      "critical_fields": [
+        "dimensions"
+      ],
+      "expected_final_decision": "DIFFERENT",
+      "reason": "Length conflict: 25 mm vs 40 mm"
+    },
+    {
+      "family_id": "FASTENER_CONF_DIA_01",
+      "materials": [
+        "NTP-FST-0825",
+        "NAL-FST-1025"
+      ],
+      "expected_relationship": "DIFFERENT",
+      "critical_fields": [
+        "dimensions"
+      ],
+      "expected_final_decision": "DIFFERENT",
+      "reason": "Diameter conflict: M8 vs M10"
+    },
+    {
+      "family_id": "FASTENER_CONF_DIA_02",
+      "materials": [
+        "NTP-FST-0825",
+        "PWG-FST-1225"
+      ],
+      "expected_relationship": "DIFFERENT",
+      "critical_fields": [
+        "dimensions"
+      ],
+      "expected_final_decision": "DIFFERENT",
+      "reason": "Diameter conflict: M8 vs M12"
+    },
+    {
+      "family_id": "FASTENER_CONF_GRD_01",
+      "materials": [
+        "NTP-FST-0825",
+        "ONG-FST-3168"
+      ],
+      "expected_relationship": "DIFFERENT",
+      "critical_fields": [
+        "material_grade"
+      ],
+      "expected_final_decision": "DIFFERENT",
+      "reason": "Grade conflict: SS304 vs SS316"
+    },
+    {
+      "family_id": "FASTENER_CONF_GRD_02",
+      "materials": [
+        "NTP-FST-0825",
+        "SAL-FST-8825"
+      ],
+      "expected_relationship": "DIFFERENT",
+      "critical_fields": [
+        "material_grade"
+      ],
+      "expected_final_decision": "DIFFERENT",
+      "reason": "Grade conflict: SS304 vs GR 8.8"
+    },
+    {
+      "family_id": "FASTENER_PITCH_LEN_01",
+      "materials": [
+        "NTP-FST-0825",
+        "BHL-THD-0812"
+      ],
+      "expected_relationship": "DIFFERENT",
+      "critical_fields": [
+        "dimensions",
+        "metric_thread"
+      ],
+      "expected_final_decision": "DIFFERENT",
+      "reason": "Fastener length (25 mm) vs Thread pitch (1.25 mm)"
+    },
+    {
+      "family_id": "FASTENER_PITCH_CONF_02",
+      "materials": [
+        "IOC-THD-1015",
+        "NTP-THD-1020"
+      ],
+      "expected_relationship": "DIFFERENT",
+      "critical_fields": [
+        "metric_thread"
+      ],
+      "expected_final_decision": "DIFFERENT",
+      "reason": "Pitch conflict: 1.5 mm vs 2.0 mm"
+    },
+    {
+      "family_id": "FASTENER_EQ_HT_01",
+      "materials": [
+        "IOC-FST-1660",
+        "BPC-FST-1660",
+        "GAL-FST-1660"
+      ],
+      "expected_relationship": "EQUIVALENT_CANDIDATE",
+      "critical_fields": [
+        "dimensions",
+        "material_grade"
+      ],
+      "expected_final_decision": "HIGH_CONFIDENCE",
+      "reason": "Equivalent HT Gr 8.8 M16x60 bolts across IOCL, BPCL, GAIL"
+    },
+    {
+      "family_id": "STUD_EQ_01",
+      "materials": [
+        "IOC-STD-2015",
+        "ONG-STD-2015",
+        "HPC-STD-2015"
+      ],
+      "expected_relationship": "EQUIVALENT_CANDIDATE",
+      "critical_fields": [
+        "dimensions",
+        "material_grade"
+      ],
+      "expected_final_decision": "HIGH_CONFIDENCE",
+      "reason": "Equivalent M20x150 B7 stud bolts with nuts"
+    },
+    {
+      "family_id": "STUD_CONF_LEN_02",
+      "materials": [
+        "IOC-STD-2015",
+        "BPC-STD-2018"
+      ],
+      "expected_relationship": "DIFFERENT",
+      "critical_fields": [
+        "dimensions"
+      ],
+      "expected_final_decision": "DIFFERENT",
+      "reason": "Stud bolt length conflict: 150 mm vs 180 mm"
+    },
+    {
+      "family_id": "SOCKET_EQ_01",
+      "materials": [
+        "BHL-SKT-1040",
+        "NAL-SKT-1040"
+      ],
+      "expected_relationship": "EQUIVALENT_CANDIDATE",
+      "critical_fields": [
+        "dimensions",
+        "material_grade"
+      ],
+      "expected_final_decision": "HIGH_CONFIDENCE",
+      "reason": "Equivalent M10x40 Gr 12.9 Allen bolts"
+    },
+    {
+      "family_id": "SOCKET_CONF_LEN_02",
+      "materials": [
+        "BHL-SKT-1040",
+        "SAL-SKT-1050"
+      ],
+      "expected_relationship": "DIFFERENT",
+      "critical_fields": [
+        "dimensions"
+      ],
+      "expected_final_decision": "DIFFERENT",
+      "reason": "Length conflict: 40 mm vs 50 mm"
+    },
+    {
+      "family_id": "WASHER_EQ_01",
+      "materials": [
+        "NTP-WSH-0016",
+        "IOC-WSH-0016",
+        "BHL-WSH-0016"
+      ],
+      "expected_relationship": "EQUIVALENT_CANDIDATE",
+      "critical_fields": [
+        "dimensions",
+        "material_grade"
+      ],
+      "expected_final_decision": "HIGH_CONFIDENCE",
+      "reason": "Equivalent M16 SS304 plain washers"
+    },
+    {
+      "family_id": "WASHER_CONF_02",
+      "materials": [
+        "NTP-WSH-0016",
+        "ONG-WSH-0020"
+      ],
+      "expected_relationship": "DIFFERENT",
+      "critical_fields": [
+        "dimensions"
+      ],
+      "expected_final_decision": "DIFFERENT",
+      "reason": "Washer size conflict: M16 vs M20"
+    },
+    {
+      "family_id": "NUT_EQ_03",
+      "materials": [
+        "GAL-NUT-0016",
+        "HPC-NUT-0016"
+      ],
+      "expected_relationship": "EQUIVALENT_CANDIDATE",
+      "critical_fields": [
+        "dimensions",
+        "material_grade"
+      ],
+      "expected_final_decision": "HIGH_CONFIDENCE",
+      "reason": "Equivalent M16 SS304 hex nuts"
+    },
+    {
+      "family_id": "FASTENER_AMB_01",
+      "materials": [
+        "NTP-FST-0825",
+        "IOC-AMB-F01"
+      ],
+      "expected_relationship": "REVIEW",
+      "critical_fields": [
+        "dimensions"
+      ],
+      "expected_final_decision": "REVIEW",
+      "reason": "Incomplete fastener record missing diameter and length"
+    },
+    {
+      "family_id": "FASTENER_AMB_02",
+      "materials": [
+        "NTP-FST-0825",
+        "NTP-AMB-F02"
+      ],
+      "expected_relationship": "REVIEW",
+      "critical_fields": [
+        "dimensions",
+        "material_grade"
+      ],
+      "expected_final_decision": "REVIEW",
+      "reason": "Incomplete fastener record missing length and grade"
+    },
+    {
+      "family_id": "PIPE_EQ_01",
+      "materials": [
+        "IOC-PIP-5040",
+        "ONG-PIP-5040",
+        "HPC-PIP-5040",
+        "NTP-PIP-5040",
+        "GAL-PIP-5040"
+      ],
+      "expected_relationship": "EQUIVALENT_CANDIDATE",
+      "critical_fields": [
+        "nominal_bore",
+        "schedule",
+        "material_grade"
+      ],
+      "expected_final_decision": "HIGH_CONFIDENCE",
+      "reason": "Cross-CPSE equivalent CS 50NB SCH40 A106 Gr.B seamless pipes"
+    },
+    {
+      "family_id": "PIPE_EQ_02",
+      "materials": [
+        "IOC-PIP-1040",
+        "BHL-PIP-1040",
+        "SAL-PIP-1040",
+        "BPC-PIP-1040"
+      ],
+      "expected_relationship": "EQUIVALENT_CANDIDATE",
+      "critical_fields": [
+        "nominal_bore",
+        "schedule",
+        "material_grade"
+      ],
+      "expected_final_decision": "HIGH_CONFIDENCE",
+      "reason": "Equivalent 100NB SCH40 A106 Gr.B CS pipes"
+    },
+    {
+      "family_id": "PIPE_CONF_SCH_01",
+      "materials": [
+        "IOC-PIP-1040",
+        "IOC-PIP-1080"
+      ],
+      "expected_relationship": "DIFFERENT",
+      "critical_fields": [
+        "schedule"
+      ],
+      "expected_final_decision": "DIFFERENT",
+      "reason": "Pipe schedule conflict: 100NB SCH40 vs 100NB SCH80"
+    },
+    {
+      "family_id": "PIPE_CONF_SCH_02",
+      "materials": [
+        "IOC-PIP-5040",
+        "NTP-PIP-5080"
+      ],
+      "expected_relationship": "DIFFERENT",
+      "critical_fields": [
+        "schedule"
+      ],
+      "expected_final_decision": "DIFFERENT",
+      "reason": "Pipe schedule conflict: 50NB SCH40 vs 50NB SCH80"
+    },
+    {
+      "family_id": "PIPE_CONF_SCH_03",
+      "materials": [
+        "IOC-PIP-1040",
+        "ONG-PIP-1016"
+      ],
+      "expected_relationship": "DIFFERENT",
+      "critical_fields": [
+        "schedule"
+      ],
+      "expected_final_decision": "DIFFERENT",
+      "reason": "Pipe schedule conflict: 100NB SCH40 vs 100NB SCH160"
+    },
+    {
+      "family_id": "PIPE_EQ_SS_01",
+      "materials": [
+        "BHL-PIP-3040",
+        "NAL-PIP-3040"
+      ],
+      "expected_relationship": "EQUIVALENT_CANDIDATE",
+      "critical_fields": [
+        "nominal_bore",
+        "schedule",
+        "material_grade"
+      ],
+      "expected_final_decision": "HIGH_CONFIDENCE",
+      "reason": "Equivalent SS304 50NB SCH40 seamless pipes"
+    },
+    {
+      "family_id": "PIPE_CONF_MAT_02",
+      "materials": [
+        "IOC-PIP-5040",
+        "BHL-PIP-3040"
+      ],
+      "expected_relationship": "DIFFERENT",
+      "critical_fields": [
+        "material_grade"
+      ],
+      "expected_final_decision": "DIFFERENT",
+      "reason": "Pipe material conflict: CS A106 Gr.B vs SS304 A312"
+    },
+    {
+      "family_id": "PIPE_CONF_MAT_03",
+      "materials": [
+        "IOC-PIP-5040",
+        "GAL-PIP-3336"
+      ],
+      "expected_relationship": "DIFFERENT",
+      "critical_fields": [
+        "material_grade"
+      ],
+      "expected_final_decision": "DIFFERENT",
+      "reason": "Pipe material conflict: A106 Gr.B vs A333 Gr.6"
+    },
+    {
+      "family_id": "PIPE_CONF_NB_01",
+      "materials": [
+        "NTP-PIP-2540",
+        "IOC-PIP-5040"
+      ],
+      "expected_relationship": "DIFFERENT",
+      "critical_fields": [
+        "nominal_bore"
+      ],
+      "expected_final_decision": "DIFFERENT",
+      "reason": "Nominal bore conflict: 25NB vs 50NB"
+    },
+    {
+      "family_id": "PIPE_CONF_NB_02",
+      "materials": [
+        "IOC-PIP-5040",
+        "ONG-PIP-8040"
+      ],
+      "expected_relationship": "DIFFERENT",
+      "critical_fields": [
+        "nominal_bore"
+      ],
+      "expected_final_decision": "DIFFERENT",
+      "reason": "Nominal bore conflict: 50NB vs 80NB"
+    },
+    {
+      "family_id": "ELBOW_EQ_01",
+      "materials": [
+        "IOC-ELB-5040",
+        "GAL-ELB-5040"
+      ],
+      "expected_relationship": "EQUIVALENT_CANDIDATE",
+      "critical_fields": [
+        "nominal_bore",
+        "schedule",
+        "material_grade"
+      ],
+      "expected_final_decision": "HIGH_CONFIDENCE",
+      "reason": "Equivalent 50NB SCH40 CS 90 deg BW elbows"
+    },
+    {
+      "family_id": "ELBOW_CONF_SCH_02",
+      "materials": [
+        "IOC-ELB-5040",
+        "BPC-ELB-5080"
+      ],
+      "expected_relationship": "DIFFERENT",
+      "critical_fields": [
+        "schedule"
+      ],
+      "expected_final_decision": "DIFFERENT",
+      "reason": "Elbow schedule conflict: SCH40 vs SCH80"
+    },
+    {
+      "family_id": "FLANGE_EQ_01",
+      "materials": [
+        "IOC-FLG-5015",
+        "ONG-FLG-5015",
+        "GAL-FLG-5015"
+      ],
+      "expected_relationship": "EQUIVALENT_CANDIDATE",
+      "critical_fields": [
+        "pressure_rating",
+        "dimensions",
+        "material_grade"
+      ],
+      "expected_final_decision": "HIGH_CONFIDENCE",
+      "reason": "Equivalent 2 IN 150# WNRF CS A105 flanges"
+    },
+    {
+      "family_id": "FLANGE_CONF_RTG_02",
+      "materials": [
+        "IOC-FLG-5015",
+        "IOC-FLG-5030"
+      ],
+      "expected_relationship": "DIFFERENT",
+      "critical_fields": [
+        "pressure_rating"
+      ],
+      "expected_final_decision": "DIFFERENT",
+      "reason": "Flange rating conflict: Class 150 vs Class 300"
+    },
+    {
+      "family_id": "FLANGE_CONF_DIA_03",
+      "materials": [
+        "IOC-FLG-5015",
+        "NTP-FLG-1015"
+      ],
+      "expected_relationship": "DIFFERENT",
+      "critical_fields": [
+        "dimensions"
+      ],
+      "expected_final_decision": "DIFFERENT",
+      "reason": "Flange size conflict: 2 IN vs 4 IN"
+    },
+    {
+      "family_id": "PIPE_AMB_01",
+      "materials": [
+        "IOC-PIP-5040",
+        "SAL-AMB-P01"
+      ],
+      "expected_relationship": "REVIEW",
+      "critical_fields": [
+        "nominal_bore",
+        "schedule"
+      ],
+      "expected_final_decision": "REVIEW",
+      "reason": "Incomplete pipe record missing size and schedule"
+    },
+    {
+      "family_id": "PIPE_AMB_02",
+      "materials": [
+        "IOC-PIP-5040",
+        "HPC-AMB-P02"
+      ],
+      "expected_relationship": "REVIEW",
+      "critical_fields": [
+        "material_grade"
+      ],
+      "expected_final_decision": "REVIEW",
+      "reason": "Incomplete pipe record missing material specification"
+    },
+    {
+      "family_id": "VALVE_EQ_BALL_01",
+      "materials": [
+        "IOC-VLV-0215",
+        "ONG-VLV-0215",
+        "GAL-VLV-0215",
+        "HPC-VLV-0215",
+        "BPC-VLV-0215"
+      ],
+      "expected_relationship": "EQUIVALENT_CANDIDATE",
+      "critical_fields": [
+        "pressure_rating",
+        "dimensions",
+        "material_grade"
+      ],
+      "expected_final_decision": "HIGH_CONFIDENCE",
+      "reason": "Equivalent 2 IN Class 150 CS A216 WCB ball valves"
+    },
+    {
+      "family_id": "VALVE_EQ_GATE_01",
+      "materials": [
+        "NTP-VLV-0315",
+        "BHL-VLV-0315",
+        "NAL-VLV-0315",
+        "SAL-VLV-0315"
+      ],
+      "expected_relationship": "EQUIVALENT_CANDIDATE",
+      "critical_fields": [
+        "pressure_rating",
+        "dimensions",
+        "material_grade"
+      ],
+      "expected_final_decision": "HIGH_CONFIDENCE",
+      "reason": "Equivalent 3 IN 150# SS304 gate valves"
+    },
+    {
+      "family_id": "VALVE_CONF_PR_01",
+      "materials": [
+        "IOC-VLV-0215",
+        "IOC-VLV-0230"
+      ],
+      "expected_relationship": "DIFFERENT",
+      "critical_fields": [
+        "pressure_rating"
+      ],
+      "expected_final_decision": "DIFFERENT",
+      "reason": "Pressure class conflict: 150 LB vs 300 LB"
+    },
+    {
+      "family_id": "VALVE_CONF_PR_02",
+      "materials": [
+        "IOC-VLV-0215",
+        "ONG-VLV-0260"
+      ],
+      "expected_relationship": "DIFFERENT",
+      "critical_fields": [
+        "pressure_rating"
+      ],
+      "expected_final_decision": "DIFFERENT",
+      "reason": "Pressure class conflict: 150 LB vs 600 LB"
+    },
+    {
+      "family_id": "VALVE_CONF_MAT_01",
+      "materials": [
+        "IOC-VLV-0215",
+        "HPC-VLV-0216"
+      ],
+      "expected_relationship": "DIFFERENT",
+      "critical_fields": [
+        "material_grade"
+      ],
+      "expected_final_decision": "DIFFERENT",
+      "reason": "Body material conflict: CS WCB vs SS316 CF8M"
+    },
+    {
+      "family_id": "VALVE_CONF_MAT_02",
+      "materials": [
+        "IOC-VLV-0215",
+        "NTP-VLV-0217"
+      ],
+      "expected_relationship": "DIFFERENT",
+      "critical_fields": [
+        "material_grade"
+      ],
+      "expected_final_decision": "DIFFERENT",
+      "reason": "Body material conflict: CS WCB vs SS304 CF8"
+    },
+    {
+      "family_id": "VALVE_CONF_TYPE_01",
+      "materials": [
+        "IOC-VLV-0215",
+        "NTP-VLV-0218"
+      ],
+      "expected_relationship": "DIFFERENT",
+      "critical_fields": [
+        "description"
+      ],
+      "expected_final_decision": "DIFFERENT",
+      "reason": "Valve operational type conflict: Ball Valve vs Globe Valve"
+    },
+    {
+      "family_id": "VALVE_CONF_TYPE_02",
+      "materials": [
+        "IOC-VLV-0215",
+        "ONG-VLV-0219"
+      ],
+      "expected_relationship": "DIFFERENT",
+      "critical_fields": [
+        "description"
+      ],
+      "expected_final_decision": "DIFFERENT",
+      "reason": "Valve operational type conflict: Ball Valve vs Check Valve"
+    },
+    {
+      "family_id": "VALVE_CONF_SIZE_01",
+      "materials": [
+        "IOC-VLV-0215",
+        "IOC-VLV-0415"
+      ],
+      "expected_relationship": "DIFFERENT",
+      "critical_fields": [
+        "dimensions"
+      ],
+      "expected_final_decision": "DIFFERENT",
+      "reason": "Valve size conflict: 2 IN vs 4 IN"
+    },
+    {
+      "family_id": "VALVE_CONF_SIZE_02",
+      "materials": [
+        "IOC-VLV-0215",
+        "BPC-VLV-0615"
+      ],
+      "expected_relationship": "DIFFERENT",
+      "critical_fields": [
+        "dimensions"
+      ],
+      "expected_final_decision": "DIFFERENT",
+      "reason": "Valve size conflict: 2 IN vs 6 IN"
+    },
+    {
+      "family_id": "VALVE_AMB_01",
+      "materials": [
+        "IOC-VLV-0215",
+        "GAL-AMB-V01"
+      ],
+      "expected_relationship": "REVIEW",
+      "critical_fields": [
+        "pressure_rating",
+        "material_grade"
+      ],
+      "expected_final_decision": "REVIEW",
+      "reason": "Incomplete valve record missing pressure class and body material"
+    },
+    {
+      "family_id": "VALVE_AMB_02",
+      "materials": [
+        "NTP-VLV-0315",
+        "SAL-AMB-V02"
+      ],
+      "expected_relationship": "REVIEW",
+      "critical_fields": [
+        "dimensions",
+        "material_grade"
+      ],
+      "expected_final_decision": "REVIEW",
+      "reason": "Incomplete valve record missing valve size and material"
+    },
+    {
+      "family_id": "GAUGE_EQ_01",
+      "materials": [
+        "IOC-INS-1010",
+        "ONG-INS-1010",
+        "NTP-INS-1010",
+        "GAL-INS-1010"
+      ],
+      "expected_relationship": "EQUIVALENT_CANDIDATE",
+      "critical_fields": [
+        "pressure_range",
+        "dimensions",
+        "material_grade"
+      ],
+      "expected_final_decision": "HIGH_CONFIDENCE",
+      "reason": "Equivalent 0-10 Bar 100mm dial SS316 pressure gauges"
+    },
+    {
+      "family_id": "GAUGE_CONF_RNG_01",
+      "materials": [
+        "IOC-INS-1010",
+        "HPC-INS-1025"
+      ],
+      "expected_relationship": "DIFFERENT",
+      "critical_fields": [
+        "pressure_range"
+      ],
+      "expected_final_decision": "DIFFERENT",
+      "reason": "Pressure range conflict: 0-10 Bar vs 0-25 Bar"
+    },
+    {
+      "family_id": "GAUGE_CONF_RNG_02",
+      "materials": [
+        "IOC-INS-1010",
+        "BPC-INS-1100"
+      ],
+      "expected_relationship": "DIFFERENT",
+      "critical_fields": [
+        "pressure_range"
+      ],
+      "expected_final_decision": "DIFFERENT",
+      "reason": "Pressure range conflict: 0-10 Bar vs 0-100 Bar"
+    },
+    {
+      "family_id": "TX_EQ_01",
+      "materials": [
+        "IOC-TX-0016",
+        "ONG-TX-0016"
+      ],
+      "expected_relationship": "EQUIVALENT_CANDIDATE",
+      "critical_fields": [
+        "pressure_range",
+        "voltage_class"
+      ],
+      "expected_final_decision": "HIGH_CONFIDENCE",
+      "reason": "Equivalent 0-16 Bar 24VDC smart pressure transmitters"
+    },
+    {
+      "family_id": "TX_CONF_RNG_02",
+      "materials": [
+        "IOC-TX-0016",
+        "BHL-TX-0040"
+      ],
+      "expected_relationship": "DIFFERENT",
+      "critical_fields": [
+        "pressure_range"
+      ],
+      "expected_final_decision": "DIFFERENT",
+      "reason": "Transmitter range conflict: 0-16 Bar vs 0-40 Bar"
+    },
+    {
+      "family_id": "RTD_EQ_01",
+      "materials": [
+        "NTP-RTD-0100",
+        "SAL-RTD-0100"
+      ],
+      "expected_relationship": "EQUIVALENT_CANDIDATE",
+      "critical_fields": [
+        "dimensions"
+      ],
+      "expected_final_decision": "HIGH_CONFIDENCE",
+      "reason": "Equivalent PT100 Duplex 3-wire RTD sensors"
+    },
+    {
+      "family_id": "RTD_CONF_ELEM_02",
+      "materials": [
+        "NTP-RTD-0100",
+        "NAL-RTD-0101"
+      ],
+      "expected_relationship": "DIFFERENT",
+      "critical_fields": [
+        "description"
+      ],
+      "expected_final_decision": "DIFFERENT",
+      "reason": "Sensor element conflict: Duplex vs Simplex"
+    },
+    {
+      "family_id": "INST_AMB_01",
+      "materials": [
+        "IOC-INS-1010",
+        "PWG-AMB-I01"
+      ],
+      "expected_relationship": "REVIEW",
+      "critical_fields": [
+        "pressure_range",
+        "dimensions"
+      ],
+      "expected_final_decision": "REVIEW",
+      "reason": "Incomplete gauge record missing pressure range and dial diameter"
+    },
+    {
+      "family_id": "INST_AMB_02",
+      "materials": [
+        "IOC-TX-0016",
+        "HPC-AMB-I02"
+      ],
+      "expected_relationship": "REVIEW",
+      "critical_fields": [
+        "pressure_range"
+      ],
+      "expected_final_decision": "REVIEW",
+      "reason": "Incomplete transmitter record missing calibrated range"
+    },
+    {
+      "family_id": "MOTOR_EQ_01",
+      "materials": [
+        "NTP-MOT-5514",
+        "BHL-MOT-5514",
+        "NAL-MOT-5514",
+        "GAL-MOT-5514",
+        "BPC-MOT-5514"
+      ],
+      "expected_relationship": "EQUIVALENT_CANDIDATE",
+      "critical_fields": [
+        "voltage_class",
+        "power",
+        "frequency"
+      ],
+      "expected_final_decision": "HIGH_CONFIDENCE",
+      "reason": "Equivalent 5.5 kW 415V 1440 RPM 3-phase induction motors"
+    },
+    {
+      "family_id": "MOTOR_CONF_PWR_01",
+      "materials": [
+        "NTP-MOT-5514",
+        "IOC-MOT-7514"
+      ],
+      "expected_relationship": "DIFFERENT",
+      "critical_fields": [
+        "power"
+      ],
+      "expected_final_decision": "DIFFERENT",
+      "reason": "Motor power conflict: 5.5 kW vs 7.5 kW"
+    },
+    {
+      "family_id": "MOTOR_CONF_PWR_02",
+      "materials": [
+        "NTP-MOT-5514",
+        "ONG-MOT-1114"
+      ],
+      "expected_relationship": "DIFFERENT",
+      "critical_fields": [
+        "power"
+      ],
+      "expected_final_decision": "DIFFERENT",
+      "reason": "Motor power conflict: 5.5 kW vs 11 kW"
+    },
+    {
+      "family_id": "MOTOR_CONF_VOLT_01",
+      "materials": [
+        "BHL-MOT-9041",
+        "IOC-MOT-9033"
+      ],
+      "expected_relationship": "DIFFERENT",
+      "critical_fields": [
+        "voltage_class"
+      ],
+      "expected_final_decision": "DIFFERENT",
+      "reason": "Motor voltage conflict: 415 V vs 3.3 KV"
+    },
+    {
+      "family_id": "MOTOR_CONF_VOLT_02",
+      "materials": [
+        "BHL-MOT-9041",
+        "NTP-MOT-9066"
+      ],
+      "expected_relationship": "DIFFERENT",
+      "critical_fields": [
+        "voltage_class"
+      ],
+      "expected_final_decision": "DIFFERENT",
+      "reason": "Motor voltage conflict: 415 V vs 6.6 KV"
+    },
+    {
+      "family_id": "CABLE_EQ_01",
+      "materials": [
+        "IOC-CBL-3025",
+        "GAL-CBL-3025",
+        "NTP-CBL-3025",
+        "HPC-CBL-3025",
+        "PWG-CBL-3025"
+      ],
+      "expected_relationship": "EQUIVALENT_CANDIDATE",
+      "critical_fields": [
+        "dimensions",
+        "voltage_class"
+      ],
+      "expected_final_decision": "HIGH_CONFIDENCE",
+      "reason": "Equivalent 3C x 2.5 sq.mm Cu 1.1kV XLPE armoured power cables"
+    },
+    {
+      "family_id": "CABLE_CONF_AREA_01",
+      "materials": [
+        "IOC-CBL-3025",
+        "ONG-CBL-3040"
+      ],
+      "expected_relationship": "DIFFERENT",
+      "critical_fields": [
+        "dimensions"
+      ],
+      "expected_final_decision": "DIFFERENT",
+      "reason": "Cable area conflict: 2.5 sq.mm vs 4.0 sq.mm"
+    },
+    {
+      "family_id": "CABLE_CONF_AREA_02",
+      "materials": [
+        "IOC-CBL-3025",
+        "BHL-CBL-3060"
+      ],
+      "expected_relationship": "DIFFERENT",
+      "critical_fields": [
+        "dimensions"
+      ],
+      "expected_final_decision": "DIFFERENT",
+      "reason": "Cable area conflict: 2.5 sq.mm vs 6.0 sq.mm"
+    },
+    {
+      "family_id": "CABLE_CONF_CORE_01",
+      "materials": [
+        "IOC-CBL-3025",
+        "IOC-CBL-4025"
+      ],
+      "expected_relationship": "DIFFERENT",
+      "critical_fields": [
+        "dimensions"
+      ],
+      "expected_final_decision": "DIFFERENT",
+      "reason": "Cable core count conflict: 3 Core vs 4 Core"
+    },
+    {
+      "family_id": "CABLE_CONF_COND_02",
+      "materials": [
+        "IOC-CBL-3025",
+        "NTP-CBL-3025A"
+      ],
+      "expected_relationship": "DIFFERENT",
+      "critical_fields": [
+        "material_grade"
+      ],
+      "expected_final_decision": "DIFFERENT",
+      "reason": "Conductor material conflict: Copper vs Aluminium"
+    },
+    {
+      "family_id": "ELEC_AMB_01",
+      "materials": [
+        "NTP-MOT-5514",
+        "NAL-AMB-E01"
+      ],
+      "expected_relationship": "REVIEW",
+      "critical_fields": [
+        "power"
+      ],
+      "expected_final_decision": "REVIEW",
+      "reason": "Incomplete motor record missing power rating and RPM"
+    },
+    {
+      "family_id": "ELEC_AMB_02",
+      "materials": [
+        "IOC-CBL-3025",
+        "GAL-AMB-E02"
+      ],
+      "expected_relationship": "REVIEW",
+      "critical_fields": [
+        "dimensions",
+        "voltage_class"
+      ],
+      "expected_final_decision": "REVIEW",
+      "reason": "Incomplete cable record missing conductor cross section and voltage rating"
+    },
+    {
+      "family_id": "BEARING_EQ_01",
+      "materials": [
+        "IOC-BRG-6205",
+        "NAL-BRG-6205",
+        "ONG-BRG-6205",
+        "BHL-BRG-6205",
+        "SAL-BRG-6205"
+      ],
+      "expected_relationship": "EQUIVALENT_CANDIDATE",
+      "critical_fields": [
+        "dimensions",
+        "description"
+      ],
+      "expected_final_decision": "HIGH_CONFIDENCE",
+      "reason": "Equivalent 6205-2RS deep groove ball bearings"
+    },
+    {
+      "family_id": "BEARING_CONF_DIM_01",
+      "materials": [
+        "IOC-BRG-6205",
+        "HPC-BRG-6206"
+      ],
+      "expected_relationship": "DIFFERENT",
+      "critical_fields": [
+        "dimensions",
+        "description"
+      ],
+      "expected_final_decision": "DIFFERENT",
+      "reason": "Bearing series conflict: 6205 (25x52x15) vs 6206 (30x62x16)"
+    },
+    {
+      "family_id": "BEARING_CONF_DIM_02",
+      "materials": [
+        "IOC-BRG-6205",
+        "NTP-BRG-6305"
+      ],
+      "expected_relationship": "DIFFERENT",
+      "critical_fields": [
+        "dimensions",
+        "description"
+      ],
+      "expected_final_decision": "DIFFERENT",
+      "reason": "Bearing series conflict: 6205 vs 6305"
+    },
+    {
+      "family_id": "BEARING_EQ_SPH_01",
+      "materials": [
+        "NTP-BRG-2215",
+        "BHL-BRG-2215",
+        "NAL-BRG-2215"
+      ],
+      "expected_relationship": "EQUIVALENT_CANDIDATE",
+      "critical_fields": [
+        "dimensions",
+        "description"
+      ],
+      "expected_final_decision": "HIGH_CONFIDENCE",
+      "reason": "Equivalent 22215 EK tapered bore spherical roller bearings"
+    },
+    {
+      "family_id": "BEARING_CONF_SPH_02",
+      "materials": [
+        "NTP-BRG-2215",
+        "IOC-BRG-2216"
+      ],
+      "expected_relationship": "DIFFERENT",
+      "critical_fields": [
+        "dimensions",
+        "description"
+      ],
+      "expected_final_decision": "DIFFERENT",
+      "reason": "Bearing size conflict: 22215 (75mm bore) vs 22216 (80mm bore)"
+    },
+    {
+      "family_id": "BEARING_CONF_SHLD_01",
+      "materials": [
+        "IOC-BRG-6205",
+        "GAL-BRG-6205O"
+      ],
+      "expected_relationship": "DIFFERENT",
+      "critical_fields": [
+        "description"
+      ],
+      "expected_final_decision": "DIFFERENT",
+      "reason": "Bearing closure conflict: 2RS Rubber Sealed vs Open"
+    },
+    {
+      "family_id": "BEARING_CONF_SHLD_02",
+      "materials": [
+        "IOC-BRG-6205",
+        "SAL-BRG-6205Z"
+      ],
+      "expected_relationship": "DIFFERENT",
+      "critical_fields": [
+        "description"
+      ],
+      "expected_final_decision": "DIFFERENT",
+      "reason": "Bearing closure conflict: 2RS Rubber Sealed vs ZZ Metal Shielded"
+    },
+    {
+      "family_id": "BEARING_AMB_01",
+      "materials": [
+        "IOC-BRG-6205",
+        "PWG-AMB-B01"
+      ],
+      "expected_relationship": "REVIEW",
+      "critical_fields": [
+        "description"
+      ],
+      "expected_final_decision": "REVIEW",
+      "reason": "Incomplete bearing record containing only brand name"
+    },
+    {
+      "family_id": "BEARING_AMB_02",
+      "materials": [
+        "IOC-BRG-6205",
+        "HPC-AMB-B02"
+      ],
+      "expected_relationship": "REVIEW",
+      "critical_fields": [
+        "description"
+      ],
+      "expected_final_decision": "REVIEW",
+      "reason": "Incomplete bearing record missing sealing/shielding specification"
+    },
+    {
+      "family_id": "PUMP_EQ_01",
+      "materials": [
+        "IOC-PMP-5040",
+        "ONG-PMP-5040",
+        "NTP-PMP-5040"
+      ],
+      "expected_relationship": "EQUIVALENT_CANDIDATE",
+      "critical_fields": [
+        "power",
+        "description"
+      ],
+      "expected_final_decision": "HIGH_CONFIDENCE",
+      "reason": "Equivalent 50 m3/hr 40m head 15 kW centrifugal pumps"
+    },
+    {
+      "family_id": "PUMP_CONF_FLOW_02",
+      "materials": [
+        "IOC-PMP-5040",
+        "GAL-PMP-8040"
+      ],
+      "expected_relationship": "DIFFERENT",
+      "critical_fields": [
+        "power",
+        "description"
+      ],
+      "expected_final_decision": "DIFFERENT",
+      "reason": "Pump capacity conflict: 50 m3/hr vs 80 m3/hr"
+    },
+    {
+      "family_id": "PUMP_CONF_HEAD_03",
+      "materials": [
+        "IOC-PMP-5040",
+        "HPC-PMP-5060"
+      ],
+      "expected_relationship": "DIFFERENT",
+      "critical_fields": [
+        "power",
+        "description"
+      ],
+      "expected_final_decision": "DIFFERENT",
+      "reason": "Pump head conflict: 40m vs 60m"
+    },
+    {
+      "family_id": "PUMP_EQ_DOSE_01",
+      "materials": [
+        "NAL-PMP-0050",
+        "SAL-PMP-0050"
+      ],
+      "expected_relationship": "EQUIVALENT_CANDIDATE",
+      "critical_fields": [
+        "material_grade",
+        "description"
+      ],
+      "expected_final_decision": "HIGH_CONFIDENCE",
+      "reason": "Equivalent 50 LPH 10 Bar SS316 dosing pumps"
+    },
+    {
+      "family_id": "PUMP_CONF_DOSE_02",
+      "materials": [
+        "NAL-PMP-0050",
+        "BPC-PMP-0100"
+      ],
+      "expected_relationship": "DIFFERENT",
+      "critical_fields": [
+        "description"
+      ],
+      "expected_final_decision": "DIFFERENT",
+      "reason": "Dosing capacity conflict: 50 LPH vs 100 LPH"
+    },
+    {
+      "family_id": "PUMP_AMB_01",
+      "materials": [
+        "IOC-PMP-5040",
+        "BHL-AMB-PU1"
+      ],
+      "expected_relationship": "REVIEW",
+      "critical_fields": [
+        "power",
+        "description"
+      ],
+      "expected_final_decision": "REVIEW",
+      "reason": "Incomplete pump record missing flow rate, head, and metallurgy"
+    },
+    {
+      "family_id": "WELD_EQ_01",
+      "materials": [
+        "IOC-WLD-7018",
+        "BHL-WLD-7018",
+        "SAL-WLD-7018",
+        "NTP-WLD-7018"
+      ],
+      "expected_relationship": "EQUIVALENT_CANDIDATE",
+      "critical_fields": [
+        "dimensions",
+        "material_grade"
+      ],
+      "expected_final_decision": "HIGH_CONFIDENCE",
+      "reason": "Equivalent E7018 3.15mm welding electrodes"
+    },
+    {
+      "family_id": "WELD_CONF_DIA_02",
+      "materials": [
+        "IOC-WLD-7018",
+        "ONG-WLD-7025"
+      ],
+      "expected_relationship": "DIFFERENT",
+      "critical_fields": [
+        "dimensions"
+      ],
+      "expected_final_decision": "DIFFERENT",
+      "reason": "Electrode diameter conflict: 3.15mm vs 4.0mm"
+    },
+    {
+      "family_id": "WELD_EQ_SS_01",
+      "materials": [
+        "GAL-WLD-308L",
+        "HPC-WLD-308L"
+      ],
+      "expected_relationship": "EQUIVALENT_CANDIDATE",
+      "critical_fields": [
+        "dimensions",
+        "material_grade"
+      ],
+      "expected_final_decision": "HIGH_CONFIDENCE",
+      "reason": "Equivalent E308L 3.15mm stainless electrodes"
+    },
+    {
+      "family_id": "WELD_CONF_GRD_02",
+      "materials": [
+        "GAL-WLD-308L",
+        "BPC-WLD-316L"
+      ],
+      "expected_relationship": "DIFFERENT",
+      "critical_fields": [
+        "material_grade"
+      ],
+      "expected_final_decision": "DIFFERENT",
+      "reason": "Electrode grade conflict: E308L vs E316L"
+    },
+    {
+      "family_id": "WELD_EQ_TIG_01",
+      "materials": [
+        "BHL-WLD-70S6",
+        "SAL-WLD-70S6"
+      ],
+      "expected_relationship": "EQUIVALENT_CANDIDATE",
+      "critical_fields": [
+        "dimensions",
+        "material_grade"
+      ],
+      "expected_final_decision": "HIGH_CONFIDENCE",
+      "reason": "Equivalent ER70S-6 2.5mm TIG wires"
+    },
+    {
+      "family_id": "WELD_CONF_TIG_02",
+      "materials": [
+        "BHL-WLD-70S6",
+        "NAL-WLD-70S7"
+      ],
+      "expected_relationship": "DIFFERENT",
+      "critical_fields": [
+        "dimensions"
+      ],
+      "expected_final_decision": "DIFFERENT",
+      "reason": "Wire diameter conflict: 2.5mm vs 3.2mm"
+    },
+    {
+      "family_id": "GASKET_EQ_01",
+      "materials": [
+        "IOC-GSK-0215",
+        "ONG-GSK-0215",
+        "BPC-GSK-0215",
+        "HPC-GSK-0215",
+        "GAL-GSK-0215"
+      ],
+      "expected_relationship": "EQUIVALENT_CANDIDATE",
+      "critical_fields": [
+        "pressure_rating",
+        "dimensions",
+        "material_grade"
+      ],
+      "expected_final_decision": "HIGH_CONFIDENCE",
+      "reason": "Equivalent 2 IN 150# SS316/Graphite spiral wound gaskets"
+    },
+    {
+      "family_id": "GASKET_CONF_PR_01",
+      "materials": [
+        "IOC-GSK-0215",
+        "IOC-GSK-0230"
+      ],
+      "expected_relationship": "DIFFERENT",
+      "critical_fields": [
+        "pressure_rating"
+      ],
+      "expected_final_decision": "DIFFERENT",
+      "reason": "Gasket rating conflict: Class 150 vs Class 300"
+    },
+    {
+      "family_id": "GASKET_CONF_PR_02",
+      "materials": [
+        "IOC-GSK-0215",
+        "ONG-GSK-0260"
+      ],
+      "expected_relationship": "DIFFERENT",
+      "critical_fields": [
+        "pressure_rating"
+      ],
+      "expected_final_decision": "DIFFERENT",
+      "reason": "Gasket rating conflict: Class 150 vs Class 600"
+    },
+    {
+      "family_id": "GASKET_CONF_MAT_01",
+      "materials": [
+        "IOC-GSK-0215",
+        "NTP-GSK-0215"
+      ],
+      "expected_relationship": "DIFFERENT",
+      "critical_fields": [
+        "material_grade"
+      ],
+      "expected_final_decision": "DIFFERENT",
+      "reason": "Gasket winding material conflict: SS316 vs SS304"
+    },
+    {
+      "family_id": "GASKET_CONF_TYPE_02",
+      "materials": [
+        "IOC-GSK-0215",
+        "SAL-GSK-0215"
+      ],
+      "expected_relationship": "DIFFERENT",
+      "critical_fields": [
+        "description"
+      ],
+      "expected_final_decision": "DIFFERENT",
+      "reason": "Gasket type conflict: Metallic Spiral Wound vs Non-metallic CAF Sheet"
+    }
+  ]
+}

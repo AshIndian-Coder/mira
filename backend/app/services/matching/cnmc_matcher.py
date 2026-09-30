@@ -313,7 +313,7 @@ def find_cnmc_candidates_for_material(
         )
 
         if has_conflict:
-            decision = "REVIEW" if final_score >= 0.50 else "DIFFERENT"
+            decision = "DIFFERENT"
         elif all_passed and final_score >= 0.85:
             decision = "HIGH_CONFIDENCE"
         elif final_score >= 0.65:
@@ -501,6 +501,9 @@ def match_new_materials_against_cnmcs(
                     else prop["standardized_description"]
                 )
 
+                engine_dec = prop["engine_decision"]
+                review_st = "AUTO_APPROVED" if engine_dec == "HIGH_CONFIDENCE" else "PENDING"
+
                 candidate: dict[str, Any] = {
                     "id": store.next_candidate_id(),
                     "source_material_id": mat.get("id"),
@@ -513,11 +516,11 @@ def match_new_materials_against_cnmcs(
                     "target_description": target_desc,
                     "scores": prop["scores"],
                     "critical_checks": prop["critical_checks"],
-                    "engine_decision": prop["engine_decision"],
-                    "review_status": "PENDING",
-                    "reviewer_id": None,
-                    "reviewer_comments": None,
-                    "reviewed_at": None,
+                    "engine_decision": engine_dec,
+                    "review_status": review_st,
+                    "reviewer_id": "system:engine" if review_st == "AUTO_APPROVED" else None,
+                    "reviewer_comments": "Automatically approved by MIRA matching engine (High Confidence)" if review_st == "AUTO_APPROVED" else None,
+                    "reviewed_at": started_at if review_st == "AUTO_APPROVED" else None,
                     "created_at": started_at,
                     "explanation": {
                         "type": "EXISTING_CNMC_PROPOSAL",

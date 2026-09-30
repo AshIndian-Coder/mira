@@ -15,21 +15,24 @@ function formatValue(value: unknown) {
     return 'Not available'
   }
 
-  if (
-    typeof value === 'object' &&
-    value !== null &&
-    'value' in value &&
-    'unit' in value
-  ) {
-    const normalizedValue = value as {
-      value: unknown
-      unit: unknown
+  if (typeof value === 'object' && value !== null) {
+    const obj = value as Record<string, any>
+    if ('value' in obj && 'unit' in obj) {
+      return `${obj.value} ${obj.unit}`
     }
-
-    return `${normalizedValue.value} ${normalizedValue.unit}`
-  }
-
-  if (typeof value === 'object') {
+    if ('diameter' in obj && 'length' in obj) {
+      const dia = typeof obj.diameter === 'object' && obj.diameter !== null ? obj.diameter.value : obj.diameter
+      const len = typeof obj.length === 'object' && obj.length !== null ? obj.length.value : obj.length
+      const unit = (typeof obj.length === 'object' && obj.length?.unit) || (typeof obj.diameter === 'object' && obj.diameter?.unit) || 'MM'
+      if ('pitch' in obj) {
+        const pitch = typeof obj.pitch === 'object' && obj.pitch !== null ? obj.pitch.value : obj.pitch
+        return `M${dia} × ${pitch} × ${len} ${unit}`
+      }
+      return `M${dia} × ${len} ${unit}`
+    }
+    if ('nominal_diameter' in obj && 'pitch' in obj) {
+      return `M${obj.nominal_diameter} × ${obj.pitch} ${obj.unit || 'MM'}`
+    }
     return JSON.stringify(value)
   }
 

@@ -2,6 +2,7 @@ import pytest
 
 from app.services.parsing.service import (
     extract_dimensions,
+    extract_fastener_dimensions,
     extract_grade,
     extract_pressure_rating,
     extract_voltage,
@@ -250,3 +251,71 @@ def test_nominal_bore_with_material_grade():
     assert res4["material_grade"] == "SS304"
     assert res4["nominal_bore"] == {"value": 600.0, "unit": "NB"}
     assert res4["schedule"] == "SCH40"
+
+
+def test_fastener_dimensions_iocl_example():
+    res = parse_specifications("HEX HEAD BOLT M8 X 25 MM SS304 GRADE A2-70")
+    assert res["material_grade"] == "SS304"
+    assert res["dimensions"] == {
+        "diameter": {"value": 8.0, "unit": "MM"},
+        "length": {"value": 25.0, "unit": "MM"},
+    }
+
+
+def test_fastener_dimensions_ongc_example():
+    res = parse_specifications("BOLT, HEX, SS304, A2-70, SIZE M8×30")
+    assert res["material_grade"] == "SS304"
+    assert res["dimensions"] == {
+        "diameter": {"value": 8.0, "unit": "MM"},
+        "length": {"value": 30.0, "unit": "MM"},
+    }
+
+
+def test_fastener_dimensions_variants():
+    # Various callout formatting variants
+    variants = [
+        "M8 X 25 MM",
+        "M8 x 25 mm",
+        "M8×25",
+        "M8 × 25",
+        "SIZE M8×25",
+        "BOLT M8X25",
+        "HEX HEAD BOLT M8 X 25 MM",
+        "HEXAGONAL HEAD BOLT, SS304, A2-70, SIZE M8x25",
+    ]
+    for variant in variants:
+        dims = extract_fastener_dimensions(variant)
+        assert dims is not None, f"Failed on {variant}"
+        assert dims["diameter"] == {"value": 8.0, "unit": "MM"}, f"Wrong dia on {variant}"
+        assert dims["length"] == {"value": 25.0, "unit": "MM"}, f"Wrong len on {variant}"
+
+
+def test_fastener_dimensions_plain_callout():
+    res = parse_specifications("MS HEX HD BOLT WITH NUT IS:1363 6X25MM")
+    assert res["dimensions"] == {
+        "diameter": {"value": 6.0, "unit": "MM"},
+        "length": {"value": 25.0, "unit": "MM"},
+    }
+
+
+def test_fastener_dimensions_three_part():
+    dims = extract_fastener_dimensions("STUD BOLT M140X4X810")
+    assert dims == {
+        "diameter": {"value": 140.0, "unit": "MM"},
+        "pitch": {"value": 4.0, "unit": "MM"},
+        "length": {"value": 810.0, "unit": "MM"},
+    }
+
+
+def test_fastener_dimensions_thread_pitch_not_misclassified():
+    # M8 X 1.25 is a thread pitch, not length
+    dims = extract_fastener_dimensions("HEX BOLT M8 X 1.25")
+    assert dims is None
+
+    res = parse_specifications("HEX BOLT M8 X 1.25")
+    assert res["metric_thread"] == {
+        "nominal_diameter": 8.0,
+        "pitch": 1.25,
+        "unit": "MM",
+    }
+

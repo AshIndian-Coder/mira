@@ -1,4 +1,4 @@
-﻿"""
+"""
 Human review queue routes.
 
 GET  /api/v1/review/queue
@@ -36,13 +36,18 @@ class ReviewActionRequest(BaseModel):
 
 def _is_reviewable(candidate: dict) -> bool:
     """
-    Both REVIEW and HIGH_CONFIDENCE recommendations remain reviewable.
+    HIGH_CONFIDENCE and REVIEW recommendations both require human review.
 
-    HIGH_CONFIDENCE describes the engine recommendation. It does not mean
-    the human approval has already happened.
+    HIGH_CONFIDENCE describes the engine recommendation only. It does not
+    mean that a human has approved the candidate.
     """
+    engine_decision = (
+        candidate.get("ai_decision")
+        or candidate.get("engine_decision")
+    )
+
     return (
-        (candidate.get("ai_decision") or candidate.get("engine_decision")) in {
+        engine_decision in {
             "HIGH_CONFIDENCE",
             "REVIEW",
         }
@@ -82,7 +87,7 @@ def get_review_item(
     current_user: User = Depends(get_current_active_user),
 ):
     """
-    Return one candidate with scores, gates and explanation.
+    Return one candidate with scores, technical gates, and explanation.
     """
     for candidate in store.CANDIDATES:
         if candidate["id"] == candidate_id:
@@ -105,7 +110,7 @@ def submit_review_action(
     """
     Approve or reject one candidate.
 
-    The engine recommendation remains in ai_decision.
+    The engine recommendation remains in engine_decision or ai_decision.
     The human decision is stored separately in review_status.
     """
     action = request.action.upper().strip()
@@ -158,7 +163,8 @@ def submit_review_action(
     candidate["reviewer_comments"] = request.reviewer_comments
     candidate["reviewed_at"] = now
 
-    # Keep the audit import local to avoid a circular import.
+    # Record the actual human approval or rejection.
+    # Keep this import local to avoid a circular import.
     from app.api.v1.audit import AUDIT_EVENTS
 
     event_type = (
@@ -195,29 +201,35 @@ def review_summary(
     current_user: User = Depends(get_current_active_user),
 ):
     """
-    Return review statistics.
-
-    The engine recommendation and human review status are counted
-    separately.
+    Return engine recommendations and human review status separately.
     """
     candidates = list(store.CANDIDATES)
 
     review_candidates = [
         candidate
         for candidate in candidates
-        if (candidate.get("ai_decision") or candidate.get("engine_decision")) == "REVIEW"
+        if (
+            candidate.get("ai_decision")
+            or candidate.get("engine_decision")
+        ) == "REVIEW"
     ]
 
     high_confidence_candidates = [
         candidate
         for candidate in candidates
-        if (candidate.get("ai_decision") or candidate.get("engine_decision")) == "HIGH_CONFIDENCE"
+        if (
+            candidate.get("ai_decision")
+            or candidate.get("engine_decision")
+        ) == "HIGH_CONFIDENCE"
     ]
 
     reviewable_candidates = [
         candidate
         for candidate in candidates
-        if (candidate.get("ai_decision") or candidate.get("engine_decision")) in {
+        if (
+            candidate.get("ai_decision")
+            or candidate.get("engine_decision")
+        ) in {
             "HIGH_CONFIDENCE",
             "REVIEW",
         }
@@ -242,7 +254,7 @@ def review_summary(
     )
 
     return {
-        "total_review_queue": len(review_candidates),
+        "total_review_queue": len(reviewable_candidates),
         "total_reviewable": len(reviewable_candidates),
         "pending": pending,
         "approved": approved,
@@ -250,4 +262,3 @@ def review_summary(
         "high_confidence": len(high_confidence_candidates),
         "review_recommendations": len(review_candidates),
     }
-

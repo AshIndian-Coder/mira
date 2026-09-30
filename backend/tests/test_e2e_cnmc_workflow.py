@@ -150,8 +150,8 @@ def test_e2e_negative_rejection_workflow(auth_headers):
 
     try:
         csv_content = """cpse,material_code,description,category,material_grade
-NTPC,REJ-NTPC-001,GATE VALVE SS304 150 LB,Valve,SS304
-BHEL,REJ-BHEL-001,GATE VALVE SS304 600 LB,Valve,SS304
+NTPC,REJ-NTPC-001,GATE VALVE SS304 2 IN,Valve,SS304
+BHEL,REJ-BHEL-001,GATE VALVE SS304 2 INCH,Valve,SS304
 """
 
         # 1. Ingest materials
@@ -186,7 +186,7 @@ BHEL,REJ-BHEL-001,GATE VALVE SS304 600 LB,Valve,SS304
             headers=auth_headers,
             json={
                 "action": "REJECT",
-                "reviewer_comments": "Rejected due to critical pressure rating mismatch (150 LB vs 600 LB).",
+                "reviewer_comments": "Rejected due to unverified pressure rating specifications.",
                 "user_id": "chief-safety-officer",
             },
         )
@@ -200,7 +200,7 @@ BHEL,REJ-BHEL-001,GATE VALVE SS304 600 LB,Valve,SS304
         assert any(
             e["event_type"] == "MATCH_REJECTED"
             and e["candidate_id"] == candidate_id
-            and e["comments"] == "Rejected due to critical pressure rating mismatch (150 LB vs 600 LB)."
+            and e["comments"] == "Rejected due to unverified pressure rating specifications."
             for e in audit_events
         )
 
