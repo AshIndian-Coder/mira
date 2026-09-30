@@ -1,11 +1,11 @@
 ﻿"""
 Matching routes.
 
-POST /api/matching/compare   â€” single pair comparison (existing, unchanged)
-POST /api/matching/run-batch â€” dataset-level: block â†’ score â†’ classify all
-GET  /api/matching/candidates â€” list generated candidates with filters
-GET  /api/matching/candidates/{id} â€” single candidate detail
-GET  /api/matching/stats     â€” blocking / recall / score summary stats
+POST /api/matching/compare       - single pair comparison
+POST /api/matching/run-batch     - block, retrieve, score, and classify
+GET  /api/matching/candidates    - list generated candidates
+GET  /api/matching/candidates/{id} - candidate detail
+GET  /api/matching/stats         - matching statistics
 """
 
 from datetime import datetime, timezone
@@ -29,12 +29,11 @@ from app.services.matching.cnmc_matcher import (
     find_cnmc_candidates_for_material,
     match_new_materials_against_cnmcs,
 )
-from app.services.matching.embeddings import EmbeddingCache, precompute_embeddings
-from app.services.matching.hybrid_retrieval import (
-    retrieve_candidates,
-)
+from app.services.matching.embeddings import precompute_embeddings
+from app.services.matching.hybrid_retrieval import retrieve_candidates
 from app.services.normalization.service import normalize_material_description
 from app.services.parsing.service import parse_specifications
+
 
 router = APIRouter(prefix="/matching", tags=["Matching"])
 
@@ -42,6 +41,7 @@ router = APIRouter(prefix="/matching", tags=["Matching"])
 # ---------------------------------------------------------------------------
 # Pydantic models
 # ---------------------------------------------------------------------------
+
 
 class MaterialInput(BaseModel):
     id: int | None = None
@@ -70,19 +70,19 @@ class BatchRunRequest(BaseModel):
         default=50,
         ge=1,
         le=500,
-        description="Cap on blocking output per source material to control runtime.",
+        description="Maximum blocking candidates per source material.",
     )
     overwrite: bool = Field(
         default=False,
-        description="If True, clear existing candidates before running.",
+        description="Clear existing candidates before running.",
     )
     source_cpse: str | None = Field(
         default=None,
-        description="Optional filter to only process source materials from this CPSE.",
+        description="Only process source materials from this CPSE.",
     )
     target_cpse: str | None = Field(
         default=None,
-        description="Optional filter to only match against candidate materials from this CPSE.",
+        description="Only match against target materials from this CPSE.",
     )
 
 
@@ -102,49 +102,124 @@ class CnmcBatchRunRequest(BaseModel):
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _prepare_material(material: MaterialInput) -> dict[str, Any]:
     data = material.model_dump()
+
     data["normalized_description"] = (
         data.get("normalized_description")
         or normalize_material_description(data["description"])
     )
+
     data["parsed_specifications"] = (
         data.get("parsed_specifications")
         or parse_specifications(data["description"])
     )
+
     if not data.get("dimensions"):
         data["dimensions"] = data["parsed_specifications"].get("dimensions")
+
     return data
 
 
-def _store_material_to_blocker(m: dict[str, Any]) -> MaterialForBlocking:
+def _store_material_to_blocker(
+    material: dict[str, Any],
+) -> MaterialForBlocking:
     return MaterialForBlocking(
-        id=m["id"],
-        category=m.get("category"),
-        normalized_description=m.get("normalized_description") or m["description"],
-        material_grade=m.get("material_grade"),
-        manufacturer_part_number=m.get("manufacturer_part_number"),
+        id=material["id"],
+        category=material.get("category"),
+        normalized_description=(
+            material.get("normalized_description")
+            or material["description"]
+        ),
+        material_grade=material.get("material_grade"),
+        manufacturer_part_number=material.get(
+            "manufacturer_part_number"
+        ),
     )
 
 
 def _pair_key(a: int, b: int) -> tuple[int, int]:
-    """Canonical unordered pair key â€” avoids A-B and B-A duplicates."""
-    return (min(a, b), max(a, b))
+    """Create a canonical unordered pair key."""
+    return min(a, b), max(a, b)
+
+
+def _build_candidate(
+    source_material: dict[str, Any],
+    target_material: dict[str, Any],
+    result: dict[str, Any],
+    started_at: datetime,
+) -> dict[str, Any]:
+    """
+    Build a candidate recommendation.
+
+    Important:
+    HIGH_CONFIDENCE is still PENDING. The matching engine recommends,
+    but a human reviewer must approve or reject every recommendation.
+    DIFFERENT candidates are excluded from the human approval queue.
+    """
+    engine_decision = result["decision"]
+
+    review_status = (
+        "PENDING"
+        if engine_decision in ("HIGH_CONFIDENCE", "REVIEW")
+        else "DIFFERENT"
+    )
+
+    scores = result.get("scores", {})
+
+    return {
+        "id": store.next_candidate_id(),
+        "source_material_id": source_material["id"],
+        "target_material_id": target_material["id"],
+        "source_cpse": source_material["cpse"],
+        "target_cpse": target_material["cpse"],
+        "source_code": source_material["material_code"],
+        "target_code": target_material["material_code"],
+        "source_description": source_material["description"],
+        "target_description": target_material["description"],
+        "scores": scores,
+        "text_similarity": scores.get("text_similarity", 0.0),
+        "semantic_similarity": scores.get("semantic_similarity", 0.0),
+        "specification_similarity": scores.get(
+            "specification_similarity",
+            0.0,
+        ),
+        "material_grade_similarity": scores.get(
+            "material_grade_similarity",
+            0.0,
+        ),
+        "other_attributes_similarity": scores.get(
+            "other_attributes_similarity",
+            0.0,
+        ),
+        "final_score": scores.get("final_score", 0.0),
+        "critical_checks": result.get("critical_checks", {}),
+        "engine_decision": engine_decision,
+        "review_status": review_status,
+        "reviewer_id": None,
+        "reviewer_comments": None,
+        "reviewed_at": None,
+        "created_at": started_at.isoformat(),
+    }
 
 
 # ---------------------------------------------------------------------------
 # Routes
 # ---------------------------------------------------------------------------
 
+
 @router.post("/compare")
 def compare_materials(
     request: CompareRequest,
     current_user: User = Depends(get_current_active_user),
 ):
-    """Score and classify a single candidate material pair."""
+    """Score and classify one material pair."""
     source = _prepare_material(request.source)
     target = _prepare_material(request.target)
+
     result = classify_match(source, target)
+
     return {
         "source_material_id": source.get("id"),
         "target_material_id": target.get("id"),
@@ -158,20 +233,28 @@ def run_batch_matching(
     current_user: User = Depends(require_permission("run_matching")),
 ):
     """
-    Dataset-level matching.
+    Run dataset-level material matching.
 
-    1. Convert all ingested materials to blocker objects.
-    2. Build the block index (key â†’ list of material IDs).
-    3. For each material generate cross-CPSE candidates via blocking.
-    4. Score and classify each unique candidate pair.
-    5. Store results in the shared CANDIDATES store.
+    Workflow:
 
-    Returns a summary: pairs evaluated, decisions breakdown, timing.
+    1. Normalize and prepare ingested materials.
+    2. Generate blocking candidates.
+    3. Retrieve additional candidates using fast MiniLM retrieval.
+    4. Score candidates using MIRA.ai and technical checks.
+    5. Store HIGH_CONFIDENCE and REVIEW candidates as PENDING.
+    6. Store DIFFERENT candidates outside the approval queue.
+
+    MiniLM is used only for fast candidate retrieval.
+    MIRA.ai remains responsible for final semantic scoring and
+    technical validation through classify_match().
     """
     if not store.MATERIALS:
         raise HTTPException(
             status_code=400,
-            detail="No materials ingested. Upload a CSV via POST /api/materials/upload first.",
+            detail=(
+                "No materials ingested. Upload a CSV via "
+                "POST /api/materials/upload first."
+            ),
         )
 
     if request.overwrite:
@@ -179,292 +262,240 @@ def run_batch_matching(
 
     started_at = datetime.now(timezone.utc)
 
-    # --- Build blocker objects & index maps ---
-    blocker_objects = [_store_material_to_blocker(m) for m in store.MATERIALS]
-    material_index: dict[int, dict[str, Any]] = {m["id"]: m for m in store.MATERIALS}
-    material_cpse: dict[int, str] = {
-        m["id"]: (m.get("cpse") or "CPSE_GENERIC").strip().upper()
-        for m in store.MATERIALS
+    blocker_objects = [
+        _store_material_to_blocker(material)
+        for material in store.MATERIALS
+    ]
+
+    material_index: dict[int, dict[str, Any]] = {
+        material["id"]: material
+        for material in store.MATERIALS
     }
 
-    # Filter source materials if requested
-    filtered_sources = blocker_objects
-    if request.source_cpse:
-        req_sc = request.source_cpse.strip().upper()
-        filtered_sources = [bo for bo in blocker_objects if material_cpse.get(bo.id) == req_sc]
+    material_cpse: dict[int, str] = {
+        material["id"]: (
+            material.get("cpse") or "CPSE_GENERIC"
+        ).strip().upper()
+        for material in store.MATERIALS
+    }
 
-    # --- Build inverted block index and precompute keys ---
+    filtered_sources = blocker_objects
+
+    if request.source_cpse:
+        requested_source_cpse = request.source_cpse.strip().upper()
+        filtered_sources = [
+            blocker
+            for blocker in blocker_objects
+            if material_cpse.get(blocker.id) == requested_source_cpse
+        ]
+
+    # Build the blocking index.
     block_index: dict[str, list[int]] = {}
     material_block_keys: dict[int, set[str]] = {}
-    blocker_by_id: dict[int, MaterialForBlocking] = {}
     target_order: dict[int, int] = {}
 
-    for idx, bo in enumerate(blocker_objects):
-        blocker_by_id[bo.id] = bo
-        target_order[bo.id] = idx
-        keys = generate_block_keys(bo)
-        material_block_keys[bo.id] = keys
-        for key in keys:
-            block_index.setdefault(key, []).append(bo.id)
+    for index, blocker in enumerate(blocker_objects):
+        target_order[blocker.id] = index
 
-    # --- Track already-evaluated pairs to avoid duplicates ---
+        keys = generate_block_keys(blocker)
+        material_block_keys[blocker.id] = keys
+
+        for key in keys:
+            block_index.setdefault(key, []).append(blocker.id)
+
+    # Existing pairs are not regenerated.
     seen_pairs: set[tuple[int, int]] = {
-        _pair_key(c["source_material_id"], c["target_material_id"])
-        for c in store.CANDIDATES
+        _pair_key(
+            candidate["source_material_id"],
+            candidate["target_material_id"],
+        )
+        for candidate in store.CANDIDATES
     }
 
-    # Pre-partition blockers by CPSE for fast cross-CPSE target mapping
-    cpse_blockers: dict[str, dict[int, MaterialForBlocking]] = {}
-    for bo in blocker_objects:
-        c = material_cpse.get(bo.id, "CPSE_GENERIC")
-        cpse_blockers.setdefault(c, {})[bo.id] = bo
+    # Partition materials by CPSE so matching remains cross-CPSE.
+    cpse_blockers: dict[
+        str,
+        dict[int, MaterialForBlocking],
+    ] = {}
 
-    target_map_by_source_cpse: dict[str, dict[int, MaterialForBlocking]] = {}
-    for s_cpse in cpse_blockers:
-        t_map: dict[int, MaterialForBlocking] = {}
-        for t_cpse, t_dict in cpse_blockers.items():
-            if t_cpse == s_cpse:
+    for blocker in blocker_objects:
+        cpse = material_cpse.get(blocker.id, "CPSE_GENERIC")
+        cpse_blockers.setdefault(cpse, {})[blocker.id] = blocker
+
+    target_map_by_source_cpse: dict[
+        str,
+        dict[int, MaterialForBlocking],
+    ] = {}
+
+    for source_cpse in cpse_blockers:
+        target_map: dict[int, MaterialForBlocking] = {}
+
+        for target_cpse, target_blockers in cpse_blockers.items():
+            if target_cpse == source_cpse:
                 continue
-            if request.target_cpse and t_cpse != request.target_cpse.strip().upper():
+
+            if (
+                request.target_cpse
+                and target_cpse != request.target_cpse.strip().upper()
+            ):
                 continue
-            t_map.update(t_dict)
-        target_map_by_source_cpse[s_cpse] = t_map
+
+            target_map.update(target_blockers)
+
+        target_map_by_source_cpse[source_cpse] = target_map
 
     all_descriptions = [
-        m.get("normalized_description") or m.get("description") or ""
-        for m in store.MATERIALS
+        material.get("normalized_description")
+        or material.get("description")
+        or ""
+        for material in store.MATERIALS
     ]
-    embedding_cache = precompute_embeddings(all_descriptions, batch_size=64)
+
+    embedding_cache = precompute_embeddings(
+        all_descriptions,
+        batch_size=64,
+    )
+
     new_candidates: list[dict[str, Any]] = []
     total_pairs_evaluated = 0
 
-    for source_bo in filtered_sources:
-        source_keys = material_block_keys[source_bo.id]
-        s_cpse = material_cpse.get(source_bo.id, "CPSE_GENERIC")
-        cross_target_map = target_map_by_source_cpse.get(s_cpse)
+    # ---------------------------------------------------------------
+    # Rule-based blocking candidates
+    # ---------------------------------------------------------------
+
+    for source_blocker in filtered_sources:
+        source_keys = material_block_keys[source_blocker.id]
+        source_cpse = material_cpse.get(
+            source_blocker.id,
+            "CPSE_GENERIC",
+        )
+
+        cross_target_map = target_map_by_source_cpse.get(source_cpse)
+
         if not cross_target_map:
             continue
 
         raw_candidates = blocking_generate_candidates(
-            source_bo,
+            source_blocker,
             block_index=block_index,
             target_map=cross_target_map,
             target_order=target_order,
             source_keys=source_keys,
         )
 
-        # Cap cross-CPSE candidates per source material
-        raw_candidates = raw_candidates[: request.max_candidates_per_material]
+        raw_candidates = raw_candidates[
+            : request.max_candidates_per_material
+        ]
 
-        for target_bo in raw_candidates:
-            pk = _pair_key(source_bo.id, target_bo.id)
-            if pk in seen_pairs:
-                continue
-            seen_pairs.add(pk)
-            total_pairs_evaluated += 1
-
-            source_mat = material_index[source_bo.id]
-            target_mat = material_index[target_bo.id]
-
-            result = classify_match(source_mat, target_mat, embedding_cache=embedding_cache)
-
-            engine_dec = result["decision"]
-            review_st = (
-                "PENDING"
-                if engine_dec in (
-                    "HIGH_CONFIDENCE",
-                    "REVIEW",
-                )
-                else "DIFFERENT"
+        for target_blocker in raw_candidates:
+            pair_key = _pair_key(
+                source_blocker.id,
+                target_blocker.id,
             )
 
-            candidate: dict[str, Any] = {
-                "id": store.next_candidate_id(),
-                "source_material_id": source_bo.id,
-                "target_material_id": target_bo.id,
-                "source_cpse": source_mat["cpse"],
-                "target_cpse": target_mat["cpse"],
-                "source_code": source_mat["material_code"],
-                "target_code": target_mat["material_code"],
-                "source_description": source_mat["description"],
-                "target_description": target_mat["description"],
-                "scores": result["scores"],
-                "text_similarity": result["scores"].get(
-                    "text_similarity",
-                    0.0,
-                ),
-                "semantic_similarity": result["scores"].get(
-                    "semantic_similarity",
-                    0.0,
-                ),
-                "specification_similarity": result["scores"].get(
-                    "specification_similarity",
-                    0.0,
-                ),
-                "material_grade_similarity": result["scores"].get(
-                    "material_grade_similarity",
-                    0.0,
-                ),
-                "other_attributes_similarity": result["scores"].get(
-                    "other_attributes_similarity",
-                    0.0,
-                ),
-                "final_score": result["scores"].get(
-                    "final_score",
-                    0.0,
-                ),
-                "critical_checks": result["critical_checks"],
-                "engine_decision": engine_dec,
-                "review_status": review_st,
-                "reviewer_id": "system:engine" if review_st == "AUTO_APPROVED" else None,
-                "reviewer_comments": "Automatically approved by MIRA matching engine (High Confidence)" if review_st == "AUTO_APPROVED" else None,
-                "reviewed_at": started_at.isoformat() if review_st == "AUTO_APPROVED" else None,
-                "created_at": started_at.isoformat(),
-            }
-            new_candidates.append(candidate)
+            if pair_key in seen_pairs:
+                continue
 
-    # --- Fast MiniLM candidate retrieval ---
-    #
-    # MiniLM is used only to rank likely candidates quickly.
-    # MIRA.ai remains responsible for final scoring and
-    # technical validation through classify_match().
-    #
-    # MiniLM vectors are kept in memory and are never sent
-    # to the 1024-dimensional Milvus collection.
+            seen_pairs.add(pair_key)
+            total_pairs_evaluated += 1
 
-    for source_bo in filtered_sources:
-        source_mat = material_index[source_bo.id]
+            source_material = material_index[source_blocker.id]
+            target_material = material_index[target_blocker.id]
+
+            result = classify_match(
+                source_material,
+                target_material,
+                embedding_cache=embedding_cache,
+            )
+
+            new_candidates.append(
+                _build_candidate(
+                    source_material=source_material,
+                    target_material=target_material,
+                    result=result,
+                    started_at=started_at,
+                )
+            )
+
+    # ---------------------------------------------------------------
+    # Fast MiniLM candidate retrieval
+    # ---------------------------------------------------------------
+    #
+    # MiniLM is used only to retrieve and rank likely candidates.
+    # It is not the final matching model.
+    #
+    # MIRA.ai performs final semantic scoring and technical validation
+    # through classify_match().
+    #
+    # MiniLM vectors remain in memory and are not sent to the
+    # 1024-dimensional Milvus collection.
+    # ---------------------------------------------------------------
+
+    for source_blocker in filtered_sources:
+        source_material = material_index[source_blocker.id]
+        source_cpse = material_cpse.get(
+            source_blocker.id,
+            "CPSE_GENERIC",
+        )
 
         target_materials = [
             material
             for material in store.MATERIALS
             if (
-                material["id"] != source_bo.id
+                material["id"] != source_blocker.id
                 and material_cpse.get(material["id"])
-                != material_cpse.get(source_bo.id)
+                != source_cpse
             )
         ]
 
         ranked_targets = retrieve_candidates(
-            source=source_mat,
+            source=source_material,
             targets=target_materials,
             embedding_cache=embedding_cache,
             top_k=10,
         )
 
-        for target_mat in ranked_targets:
-            pk = _pair_key(
-                source_bo.id,
-                target_mat["id"],
+        for target_material in ranked_targets:
+            pair_key = _pair_key(
+                source_blocker.id,
+                target_material["id"],
             )
 
-            if pk in seen_pairs:
+            if pair_key in seen_pairs:
                 continue
 
-            seen_pairs.add(pk)
+            seen_pairs.add(pair_key)
             total_pairs_evaluated += 1
 
             result = classify_match(
-                source_mat,
-                target_mat,
+                source_material,
+                target_material,
                 embedding_cache=embedding_cache,
             )
 
-            engine_dec = result["decision"]
-
-            review_st = (
-                "PENDING"
-                if engine_dec in (
-                    "HIGH_CONFIDENCE",
-                    "REVIEW",
+            new_candidates.append(
+                _build_candidate(
+                    source_material=source_material,
+                    target_material=target_material,
+                    result=result,
+                    started_at=started_at,
                 )
-                else "DIFFERENT"
             )
 
-            candidate = {
-                "id": store.next_candidate_id(),
-                "source_material_id": source_mat["id"],
-                "target_material_id": target_mat["id"],
-                "source_cpse": source_mat["cpse"],
-                "target_cpse": target_mat["cpse"],
-                "source_code": source_mat["material_code"],
-                "target_code": target_mat["material_code"],
-                "source_description": source_mat["description"],
-                "target_description": target_mat["description"],
-                "scores": result["scores"],
-                "text_similarity": result["scores"].get(
-                    "text_similarity",
-                    0.0,
-                ),
-                "semantic_similarity": result["scores"].get(
-                    "semantic_similarity",
-                    0.0,
-                ),
-                "specification_similarity": result["scores"].get(
-                    "specification_similarity",
-                    0.0,
-                ),
-                "material_grade_similarity": result["scores"].get(
-                    "material_grade_similarity",
-                    0.0,
-                ),
-                "other_attributes_similarity": result["scores"].get(
-                    "other_attributes_similarity",
-                    0.0,
-                ),
-                "final_score": result["scores"].get(
-                    "final_score",
-                    0.0,
-                ),
-                "critical_checks": result["critical_checks"],
-                "engine_decision": engine_dec,
-                "review_status": review_st,
-                "reviewer_id": (
-                    "system:engine"
-                    if review_st == "AUTO_APPROVED"
-                    else None
-                ),
-                "reviewer_comments": (
-                    "Automatically approved by MIRA "
-                    "matching engine (High Confidence)"
-                    if review_st == "AUTO_APPROVED"
-                    else None
-                ),
-                "reviewed_at": (
-                    started_at.isoformat()
-                    if review_st == "AUTO_APPROVED"
-                    else None
-                ),
-                "created_at": started_at.isoformat(),
-            }
-
-            new_candidates.append(candidate)
     store.CANDIDATES.extend(new_candidates)
 
-    # Record audit events for auto-approved candidates
-    from app.api.v1.audit import AUDIT_EVENTS
-    for c in new_candidates:
-        if c["review_status"] == "AUTO_APPROVED":
-            AUDIT_EVENTS.append({
-                "event_type": "MATCH_AUTO_APPROVED",
-                "candidate_id": c["id"],
-                "source_code": c["source_code"],
-                "target_code": c["target_code"],
-                "source_cpse": c["source_cpse"],
-                "target_cpse": c["target_cpse"],
-                "actor": "system:engine",
-                "comments": "High-confidence technical match auto-approved by MIRA engine",
-                "final_score": c["scores"].get("final_score"),
-                "created_at": started_at,
-            })
-
     finished_at = datetime.now(timezone.utc)
-    elapsed_ms = int((finished_at - started_at).total_seconds() * 1000)
+    elapsed_ms = int(
+        (finished_at - started_at).total_seconds() * 1000
+    )
 
     decision_counts: dict[str, int] = {}
-    for c in new_candidates:
-        d = c["engine_decision"]
-        decision_counts[d] = decision_counts.get(d, 0) + 1
+
+    for candidate in new_candidates:
+        decision = candidate["engine_decision"]
+        decision_counts[decision] = (
+            decision_counts.get(decision, 0) + 1
+        )
 
     return {
         "status": "complete",
@@ -479,39 +510,73 @@ def run_batch_matching(
 
 @router.get("/candidates")
 def list_candidates(
-    decision: str | None = Query(None, description="Filter by engine_decision: HIGH_CONFIDENCE | REVIEW | DIFFERENT"),
-    review_status: str | None = Query(None, description="Filter by review_status: PENDING | APPROVED | REJECTED"),
-    cpse: str | None = Query(None, description="Filter pairs involving this CPSE"),
-    min_score: float | None = Query(None, ge=0.0, le=1.0, description="Minimum final_score"),
+    decision: str | None = Query(
+        None,
+        description=(
+            "Filter by engine_decision: "
+            "HIGH_CONFIDENCE | REVIEW | DIFFERENT"
+        ),
+    ),
+    review_status: str | None = Query(
+        None,
+        description=(
+            "Filter by review_status: "
+            "PENDING | APPROVED | REJECTED"
+        ),
+    ),
+    cpse: str | None = Query(
+        None,
+        description="Filter pairs involving this CPSE.",
+    ),
+    min_score: float | None = Query(
+        None,
+        ge=0.0,
+        le=1.0,
+        description="Minimum final score.",
+    ),
     skip: int = 0,
     limit: int = 50,
     current_user: User = Depends(get_current_active_user),
 ):
-    """List all generated candidate pairs with optional filters."""
+    """List generated candidate pairs with optional filters."""
     filtered = store.CANDIDATES
 
     if decision:
-        filtered = [c for c in filtered if c["engine_decision"] == decision.upper()]
+        filtered = [
+            candidate
+            for candidate in filtered
+            if candidate["engine_decision"] == decision.upper()
+        ]
 
     if review_status:
-        filtered = [c for c in filtered if c["review_status"] == review_status.upper()]
+        filtered = [
+            candidate
+            for candidate in filtered
+            if candidate["review_status"] == review_status.upper()
+        ]
 
     if cpse:
         cpse_upper = cpse.upper()
+
         filtered = [
-            c for c in filtered
-            if c["source_cpse"].upper() == cpse_upper
-            or c["target_cpse"].upper() == cpse_upper
+            candidate
+            for candidate in filtered
+            if (
+                candidate["source_cpse"].upper() == cpse_upper
+                or candidate["target_cpse"].upper() == cpse_upper
+            )
         ]
 
     if min_score is not None:
         filtered = [
-            c for c in filtered
-            if c["scores"].get("final_score", 0) >= min_score
+            candidate
+            for candidate in filtered
+            if candidate["scores"].get("final_score", 0.0)
+            >= min_score
         ]
 
     total = len(filtered)
-    paginated = filtered[skip: skip + limit]
+    paginated = filtered[skip : skip + limit]
 
     return {
         "total": total,
@@ -526,52 +591,79 @@ def get_candidate(
     candidate_id: int,
     current_user: User = Depends(get_current_active_user),
 ):
-    """Retrieve a single candidate pair by ID."""
-    for c in store.CANDIDATES:
-        if c["id"] == candidate_id:
-            return c
-    raise HTTPException(status_code=404, detail=f"Candidate {candidate_id} not found")
+    """Retrieve one candidate by ID."""
+    for candidate in store.CANDIDATES:
+        if candidate["id"] == candidate_id:
+            return candidate
+
+    raise HTTPException(
+        status_code=404,
+        detail=f"Candidate {candidate_id} not found",
+    )
 
 
 @router.get("/stats")
-def matching_stats(current_user: User = Depends(get_current_active_user)):
-    """
-    Batch-level statistics useful for evaluation and the analytics dashboard.
-    """
+def matching_stats(
+    current_user: User = Depends(get_current_active_user),
+):
+    """Return matching summary statistics."""
     if not store.CANDIDATES:
         return {
             "total_candidates": 0,
-            "message": "No candidates yet. Run POST /api/matching/run-batch first.",
+            "message": (
+                "No candidates yet. Run "
+                "POST /api/matching/run-batch first."
+            ),
         }
 
     total = len(store.CANDIDATES)
     decision_counts: dict[str, int] = {}
     review_status_counts: dict[str, int] = {}
-    scores = []
+    scores: list[float] = []
 
-    for c in store.CANDIDATES:
-        d = c["engine_decision"]
-        decision_counts[d] = decision_counts.get(d, 0) + 1
-        rs = c["review_status"]
-        review_status_counts[rs] = review_status_counts.get(rs, 0) + 1
-        scores.append(c["scores"].get("final_score", 0.0))
+    for candidate in store.CANDIDATES:
+        decision = candidate["engine_decision"]
+        decision_counts[decision] = (
+            decision_counts.get(decision, 0) + 1
+        )
+
+        review_status = candidate["review_status"]
+        review_status_counts[review_status] = (
+            review_status_counts.get(review_status, 0) + 1
+        )
+
+        scores.append(
+            candidate["scores"].get("final_score", 0.0)
+        )
 
     scores.sort()
-    n = len(scores)
-    p50 = scores[n // 2] if n else 0.0
-    p90 = scores[int(n * 0.90)] if n else 0.0
-    p95 = scores[int(n * 0.95)] if n else 0.0
+    count = len(scores)
 
-    n_materials = len(store.MATERIALS)
-    theoretical_max = n_materials * (n_materials - 1) // 2
+    p50 = scores[count // 2] if count else 0.0
+    p90 = scores[int(count * 0.90)] if count else 0.0
+    p95 = scores[int(count * 0.95)] if count else 0.0
+
+    material_count = len(store.MATERIALS)
+    theoretical_max = material_count * (material_count - 1) // 2
+
     blocking_reduction = (
-        round(1.0 - total / theoretical_max, 4) if theoretical_max > 0 else None
+        round(1.0 - total / theoretical_max, 4)
+        if theoretical_max > 0
+        else None
     )
 
-    reviewable = decision_counts.get("HIGH_CONFIDENCE", 0) + decision_counts.get("REVIEW", 0)
-    automation_rate = (
-        round(decision_counts.get("HIGH_CONFIDENCE", 0) / reviewable, 4)
-        if reviewable > 0
+    reviewable_count = (
+        decision_counts.get("HIGH_CONFIDENCE", 0)
+        + decision_counts.get("REVIEW", 0)
+    )
+
+    high_confidence_recommendation_rate = (
+        round(
+            decision_counts.get("HIGH_CONFIDENCE", 0)
+            / reviewable_count,
+            4,
+        )
+        if reviewable_count > 0
         else None
     )
 
@@ -579,7 +671,9 @@ def matching_stats(current_user: User = Depends(get_current_active_user)):
         "total_candidates": total,
         "decision_breakdown": decision_counts,
         "review_status_breakdown": review_status_counts,
-        "automation_rate": automation_rate,
+        "high_confidence_recommendation_rate": (
+            high_confidence_recommendation_rate
+        ),
         "blocking_reduction_ratio": blocking_reduction,
         "score_percentiles": {
             "p50": round(p50, 4),
@@ -594,14 +688,17 @@ def find_cnmc_proposals(
     request: CnmcMatchRequest,
     current_user: User = Depends(get_current_active_user),
 ):
-    """Find and rank plausible existing CNMC candidate proposals for a material."""
+    """Find and rank existing CNMC proposals for one material."""
     prepared = _prepare_material(request.material)
+
     proposals = find_cnmc_candidates_for_material(
         prepared,
         max_candidates=request.max_candidates,
         min_score=request.min_score,
     )
+
     margin_info = compute_cnmc_candidate_margin(proposals)
+
     return {
         "material": prepared,
         "total_candidates": len(proposals),
@@ -617,9 +714,15 @@ def run_cnmc_batch_matching(
     request: CnmcBatchRunRequest,
     current_user: User = Depends(require_permission("run_matching")),
 ):
-    """Run existing-CNMC matching across all ingested materials against established CNMCs."""
+    """
+    Match ingested materials against existing common material identities.
+    """
     if not store.MATERIALS:
-        raise HTTPException(status_code=400, detail="No materials ingested.")
+        raise HTTPException(
+            status_code=400,
+            detail="No materials ingested.",
+        )
+
     if not store.CNMC_REGISTRY:
         return {
             "status": "no_existing_cnmc",
@@ -628,16 +731,13 @@ def run_cnmc_batch_matching(
             "message": "No existing CNMCs in registry.",
             "proposals": [],
         }
-    res = match_new_materials_against_cnmcs(
+
+    return match_new_materials_against_cnmcs(
         list(store.MATERIALS),
-        max_candidates_per_material=request.max_candidates_per_material,
+        max_candidates_per_material=(
+            request.max_candidates_per_material
+        ),
         min_score=request.min_score,
         create_review_candidates=request.create_review_candidates,
         current_user=current_user,
     )
-    return res
-
-
-
-
-
