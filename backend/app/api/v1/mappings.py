@@ -64,9 +64,10 @@ def generate_mappings(current_user: User = Depends(require_permission("create_ma
 
     CRITICAL: Source CPSE codes are preserved; NMC is additive, not replacing.
     """
+    # Human approval is the ONLY route into a Common Material Code.
     approved = [
         c for c in store.CANDIDATES
-        if c["review_status"] in {"APPROVED", "AUTO_APPROVED"}
+        if c["review_status"] == "APPROVED"
     ]
 
     if not approved:

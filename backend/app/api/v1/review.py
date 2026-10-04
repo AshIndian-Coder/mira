@@ -38,9 +38,12 @@ def get_review_queue(
     """
     pending = [
         c for c in store.CANDIDATES
-        if c["engine_decision"] == "REVIEW"
+        if c["engine_decision"] in ("HIGH_CONFIDENCE", "REVIEW")
         and c["review_status"] == "PENDING"
     ]
+    # Engine-recommended high-confidence matches first -- they still need a
+    # human decision, but they are the most likely to be approved.
+    pending.sort(key=lambda c: c["engine_decision"] != "HIGH_CONFIDENCE")
     total = len(pending)
     paginated = pending[skip: skip + limit]
 
@@ -91,7 +94,7 @@ def submit_review_action(
     if candidate is None:
         raise HTTPException(status_code=404, detail=f"Candidate {candidate_id} not found")
 
-    if candidate["review_status"] not in ("PENDING", "REVIEW"):
+    if candidate["review_status"] in ("APPROVED", "REJECTED", "DIFFERENT"):
         raise HTTPException(
             status_code=409,
             detail=f"Candidate already has status '{candidate['review_status']}'",
@@ -131,7 +134,10 @@ def submit_review_action(
 @router.get("/summary")
 def review_summary(current_user: User = Depends(get_current_active_user)):
     """Counts of review-queue items by status — for the dashboard card."""
-    review_candidates = [c for c in store.CANDIDATES if c["engine_decision"] == "REVIEW"]
+    review_candidates = [
+        c for c in store.CANDIDATES
+        if c["engine_decision"] in ("HIGH_CONFIDENCE", "REVIEW")
+    ]
     pending = sum(1 for c in review_candidates if c["review_status"] == "PENDING")
     approved = sum(1 for c in review_candidates if c["review_status"] == "APPROVED")
     rejected = sum(1 for c in review_candidates if c["review_status"] == "REJECTED")

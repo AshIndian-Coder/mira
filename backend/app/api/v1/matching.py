@@ -267,13 +267,9 @@ def run_batch_matching(
             result = classify_match(source_mat, target_mat, embedding_cache=embedding_cache)
 
             engine_dec = result["decision"]
-            review_st = (
-                "AUTO_APPROVED"
-                if engine_dec == "HIGH_CONFIDENCE"
-                else "PENDING"
-                if engine_dec == "REVIEW"
-                else "DIFFERENT"
-            )
+            # HIGH_CONFIDENCE is the engine's RECOMMENDATION only -- it still
+            # requires human approval. Only DIFFERENT is excluded from review.
+            review_st = "DIFFERENT" if engine_dec == "DIFFERENT" else "PENDING"
 
             candidate: dict[str, Any] = {
                 "id": store.next_candidate_id(),
@@ -289,9 +285,9 @@ def run_batch_matching(
                 "critical_checks": result["critical_checks"],
                 "engine_decision": engine_dec,
                 "review_status": review_st,
-                "reviewer_id": "system:engine" if review_st == "AUTO_APPROVED" else None,
-                "reviewer_comments": "Automatically approved by MIRA matching engine (High Confidence)" if review_st == "AUTO_APPROVED" else None,
-                "reviewed_at": started_at.isoformat() if review_st == "AUTO_APPROVED" else None,
+                "reviewer_id": None,
+                "reviewer_comments": None,
+                "reviewed_at": None,
                 "created_at": started_at.isoformat(),
             }
             new_candidates.append(candidate)
@@ -329,13 +325,9 @@ def run_batch_matching(
 
             result = classify_match(source_mat, target_mat, embedding_cache=embedding_cache)
             engine_dec = result["decision"]
-            review_st = (
-                "AUTO_APPROVED"
-                if engine_dec == "HIGH_CONFIDENCE"
-                else "PENDING"
-                if engine_dec == "REVIEW"
-                else "DIFFERENT"
-            )
+            # HIGH_CONFIDENCE is the engine's RECOMMENDATION only -- it still
+            # requires human approval. Only DIFFERENT is excluded from review.
+            review_st = "DIFFERENT" if engine_dec == "DIFFERENT" else "PENDING"
 
             candidate = {
                 "id": store.next_candidate_id(),
@@ -351,31 +343,18 @@ def run_batch_matching(
                 "critical_checks": result["critical_checks"],
                 "engine_decision": engine_dec,
                 "review_status": review_st,
-                "reviewer_id": "system:engine" if review_st == "AUTO_APPROVED" else None,
-                "reviewer_comments": "Automatically approved by MIRA matching engine (High Confidence)" if review_st == "AUTO_APPROVED" else None,
-                "reviewed_at": started_at.isoformat() if review_st == "AUTO_APPROVED" else None,
+                "reviewer_id": None,
+                "reviewer_comments": None,
+                "reviewed_at": None,
                 "created_at": started_at.isoformat(),
             }
             new_candidates.append(candidate)
 
     store.CANDIDATES.extend(new_candidates)
 
-    # Record audit events for auto-approved candidates
-    from app.api.v1.audit import AUDIT_EVENTS
-    for c in new_candidates:
-        if c["review_status"] == "AUTO_APPROVED":
-            AUDIT_EVENTS.append({
-                "event_type": "MATCH_AUTO_APPROVED",
-                "candidate_id": c["id"],
-                "source_code": c["source_code"],
-                "target_code": c["target_code"],
-                "source_cpse": c["source_cpse"],
-                "target_cpse": c["target_cpse"],
-                "actor": "system:engine",
-                "comments": "High-confidence technical match auto-approved by MIRA engine",
-                "final_score": c["scores"].get("final_score"),
-                "timestamp": started_at.isoformat(),
-            })
+    # No auto-approval: every HIGH_CONFIDENCE / REVIEW candidate stays PENDING
+    # until a human approves or rejects it via POST /api/review/queue/{id}/action.
+    # The audit trail is therefore written by review.py only, with a real actor.
 
     finished_at = datetime.now(timezone.utc)
     elapsed_ms = int((finished_at - started_at).total_seconds() * 1000)

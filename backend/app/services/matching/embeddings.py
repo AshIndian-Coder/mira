@@ -4,10 +4,20 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
+import logging
+
 import numpy as np
 from sentence_transformers import SentenceTransformer
 
+from app.core.config import settings
+
+logger = logging.getLogger(__name__)
+
 DEFAULT_MODEL_NAME = "Mira.ai"
+
+# Must match the Milvus collection dimension; a downloaded model that does not
+# match would be unusable as a drop-in replacement.
+_EXPECTED_EMBEDDING_DIM = 1024
 
 
 def _get_project_root() -> Path:
@@ -65,6 +75,128 @@ def find_qwen_model_path() -> Path | None:
     return None
 
 
+# ---------------------------------------------------------------------------
+# Hugging Face auto-download (bootstrap for a fresh clone)
+#
+# settings.model_hub_id points at the fine-tuned Epoch-2 INT8 checkpoint.
+# Requires bitsandbytes + accelerate to load (see requirements.txt).
+# ---------------------------------------------------------------------------
+
+_download_attempted = False
+_download_failed_reason: str | None = None
+
+
+def _download_target_dir() -> Path:
+    """Destination for an auto-downloaded model.
+
+    Must be one of get_qwen_candidate_paths() so the NEXT run finds it on disk
+    and does not download again.
+    """
+    override = os.getenv("MIRA_MODELS_DIR", "").strip()
+    if override:
+        return Path(override) / "Mira.ai"
+
+    configured = (settings.model_auto_download_dir or "").strip()
+    if configured:
+        return Path(configured).expanduser() / "Mira.ai"
+
+    return PROJECT_ROOT / "models" / "Mira.ai"
+
+
+def reset_model_download_state() -> None:
+    """Clears the one-shot download cache. Used by tests."""
+    global _download_attempted, _download_failed_reason
+    _download_attempted = False
+    _download_failed_reason = None
+
+
+def _download_qwen_model(dest: Path) -> Path | None:
+    """Fetch the embedding model from Hugging Face and save it to dest.
+
+    Returns dest on success, or None on failure. Never raises -- the caller
+    falls through to the original FileNotFoundError so the message stays
+    actionable.
+
+    The result is verified by loading it back through the same call production
+    uses and checking the dimension, so a partially-written or incompatible
+    checkpoint is rejected here rather than at first matching run.
+    """
+    global _download_attempted, _download_failed_reason
+
+    # One attempt per process: resolve_model_name() is called very often, and
+    # retrying a network fetch on every call would be pathological.
+    if _download_attempted:
+        return None
+    _download_attempted = True
+
+    hub_id = (settings.model_hub_id or "").strip()
+    if not hub_id:
+        _download_failed_reason = "settings.model_hub_id is empty"
+        return None
+
+    logger.warning(
+        "MIRA embedding model not found locally -- downloading '%s' from "
+        "Hugging Face to '%s' (~750 MB, one time).",
+        hub_id,
+        dest,
+    )
+
+    try:
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        # trust_remote_code=False: Qwen3 is natively supported by transformers
+        # >= 4.51, and this checkpoint ships no custom modelling code.
+        model = SentenceTransformer(hub_id, trust_remote_code=False)
+        if hasattr(model, "save_pretrained"):
+            model.save_pretrained(str(dest), safe_serialization=True)
+        else:  # sentence-transformers >= 3 renamed this to save()
+            model.save(str(dest))
+    except Exception as exc:
+        _download_failed_reason = f"download/save failed: {exc}"
+        logger.warning("Hugging Face download of '%s' failed: %s", hub_id, exc)
+        return None
+
+    if not (dest / "config.json").exists():
+        _download_failed_reason = f"'{dest}/config.json' missing after save"
+        return None
+
+    # Verify through the SAME call production uses.
+    try:
+        verified = SentenceTransformer(str(dest), device="cpu")
+        dim = verified.get_sentence_embedding_dimension()
+    except Exception as exc:
+        _download_failed_reason = (
+            f"verification load failed: {exc} "
+            "(if this mentions bitsandbytes or accelerate, install them: "
+            "pip install bitsandbytes accelerate)"
+        )
+        logger.warning("Downloaded model failed verification: %s", exc)
+        return None
+
+    if dim != _EXPECTED_EMBEDDING_DIM:
+        _download_failed_reason = (
+            f"dimension {dim} != expected {_EXPECTED_EMBEDDING_DIM}"
+        )
+        logger.warning(
+            "Downloaded model has dimension %s but MIRA expects %s -- rejecting.",
+            dim,
+            _EXPECTED_EMBEDDING_DIM,
+        )
+        return None
+
+    try:
+        (dest / "MIRA_MODEL_PROVENANCE.txt").write_text(
+            f"Auto-downloaded from Hugging Face: {hub_id}\n"
+            "Fine-tuned Epoch-2 INT8 checkpoint. Requires bitsandbytes and "
+            "accelerate to load.\n",
+            encoding="utf-8",
+        )
+    except OSError:
+        pass  # provenance is informational only
+
+    logger.info("Embedding model downloaded and verified: %s (dim=%s)", dest, dim)
+    return dest
+
+
 def get_embedding_dimension(model_name: str | None = None) -> int:
     """Derive embedding dimension dynamically from the active or specified model."""
     model = get_embedding_model(model_name)
@@ -108,13 +240,27 @@ def resolve_model_name(name_or_alias: str | None = None) -> str:
         qwen_path = find_qwen_model_path()
         if qwen_path is not None:
             return str(qwen_path)
+
+        # Not on disk -- optionally fetch from Hugging Face.
+        if settings.model_auto_download:
+            downloaded = _download_qwen_model(_download_target_dir())
+            if downloaded is not None:
+                return str(downloaded)
+
         candidates = get_qwen_candidate_paths()
         candidate_str = "\n  - ".join(str(p) for p in candidates)
+        download_note = (
+            f"\nAuto-download attempt: {_download_failed_reason}"
+            if _download_failed_reason
+            else "\nAuto-download: disabled (MIRA_MODEL_AUTO_DOWNLOAD=false)."
+        )
         raise FileNotFoundError(
             "MIRA production Qwen embedding model (1024D INT8) could not be located.\n"
             f"Searched candidate locations:\n  - {candidate_str}\n"
+            f"{download_note}\n"
             "Please ensure the model directory exists at ~/mira-model-test/Mira.ai, "
-            "or configure MIRA_QWEN_MODEL_PATH / MIRA_MODEL_PATH / MIRA_MODELS_DIR / MIRA_EMBEDDING_MODEL."
+            "or configure MIRA_QWEN_MODEL_PATH / MIRA_MODEL_PATH / MIRA_MODELS_DIR / MIRA_EMBEDDING_MODEL, "
+            "or set MIRA_MODEL_AUTO_DOWNLOAD=true to fetch it from Hugging Face."
         )
 
     target_lower = target.lower()

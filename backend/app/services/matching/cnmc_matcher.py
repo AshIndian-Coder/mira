@@ -502,7 +502,8 @@ def match_new_materials_against_cnmcs(
                 )
 
                 engine_dec = prop["engine_decision"]
-                review_st = "AUTO_APPROVED" if engine_dec == "HIGH_CONFIDENCE" else "PENDING"
+                # Recommendation only -- HIGH_CONFIDENCE still needs a human.
+                review_st = "DIFFERENT" if engine_dec == "DIFFERENT" else "PENDING"
 
                 candidate: dict[str, Any] = {
                     "id": store.next_candidate_id(),
@@ -518,9 +519,9 @@ def match_new_materials_against_cnmcs(
                     "critical_checks": prop["critical_checks"],
                     "engine_decision": engine_dec,
                     "review_status": review_st,
-                    "reviewer_id": "system:engine" if review_st == "AUTO_APPROVED" else None,
-                    "reviewer_comments": "Automatically approved by MIRA matching engine (High Confidence)" if review_st == "AUTO_APPROVED" else None,
-                    "reviewed_at": started_at if review_st == "AUTO_APPROVED" else None,
+                    "reviewer_id": None,
+                    "reviewer_comments": None,
+                    "reviewed_at": None,
                     "created_at": started_at,
                     "explanation": {
                         "type": "EXISTING_CNMC_PROPOSAL",

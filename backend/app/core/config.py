@@ -23,6 +23,15 @@ class Settings(BaseSettings):
     milvus_enabled: bool = True
     milvus_top_k: int = 50
 
+    # Embedding model provisioning.
+    # When the local MIRA model is absent, optionally fetch it from Hugging Face
+    # instead of failing. The published repo holds the fine-tuned Epoch-2 INT8
+    # checkpoint -- the same one the scoring thresholds were calibrated on.
+    model_auto_download: bool = True
+    model_hub_id: str = "AshIndian/Mira.ai"
+    # Empty -> <project_root>/models  (already a searched path and gitignored)
+    model_auto_download_dir: str = ""
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",
