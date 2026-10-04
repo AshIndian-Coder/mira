@@ -57,10 +57,13 @@ def test_qwen_model_resolution_and_default():
 
 
 def test_qwen_missing_fails_explicitly_without_silent_minilm_fallback(monkeypatch):
-    """Verify that when Qwen model is missing, production resolution fails with FileNotFoundError rather than silently falling back to 384D MiniLM."""
+    """When the model is missing AND auto-download is disabled, resolution must
+    fail with FileNotFoundError rather than silently falling back to 384D MiniLM."""
     import app.services.matching.embeddings as emb_module
 
     monkeypatch.setattr(emb_module, "find_qwen_model_path", lambda: None)
+    monkeypatch.setattr(emb_module.settings, "model_auto_download", False)
+    monkeypatch.setattr(emb_module, "_download_attempted", True)
 
     # Default / production / qwen / mira must raise FileNotFoundError
     with pytest.raises(FileNotFoundError, match="MIRA production Qwen embedding model"):
@@ -227,3 +230,59 @@ def test_batch_embeddings_utility():
     assert isinstance(vec, list)
     assert len(vec) == 1024
     assert abs(np.linalg.norm(np.array(vec, dtype=np.float32)) - 1.0) < 1e-2
+
+
+def test_auto_download_used_when_model_absent_locally(monkeypatch):
+    """With auto-download on, a missing local model triggers a Hub fetch."""
+    import app.services.matching.embeddings as emb_module
+
+    monkeypatch.setattr(emb_module, "find_qwen_model_path", lambda: None)
+    monkeypatch.setattr(emb_module.settings, "model_auto_download", True)
+    monkeypatch.setattr(emb_module, "_download_attempted", False)
+
+    expected = emb_module._download_target_dir()
+    monkeypatch.setattr(emb_module, "_download_qwen_model", lambda dest: dest)
+
+    assert resolve_model_name() == str(expected)
+
+
+def test_auto_download_failure_still_raises_actionable_error(monkeypatch):
+    """A failed download must not silently degrade -- it must raise."""
+    import app.services.matching.embeddings as emb_module
+
+    monkeypatch.setattr(emb_module, "find_qwen_model_path", lambda: None)
+    monkeypatch.setattr(emb_module.settings, "model_auto_download", True)
+    monkeypatch.setattr(emb_module, "_download_attempted", False)
+    monkeypatch.setattr(emb_module, "_download_qwen_model", lambda dest: None)
+    monkeypatch.setattr(
+        emb_module, "_download_failed_reason", "simulated network failure"
+    )
+
+    with pytest.raises(FileNotFoundError, match="MIRA production Qwen embedding model"):
+        resolve_model_name()
+
+
+def test_auto_download_does_not_override_local_model(monkeypatch):
+    """A local model is always preferred; the Hub is never consulted."""
+    import app.services.matching.embeddings as emb_module
+
+    local = Path("/pretend/local/Mira.ai")
+    monkeypatch.setattr(emb_module, "find_qwen_model_path", lambda: local)
+
+    def _explode(dest):
+        raise AssertionError("auto-download must not run when a local model exists")
+
+    monkeypatch.setattr(emb_module, "_download_qwen_model", _explode)
+    assert resolve_model_name() == str(local)
+
+
+def test_download_target_is_a_searched_path(monkeypatch):
+    """The download destination must be discoverable on the next run."""
+    import app.services.matching.embeddings as emb_module
+
+    monkeypatch.delenv("MIRA_MODELS_DIR", raising=False)
+    monkeypatch.setattr(emb_module.settings, "model_auto_download_dir", "")
+
+    dest = emb_module._download_target_dir()
+    candidates = emb_module.get_qwen_candidate_paths()
+    assert dest in candidates, f"{dest} is not in the searched candidate paths"
