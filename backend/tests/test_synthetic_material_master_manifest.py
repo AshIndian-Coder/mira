@@ -8,6 +8,7 @@ from fastapi.testclient import TestClient
 from app import store
 from app.api.v1.audit import AUDIT_EVENTS
 from app.api.v1.mappings import MAPPINGS
+from app.core.seed import seed_default_users_and_cpses
 from app.main import app
 from app.services.matching.classifier import classify_match
 from app.services.normalization.service import normalize_material_description
@@ -17,6 +18,7 @@ client = TestClient(app)
 
 
 def auth_header(email: str = "admin@mira.gov.in", password: str = "Admin@123") -> dict[str, str]:
+    seed_default_users_and_cpses()
     login_resp = client.post("/api/auth/login", json={"email": email, "password": password})
     token = login_resp.json()["access_token"]
     return {"Authorization": f"Bearer {token}"}
@@ -150,10 +152,10 @@ def test_pipeline_end_to_end_synthetic_dataset_automation_and_governance():
     """
     Complete end-to-end pipeline validation on synthetic material master:
     1. Ingestion of 172 multi-CPSE materials
-    2. Batch matching producing AUTO_APPROVED, PENDING, and DIFFERENT states
-    3. Review queue containing ONLY genuine PENDING items
-    4. Mapping generation automatically consuming AUTO_APPROVED pairs
-    5. Audit trail verifying MATCH_AUTO_APPROVED emissions
+    2. Batch matching producing PENDING (HIGH_CONFIDENCE + REVIEW) and DIFFERENT states
+    3. Review queue containing ALL engine-flagged items -- no auto-approval
+    4. Human approval required before mapping generation
+    5. Audit trail verifying the human MATCH_APPROVED emission
     """
     store.reset_stores()
     MAPPINGS.clear()
@@ -176,38 +178,64 @@ def test_pipeline_end_to_end_synthetic_dataset_automation_and_governance():
         # 2. Batch Match
         batch_resp = client.post("/api/matching/run-batch", headers=headers, json={"overwrite": True})
         assert batch_resp.status_code == 200
-        batch_data = batch_resp.json()
-        assert batch_data["status"] == "complete"
+        assert batch_resp.json()["status"] == "complete"
 
-        # Check candidate counts
+        # The engine must never auto-approve anything.
         auto_approved = [c for c in store.CANDIDATES if c["review_status"] == "AUTO_APPROVED"]
+        assert auto_approved == []
+
+        high_conf = [c for c in store.CANDIDATES if c["engine_decision"] == "HIGH_CONFIDENCE"]
         pending = [c for c in store.CANDIDATES if c["review_status"] == "PENDING"]
         different = [c for c in store.CANDIDATES if c["review_status"] == "DIFFERENT"]
 
-        assert len(auto_approved) > 0
+        assert len(high_conf) > 0
         assert len(pending) > 0
         assert len(different) > 0
 
-        # Verify that all AUTO_APPROVED candidates have all critical checks passing
-        for c in auto_approved:
-            assert c["engine_decision"] == "HIGH_CONFIDENCE"
-            assert not any(chk.get("status") == "CONFLICT" for chk in c["critical_checks"])
-            assert c["reviewer_id"] == "system:engine"
+        # Every engine-flagged candidate is PENDING and untouched by any reviewer.
+        for c in store.CANDIDATES:
+            if c["engine_decision"] in ("HIGH_CONFIDENCE", "REVIEW"):
+                assert c["review_status"] == "PENDING"
+                assert c["reviewer_id"] is None
+                assert c["reviewed_at"] is None
 
-        # Verify that all DIFFERENT candidates have conflicts or low scores
+        # High-confidence candidates have no critical conflict.
+        for c in high_conf:
+            assert not any(chk.get("status") == "CONFLICT" for chk in c["critical_checks"])
+
+        # All DIFFERENT candidates are engine-DIFFERENT and excluded from review.
         for c in different:
             assert c["engine_decision"] == "DIFFERENT"
 
-        # 3. Review Queue Check
+        # 3. Review queue surfaces BOTH decisions
         queue_resp = client.get("/api/review/queue", headers=headers)
         assert queue_resp.status_code == 200
         queue_data = queue_resp.json()
         assert queue_data["total_pending"] == len(pending)
         for item in queue_data["queue"]:
-            assert item["engine_decision"] == "REVIEW"
+            assert item["engine_decision"] in ("HIGH_CONFIDENCE", "REVIEW")
             assert item["review_status"] == "PENDING"
 
-        # 4. Mapping Generation Check
+        # 3b. High-confidence items are ordered first
+        if any(i["engine_decision"] == "HIGH_CONFIDENCE" for i in queue_data["queue"]):
+            assert queue_data["queue"][0]["engine_decision"] == "HIGH_CONFIDENCE"
+
+        # 4. Mapping generation refuses to run with zero human approvals
+        blocked = client.post("/api/mappings/generate", headers=headers)
+        assert blocked.status_code == 200
+        assert blocked.json()["status"] == "no_approved_candidates"
+        assert blocked.json()["mappings_created"] == 0
+
+        # 4b. A human approves one candidate -- then mappings can be generated
+        approve_target = queue_data["queue"][0]["id"]
+        action_resp = client.post(
+            f"/api/review/queue/{approve_target}/action",
+            headers=headers,
+            json={"action": "APPROVE", "reviewer_comments": "E2E human approval"},
+        )
+        assert action_resp.status_code == 200
+        assert action_resp.json()["candidate"]["review_status"] == "APPROVED"
+
         mapping_resp = client.post("/api/mappings/generate", headers=headers)
         assert mapping_resp.status_code == 200
         mapping_data = mapping_resp.json()
@@ -215,10 +243,11 @@ def test_pipeline_end_to_end_synthetic_dataset_automation_and_governance():
         assert mapping_data["mappings_created"] > 0
         assert len(MAPPINGS) == mapping_data["mappings_created"]
 
-        # 5. Audit Check
-        auto_audit_events = [e for e in AUDIT_EVENTS if e["event_type"] == "MATCH_AUTO_APPROVED"]
-        assert len(auto_audit_events) == len(auto_approved)
-        assert all(e["actor"] == "system:engine" for e in auto_audit_events)
+        # 5. Audit trail is written by the HUMAN, not by "system:engine"
+        approved_events = [e for e in AUDIT_EVENTS if e["event_type"] == "MATCH_APPROVED"]
+        assert len(approved_events) >= 1
+        assert all(e["actor"] == "admin@mira.gov.in" for e in approved_events)
+        assert not [e for e in AUDIT_EVENTS if e["event_type"] == "MATCH_AUTO_APPROVED"]
 
     finally:
         store.reset_stores()
@@ -239,9 +268,16 @@ def test_mapping_generation_strictly_excludes_pending_and_different():
         store.MATERIALS.extend([
             {"id": 1, "cpse": "IOCL", "material_code": "IOC-01", "description": "GATE VALVE 150 LB", "category": "Valve"},
             {"id": 2, "cpse": "BHEL", "material_code": "BHL-01", "description": "GATE VALVE 300 LB", "category": "Valve"},
+            {"id": 3, "cpse": "NTPC", "material_code": "NTP-01", "description": "GATE VALVE 150 LB", "category": "Valve"},
+            {"id": 4, "cpse": "BHEL", "material_code": "BHL-02", "description": "GATE VALVE 150 LB", "category": "Valve"},
         ])
 
-        # Add only a DIFFERENT candidate and a PENDING candidate
+        # Add only a DIFFERENT candidate and a PENDING candidate.
+        #
+        # NOTE: the persistent store maps onto the match_suggestions table,
+        # which enforces UNIQUE (source_material_id, target_material_id)
+        # ("unique_material_pair"). Each candidate therefore needs its own
+        # material pair -- reusing (1, 2) for both is rejected by the DB.
         store.CANDIDATES.extend([
             {
                 "id": 1,
@@ -260,12 +296,12 @@ def test_mapping_generation_strictly_excludes_pending_and_different():
             },
             {
                 "id": 2,
-                "source_material_id": 1,
-                "target_material_id": 2,
-                "source_cpse": "IOCL",
+                "source_material_id": 3,
+                "target_material_id": 4,
+                "source_cpse": "NTPC",
                 "target_cpse": "BHEL",
-                "source_code": "IOC-01",
-                "target_code": "BHL-01",
+                "source_code": "NTP-01",
+                "target_code": "BHL-02",
                 "source_description": "GATE VALVE",
                 "target_description": "GATE VALVE",
                 "scores": {"final_score": 0.70},

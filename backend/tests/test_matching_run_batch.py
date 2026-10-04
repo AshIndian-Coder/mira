@@ -92,9 +92,8 @@ BHEL,BHEL-VALVE-001,SS 304 GATE VALVE 2 IN 150 LB,Valve,SS304
             "REVIEW",
             "DIFFERENT",
         }
-        if candidate["engine_decision"] == "HIGH_CONFIDENCE":
-            assert candidate["review_status"] == "AUTO_APPROVED"
-        elif candidate["engine_decision"] == "REVIEW":
+        if candidate["engine_decision"] in ("HIGH_CONFIDENCE", "REVIEW"):
+            # Both still require human approval.
             assert candidate["review_status"] == "PENDING"
         else:
             assert candidate["review_status"] == "DIFFERENT"
@@ -436,9 +435,7 @@ BHEL,TEST-002,HEX BOLT M24X40 SS304,Fastener,SS304
         assert len(bolt_pair) == 1
         cand = bolt_pair[0]
         assert cand["engine_decision"] in {"HIGH_CONFIDENCE", "REVIEW"}
-        if cand["engine_decision"] == "HIGH_CONFIDENCE":
-            assert cand["review_status"] == "AUTO_APPROVED"
-        elif cand["engine_decision"] == "REVIEW":
+        if cand["engine_decision"] in ("HIGH_CONFIDENCE", "REVIEW"):
             assert cand["review_status"] == "PENDING"
         assert cand["scores"]["final_score"] > 0.60
         assert isinstance(cand["critical_checks"], list)
