@@ -247,7 +247,26 @@ There is no live SAP connection, and this document does not claim one. The adapt
 boundary work is listed in section 21.
 
 ## 16. Data Ingestion
-Accepted uploads: CSV, TXT, XML, JSON, XLS, XLSX.
+Accepted uploads: `.csv`, `.txt`, `.xml`, `.json`, `.xls`, `.xlsx`. All six were exercised
+against `parse_legacy_file` - the same function `/api/materials/upload` calls - with an
+identical three-row material set: every one produced the correct `cpse`, `material_code`
+and description. Extensions are matched case-insensitively. An unsupported extension is
+rejected with a clear `ValueError` listing what is supported.
+
+Format notes from that run:
+
+- XML is parsed with `xml.etree`, so a literal `&` in a value must be written `&amp;`
+  (`L&T` fails, `L&amp;T` works). Both child-tag and attribute records are read.
+- Excel: `.xlsx` uses openpyxl and `.xls` uses xlrd; multi-sheet workbooks are parsed
+  sheet by sheet and each row keeps its `_sheet_name`.
+- Text: pipe-delimited, with or without a header row. A header-less file cannot carry a
+  CPSE, so provenance falls back to the sheet/filename/code-prefix evidence.
+- Empty and header-only files return zero rows; they do not raise.
+- `.pdf` is not accepted by the upload endpoint - a separate PDF extractor exists for
+  tender documents.
+- A file whose extension does not match its content is a rough edge: a real `.xlsx` named
+  `.csv` raises `csv.Error`, which the upload handler does not translate, so the API
+  answers 500 instead of 400. Listed in section 21.
 
 Columns actually read by `POST /api/materials/upload`:
 
@@ -315,7 +334,7 @@ Production hardening that is still open: replace `secret_key`, change the seeded
 passwords, and restrict CORS (currently `*` for development).
 
 ## 20. Current Implementation
-- FastAPI backend with 8 routers under `/api` and 39 endpoints: auth, users, materials,
+- FastAPI backend with 8 routers under `/api` and 38 endpoints: auth, users, materials,
   matching (compare, run-batch, candidates, stats, CNMC matching), review, audit,
   analytics, mappings.
 - React 19 + Vite 8 + TypeScript frontend with 11 screens: Login, Dashboard, Materials,
@@ -334,7 +353,25 @@ passwords, and restrict CORS (currently `*` for development).
   subset was executed green against a live stack; the full suite has not been run
   end-to-end in this environment.
 
+## 21. Remaining Implementation
+1. Blind evaluation on HELD-OUT and HARD-NEGATIVES, the B1/B2 go/no-go decision, and a
+   signed-off metrics report.
+2. Test isolation: there is no `conftest.py`, so a suite run touches the development
+   database.
+3. Idempotent re-upload: uploading the same file twice currently ends in a 500, and a
+   file whose extension does not match its real format also answers 500 rather than a
+   clear 400 (the upload handler catches `ValueError` only; `csv.Error` is not one).
+4. Deployment packaging: `Dockerfile.backend`, `Dockerfile.frontend` and a top-level
+   compose are missing; only the Milvus compose file exists.
+5. An ERP adapter boundary against a real SAP/OData endpoint (REST and CSV export exist).
+6. Governed enablement of LLM-assisted extraction - wired but off and unapproved.
+7. Offline / air-gapped model provisioning guidance for restricted networks.
+8. Analytics hygiene: legacy `AUTO_APPROVED` rows from earlier builds still distort the
+   automation-rate denominators.
+9. Sign-off on the CNMC namespace policy - who owns allocation of the global id in a
+   multi-agency deployment.
+10. Production hardening of secrets, CORS and demo accounts (section 19).
 
-## 21. Acceptance Principle
+## 22. Acceptance Principle
 > **Similarity finds the candidate. Specifications decide whether it is safe.
 > Humans control the final mapping.**
