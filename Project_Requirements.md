@@ -334,23 +334,7 @@ passwords, and restrict CORS (currently `*` for development).
   subset was executed green against a live stack; the full suite has not been run
   end-to-end in this environment.
 
-## 21. Remaining Implementation
-1. Blind evaluation on HELD-OUT and HARD-NEGATIVES, the B1/B2 go/no-go decision, and a
-   signed-off metrics report.
-2. Test isolation: there is no `conftest.py`, so a suite run touches the development
-   database.
-3. Idempotent re-upload: uploading the same file twice currently ends in a 500.
-4. Deployment packaging: `Dockerfile.backend`, `Dockerfile.frontend` and a top-level
-   compose are missing; only the Milvus compose file exists.
-5. An ERP adapter boundary against a real SAP/OData endpoint (REST and CSV export exist).
-6. Governed enablement of LLM-assisted extraction - wired but off and unapproved.
-7. Offline / air-gapped model provisioning guidance for restricted networks.
-8. Analytics hygiene: legacy `AUTO_APPROVED` rows from earlier builds still distort the
-   automation-rate denominators.
-9. Sign-off on the CNMC namespace policy - who owns allocation of the global id in a
-   multi-agency deployment.
-10. Production hardening of secrets, CORS and demo accounts (section 19).
 
-## 22. Acceptance Principle
+## 21. Acceptance Principle
 > **Similarity finds the candidate. Specifications decide whether it is safe.
 > Humans control the final mapping.**
