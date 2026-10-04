@@ -75,7 +75,7 @@ and auditor accounts (see [LOCAL_SETUP.md](LOCAL_SETUP.md) for all four).
 ## How matching works
 
 ```text
-upload (CSV / TXT / XLSX / JSON / XML)
+upload (CSV / TXT / XLSX / XLS / JSON / XML)
   -> normalize + parse specifications
   -> candidates: cross-CPSE blocking  +  Milvus vector search (additive)
   -> hybrid score -> critical gates -> engine decision
@@ -94,10 +94,16 @@ upload (CSV / TXT / XLSX / JSON / XML)
 - **Milvus only adds candidates.** With Milvus down the run still completes with the same
   blocking candidates, so a low candidate count is your signal to check `docker ps` and
   `MILVUS_ENABLED`.
-- **Provenance is never guessed.** Unrecognised CPSE values become `CPSE_GENERIC`, and
-  since matching is cross-CPSE only, a file whose rows all land in one bucket yields zero
-  candidates - that is expected, not a failure. `data/sample/sample_materials.csv` is such
-  a file (placeholder CPSE names); use a file with real CPSE names.
+- **Provenance is never guessed.** The CPSE is read from evidence, in this order: a `cpse`
+  column, the Excel sheet name, the filename, then a code prefix such as `IOCL-V001`. If
+  none of those match a known CPSE the row becomes `CPSE_GENERIC`, and since matching is
+  cross-CPSE only, a file whose rows all land in one bucket yields zero candidates - that
+  is expected, not a failure. `data/sample/sample_materials.csv` is such a file
+  (placeholder CPSE names); use a file with real CPSE names.
+- **Upload formats** (all six verified against the parser): `.csv`, `.txt`, `.xls`,
+  `.xlsx`, `.json`, `.xml`. Extensions are case-insensitive. Excel workbooks may hold one
+  CPSE per sheet - every sheet is parsed and its name counts as CPSE evidence. `.pdf` is
+  not accepted by `/api/materials/upload`.
 
 ## API surface
 
