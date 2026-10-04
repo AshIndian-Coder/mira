@@ -1,4 +1,5 @@
 import os
+import shutil
 from collections.abc import Iterable
 from functools import lru_cache
 from pathlib import Path
@@ -64,14 +65,35 @@ def get_qwen_candidate_paths() -> list[Path]:
     return candidates
 
 
+# A directory only counts as a model if it also holds weights. An interrupted
+# download can leave config.json behind with no weights; treating that as
+# "found" would poison every later run.
+_WEIGHT_MARKERS = (
+    "model.safetensors",
+    "pytorch_model.bin",
+    "model.safetensors.index.json",
+    "pytorch_model.bin.index.json",
+    "model.onnx",
+)
+
+
+def _is_complete_model_dir(path: Path) -> bool:
+    """True only for a directory holding both config.json and weights."""
+    try:
+        return (
+            path.is_dir()
+            and (path / "config.json").exists()
+            and any((path / marker).exists() for marker in _WEIGHT_MARKERS)
+        )
+    except (OSError, PermissionError):
+        return False
+
+
 def find_qwen_model_path() -> Path | None:
     """Locate the Qwen embedding directory on the current filesystem."""
     for p in get_qwen_candidate_paths():
-        try:
-            if p.exists() and (p / "config.json").exists():
-                return p
-        except (OSError, PermissionError):
-            continue
+        if _is_complete_model_dir(p):
+            return p
     return None
 
 
@@ -110,16 +132,32 @@ def reset_model_download_state() -> None:
     _download_failed_reason = None
 
 
+def _loaded_dimension(model: SentenceTransformer) -> int:
+    """Read the embedding dimension across sentence-transformers versions."""
+    for attr in ("get_embedding_dimension", "get_sentence_embedding_dimension"):
+        getter = getattr(model, attr, None)
+        if callable(getter):
+            dim = getter()
+            if dim is not None:
+                return int(dim)
+    raise RuntimeError("could not determine the embedding dimension")
+
+
 def _download_qwen_model(dest: Path) -> Path | None:
-    """Fetch the embedding model from Hugging Face and save it to dest.
+    """Fetch the embedding model from Hugging Face and install it at dest.
 
     Returns dest on success, or None on failure. Never raises -- the caller
     falls through to the original FileNotFoundError so the message stays
     actionable.
 
-    The result is verified by loading it back through the same call production
-    uses and checking the dimension, so a partially-written or incompatible
-    checkpoint is rejected here rather than at first matching run.
+    The Hub files are copied as-is instead of re-saving a loaded model: this
+    checkpoint loads through bitsandbytes INT8, and re-serialising a quantised
+    model raises NotImplementedError inside transformers (it cannot reverse the
+    quantisation weight conversion).
+
+    The download lands in a staging directory, is verified by loading it back
+    through the same call production uses, and only then replaces dest -- so an
+    interrupted download can never leave a half-installed model behind.
     """
     global _download_attempted, _download_failed_reason
 
@@ -134,6 +172,15 @@ def _download_qwen_model(dest: Path) -> Path | None:
         _download_failed_reason = "settings.model_hub_id is empty"
         return None
 
+    try:
+        from huggingface_hub import snapshot_download
+    except ImportError as exc:  # pragma: no cover - dependency of sentence-transformers
+        _download_failed_reason = (
+            f"huggingface_hub is not installed ({exc}); "
+            "run: pip install huggingface_hub"
+        )
+        return None
+
     logger.warning(
         "MIRA embedding model not found locally -- downloading '%s' from "
         "Hugging Face to '%s' (~750 MB, one time).",
@@ -141,35 +188,34 @@ def _download_qwen_model(dest: Path) -> Path | None:
         dest,
     )
 
+    staging = dest.parent / (dest.name + ".download")
     try:
         dest.parent.mkdir(parents=True, exist_ok=True)
-        # trust_remote_code=False: Qwen3 is natively supported by transformers
-        # >= 4.51, and this checkpoint ships no custom modelling code.
-        model = SentenceTransformer(hub_id, trust_remote_code=False)
-        if hasattr(model, "save_pretrained"):
-            model.save_pretrained(str(dest), safe_serialization=True)
-        else:  # sentence-transformers >= 3 renamed this to save()
-            model.save(str(dest))
+        if staging.exists():
+            shutil.rmtree(staging)
+        snapshot_download(repo_id=hub_id, local_dir=str(staging))
     except Exception as exc:
-        _download_failed_reason = f"download/save failed: {exc}"
-        logger.warning("Hugging Face download of '%s' failed: %s", hub_id, exc)
+        _download_failed_reason = f"snapshot_download failed: {exc!r}"
+        logger.warning("Hugging Face download of '%s' failed: %r", hub_id, exc)
         return None
 
-    if not (dest / "config.json").exists():
-        _download_failed_reason = f"'{dest}/config.json' missing after save"
+    if not _is_complete_model_dir(staging):
+        _download_failed_reason = (
+            f"'{staging}' is missing config.json or model weights after download"
+        )
         return None
 
     # Verify through the SAME call production uses.
     try:
-        verified = SentenceTransformer(str(dest), device="cpu")
-        dim = verified.get_sentence_embedding_dimension()
+        verified = SentenceTransformer(str(staging), device="cpu")
+        dim = _loaded_dimension(verified)
     except Exception as exc:
         _download_failed_reason = (
-            f"verification load failed: {exc} "
+            f"verification load failed: {exc!r} "
             "(if this mentions bitsandbytes or accelerate, install them: "
             "pip install bitsandbytes accelerate)"
         )
-        logger.warning("Downloaded model failed verification: %s", exc)
+        logger.warning("Downloaded model failed verification: %r", exc)
         return None
 
     if dim != _EXPECTED_EMBEDDING_DIM:
@@ -183,9 +229,21 @@ def _download_qwen_model(dest: Path) -> Path | None:
         )
         return None
 
+    # Install: drop any incomplete folder (e.g. from an earlier failed attempt),
+    # then move the verified copy into its place.
+    try:
+        if dest.exists():
+            shutil.rmtree(dest)
+        staging.rename(dest)
+    except OSError as exc:
+        _download_failed_reason = f"could not install the model at '{dest}': {exc!r}"
+        logger.warning("Could not move the downloaded model into place: %r", exc)
+        return None
+
     try:
         (dest / "MIRA_MODEL_PROVENANCE.txt").write_text(
             f"Auto-downloaded from Hugging Face: {hub_id}\n"
+            f"Verified load: dim={dim}\n"
             "Fine-tuned Epoch-2 INT8 checkpoint. Requires bitsandbytes and "
             "accelerate to load.\n",
             encoding="utf-8",
