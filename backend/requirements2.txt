@@ -1,3 +1,4 @@
+psycopg  
 pydantic-settings
 SQLAlchemy
 httpx
