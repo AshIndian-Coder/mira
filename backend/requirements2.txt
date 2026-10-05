@@ -1,3 +1,4 @@
+pydantic-settings
 SQLAlchemy
 httpx
 fastapi
