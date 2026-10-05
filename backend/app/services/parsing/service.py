@@ -52,6 +52,22 @@ PRESSURE_PATTERN = re.compile(
     re.IGNORECASE,
 )
 
+# ANSI/ASME class notation puts the marker *before* the number, so the
+# suffix pattern above cannot see it: "CL150", "CLASS 150", "CL 150".
+# In the project's own corpus this is the dominant form -- 50 rows use
+# CL<n> and 8 use CLASS <n>, against only 10 using the "<n>#" form that
+# PRESSURE_PATTERN matches. Missing it leaves pressure_rating empty, and
+# since pressure_rating is a critical gate field for VALVE and PIPE, those
+# materials are permanently barred from HIGH_CONFIDENCE whatever they score.
+PRESSURE_CLASS_PATTERN = re.compile(
+    r"(?<!\w)"
+    r"(?:CL|CLASS)"
+    r"\s*\.?\s*"
+    r"(\d+(?:\.\d+)?)"
+    r"(?!\w)",
+    re.IGNORECASE,
+)
+
 VOLTAGE_PATTERN = re.compile(
     r"(?<!\w)"
     r"(\d+(?:\.\d+)?)"
@@ -132,26 +148,39 @@ def extract_pressure_rating(
     text: str,
 ) -> dict[str, Any] | None:
 
-    match = PRESSURE_PATTERN.search(text or "")
+    text = text or ""
 
-    if not match:
-        return None
+    match = PRESSURE_PATTERN.search(text)
 
-    unit = match.group(2).upper()
+    if match:
+        unit = match.group(2).upper()
 
-    if unit in {
-        "LB",
-        "LBS",
-        "POUND",
-        "POUNDS",
-        "#",
-    }:
-        unit = "LB"
+        if unit in {
+            "LB",
+            "LBS",
+            "POUND",
+            "POUNDS",
+            "#",
+        }:
+            unit = "LB"
 
-    return {
-        "value": float(match.group(1)),
-        "unit": unit,
-    }
+        return {
+            "value": float(match.group(1)),
+            "unit": unit,
+        }
+
+    # Fall back to the prefix class form. A class number is a pound-class
+    # rating, so it normalises to the same "LB" unit -- which is what makes
+    # "CL150", "150#" and "150 LB" compare equal downstream.
+    class_match = PRESSURE_CLASS_PATTERN.search(text)
+
+    if class_match:
+        return {
+            "value": float(class_match.group(1)),
+            "unit": "LB",
+        }
+
+    return None
 
 
 def extract_voltage(
