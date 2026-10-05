@@ -1,4 +1,4 @@
-jose
+python-jose
 bcrypt
 psycopg  
 pydantic-settings
