@@ -1,9 +1,11 @@
 import csv
 import io
+import logging
 from typing import Any
 import uuid
 
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
+from sqlalchemy.exc import IntegrityError
 
 from app.core.rbac import require_permission
 from app.core.security import get_current_active_user
@@ -16,7 +18,15 @@ from app.services.parsing.service import parse_specifications
 from app import store
 from app.services.matching.milvus_client import insert_material_embeddings
 
+logger = logging.getLogger(__name__)
+
 router = APIRouter(prefix="/materials", tags=["Materials"])
+
+
+def _preview(pairs: list[tuple[str, str]], limit: int = 5) -> str:
+    shown = ", ".join(f"{cpse}/{code}" for cpse, code in pairs[:limit])
+    extra = len(pairs) - limit
+    return shown + (f" (+{extra} more)" if extra > 0 else "")
 
 
 @router.post("/upload")
@@ -30,10 +40,32 @@ async def upload_materials_csv(
 
     content = await file.read()
 
+    # Every format parser already wraps its own errors into ValueError, with one
+    # exception: csv.Error, which is not a ValueError subclass. A file whose
+    # extension does not match its content (an Excel workbook saved as .csv)
+    # reaches parse_csv and raises it, so it is caught separately. The final
+    # clause exists because an upload endpoint should never answer 500 for
+    # something a user handed it -- the traceback is logged, not swallowed.
     try:
         raw_rows = parse_legacy_file(content, file.filename)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
+    except csv.Error as exc:
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                f"'{file.filename}' could not be read as delimited text: {exc}. "
+                "This usually means the extension does not match the real format "
+                "- an Excel workbook saved with a .csv name, for example. Save it "
+                "in its true format and upload again."
+            ),
+        )
+    except Exception as exc:
+        logger.exception("Unexpected error while parsing uploaded file %r", file.filename)
+        raise HTTPException(
+            status_code=400,
+            detail=f"'{file.filename}' could not be parsed: {exc}",
+        )
 
     start_id = next_id(materials_table)
     new_records: list[dict[str, Any]] = []
@@ -83,7 +115,61 @@ async def upload_materials_csv(
         }
         new_records.append(record)
 
-    store.MATERIALS.extend(new_records)
+    # (cpse, material_code) is UNIQUE in the schema. Check for collisions before
+    # inserting so the caller gets an actionable 409 instead of an IntegrityError
+    # that surfaces as a 500. Two cases: rows that already exist in the database,
+    # and rows duplicated inside the uploaded file itself.
+    existing_keys = {(m["cpse"], m["material_code"]) for m in store.MATERIALS}
+    already_stored = [
+        (r["cpse"], r["material_code"])
+        for r in new_records
+        if (r["cpse"], r["material_code"]) in existing_keys
+    ]
+
+    seen_in_file: set[tuple[str, str]] = set()
+    duplicated_in_file: list[tuple[str, str]] = []
+    for r in new_records:
+        key = (r["cpse"], r["material_code"])
+        if key in seen_in_file:
+            duplicated_in_file.append(key)
+        seen_in_file.add(key)
+
+    if already_stored:
+        raise HTTPException(
+            status_code=409,
+            detail=(
+                f"{len(already_stored)} record(s) in '{file.filename}' are already "
+                f"in the database: {_preview(already_stored)}. A material code may "
+                "appear only once per CPSE. Clear the existing materials first, or "
+                "upload a file with different codes."
+            ),
+        )
+
+    if duplicated_in_file:
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                f"'{file.filename}' contains {len(duplicated_in_file)} repeated "
+                f"cpse/material_code pair(s): {_preview(duplicated_in_file)}. "
+                "Each row needs a unique code within its CPSE."
+            ),
+        )
+
+    try:
+        store.MATERIALS.extend(new_records)
+    except IntegrityError as exc:
+        # Backstop for a concurrent upload that landed between the check above
+        # and this insert.
+        logger.warning("Upload rejected by a database constraint: %s", exc)
+        raise HTTPException(
+            status_code=409,
+            detail=(
+                f"'{file.filename}' could not be stored: one or more records "
+                "conflict with data already in the database. Another upload may "
+                "have landed at the same time - reload the materials list and try "
+                "again."
+            ),
+        )
 
     insert_material_embeddings([
         {

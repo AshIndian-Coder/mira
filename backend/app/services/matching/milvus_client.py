@@ -20,6 +20,7 @@ Design notes:
 from __future__ import annotations
 
 import logging
+import os
 import socket
 import time
 from typing import Any, Iterable, Sequence
@@ -34,6 +35,15 @@ COLLECTION_NAME = settings.milvus_collection
 MILVUS_HOST = settings.milvus_host
 MILVUS_PORT = settings.milvus_port
 EMBEDDING_BATCH_SIZE = 64
+
+# Vectors written to Milvus must come from the same 1024D Qwen model the
+# collection was created with. Resolving through the module-level default
+# would let an unrelated change to that default silently switch the embedding
+# model: a 384D vector against a 1024D collection fails the upsert, and the
+# except below would swallow it, so matching would quietly lose every vector
+# candidate. Pin it explicitly. An explicit MIRA_EMBEDDING_MODEL still wins,
+# so evaluation harnesses keep their override.
+MILVUS_EMBEDDING_MODEL = os.getenv("MIRA_EMBEDDING_MODEL", "").strip() or "qwen"
 
 _connected = False
 _collection: Any = None
@@ -186,7 +196,11 @@ def insert_material_embeddings(records: Iterable[dict[str, Any]]) -> int:
 
     descriptions = [str(r["description"]).strip() for r in rows]
     try:
-        embedding_map = generate_embeddings(descriptions, batch_size=EMBEDDING_BATCH_SIZE)
+        embedding_map = generate_embeddings(
+            descriptions,
+            batch_size=EMBEDDING_BATCH_SIZE,
+            model_name=MILVUS_EMBEDDING_MODEL,
+        )
     except Exception as exc:
         logger.warning("Batch embedding generation failed during Milvus insert: %s", exc)
         return 0
