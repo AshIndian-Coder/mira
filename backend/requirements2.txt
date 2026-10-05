@@ -1,3 +1,4 @@
+SQLAlchemy
 httpx
 fastapi
 uvicorn[standard]
