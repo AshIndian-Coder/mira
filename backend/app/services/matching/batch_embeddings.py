@@ -1,24 +1,12 @@
-"""
-Batch embedding utilities for MIRA.
-
-Encodes multiple material descriptions in batch using the authoritative
-SentenceTransformer embedding model (defaulting to the 1024D Qwen INT8 model).
-Duplicate descriptions are deduplicated so each unique string is encoded only once.
-"""
-
 from __future__ import annotations
 
 from collections.abc import Iterable
-from typing import Any
 
 import numpy as np
 
-from app.services.matching.embeddings import (
-    get_embedding_model,
-    resolve_model_name,
-)
+from app.services.matching.embeddings import EmbeddingCache, EMBED_BATCH_SIZE
 
-DEFAULT_BATCH_SIZE = 64
+DEFAULT_BATCH_SIZE = EMBED_BATCH_SIZE
 
 
 def generate_embeddings(
@@ -26,39 +14,35 @@ def generate_embeddings(
     batch_size: int = DEFAULT_BATCH_SIZE,
     model_name: str | None = None,
 ) -> dict[str, list[float]]:
-    """
-    Generate normalized embeddings for unique non-empty descriptions in batch.
-
-    Returns a mapping of {description: embedding_vector_as_list}.
-    """
     unique_texts = list(
         dict.fromkeys(
-            str(text).strip()
+            " ".join(text.split()).strip()
             for text in texts
-            if text and str(text).strip()
+            if isinstance(text, str) and text.strip()
         )
     )
 
     if not unique_texts:
         return {}
 
-    resolved_model = resolve_model_name(model_name)
-    model = get_embedding_model(resolved_model)
-
-    embeddings = model.encode(
+    cache = EmbeddingCache(model_name=model_name)
+    effective_batch_size = max(1, min(int(batch_size), EMBED_BATCH_SIZE))
+    cache.precompute(
         unique_texts,
-        batch_size=batch_size,
-        normalize_embeddings=True,
-        show_progress_bar=False,
+        batch_size=effective_batch_size,
+        model_name=model_name,
     )
 
-    vectors = (
-        embeddings
-        if isinstance(embeddings, np.ndarray)
-        else np.asarray(embeddings)
-    )
+    result: dict[str, list[float]] = {}
+    for text in unique_texts:
+        embedding = cache.get(text, model_name=model_name)
+        if embedding is None:
+            raise RuntimeError(f"Missing embedding for text: {text[:80]}")
+        vector = np.asarray(embedding, dtype=np.float32)
+        if vector.shape != (1024,):
+            raise RuntimeError(
+                f"Invalid embedding shape for text: {text[:80]}: {vector.shape}"
+            )
+        result[text] = vector.astype(float).tolist()
 
-    return {
-        text: vector.astype(float).tolist()
-        for text, vector in zip(unique_texts, vectors)
-    }
+    return result
