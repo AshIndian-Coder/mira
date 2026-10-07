@@ -775,6 +775,8 @@ def resolve_model_name(
         "mira.ai",
         "ashindian/mira.ai",
     }
+    if target_lower in production_aliases:
+        return _REMOTE_MODEL_TOKEN
 
     if target_lower in production_aliases:
         return _REMOTE_MODEL_TOKEN
