@@ -12,8 +12,17 @@ import {
   Users,
 } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
+import type { UserRole } from "../../lib/api";
 
-const navigation = [
+interface NavItem {
+  label: string;
+  path: string;
+  icon: typeof LayoutDashboard;
+  /** Omit to allow every authenticated role. */
+  roles?: UserRole[];
+}
+
+const navigation: NavItem[] = [
   {
     label: "Overview",
     path: "/dashboard",
@@ -53,11 +62,17 @@ const navigation = [
     label: "Audit Trail",
     path: "/audit-trail",
     icon: History,
+    // view_audit is admin, data_steward and auditor only — reviewers excluded.
+    roles: ["admin", "data_steward", "auditor"],
   },
 ];
 
 function Sidebar() {
-  const { isAdmin } = useAuth();
+  const { isAdmin, hasRole } = useAuth();
+
+  const visibleNavigation = navigation.filter(
+    (item) => !item.roles || hasRole(item.roles),
+  );
 
   return (
     <aside className="sidebar">
@@ -73,7 +88,7 @@ function Sidebar() {
       <nav className="navigation">
         <span className="nav-heading">WORKSPACE</span>
 
-        {navigation.map(({ label, path, icon: Icon }) => (
+        {visibleNavigation.map(({ label, path, icon: Icon }) => (
           <NavLink
             key={path}
             to={path}

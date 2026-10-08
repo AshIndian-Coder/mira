@@ -193,7 +193,11 @@ export default function ERPIntegration() {
             <div className="eyebrow">MAPPING OUTPUT</div>
             <h2>Mapping Export</h2>
           </div>
-          <button className="erp-secondary-button" onClick={handleExport}>
+          <button
+            className="erp-secondary-button"
+            onClick={handleExport}
+            title="Build a JSON export of the national codes and their CPSE mappings, formatted for loading into an ERP system."
+          >
             Prepare Export
           </button>
         </div>

@@ -242,7 +242,7 @@ export default function CommonMaterials() {
                 type="button"
                 className="common-close-button"
                 onClick={() => setSelected(null)}
-                title="Close modal"
+                title="Close this record."
               >
                 ×
               </button>

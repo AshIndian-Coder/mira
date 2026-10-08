@@ -2,11 +2,14 @@ import { useCallback, useEffect, useState, type ChangeEvent } from 'react'
 
 import Button from '../../components/UI/Button'
 import CnmcMatchModal from '../../components/Matching/CnmcMatchModal'
-import { api, formatNumber, type Material } from '../../lib/api'
+import { useAuth } from '../../context/AuthContext'
+import { useOperation } from '../../context/OperationContext'
+import { activeJobs, api, formatNumber, type JobProgress, type Material } from '../../lib/api'
 
 const PAGE_SIZE = 50
 
 function Materials() {
+  const { isDataSteward } = useAuth()
   const [materials, setMaterials] = useState<Material[]>([])
   const [total, setTotal] = useState(0)
   const [skip, setSkip] = useState(0)
@@ -17,12 +20,26 @@ function Materials() {
   const [cpses, setCpses] = useState<string[]>([])
   const [categories, setCategories] = useState<string[]>([])
   const [loading, setLoading] = useState(true)
-  const [uploading, setUploading] = useState(false)
-  const [matching, setMatching] = useState(false)
-  const [cnmcMatching, setCnmcMatching] = useState(false)
+  const { isActive, begin, end } = useOperation()
+  const uploading = isActive('upload')
+  const matching = isActive('matching')
+  const cnmcMatching = isActive('cnmcMatching')
   const [selectedMaterialForCnmc, setSelectedMaterialForCnmc] = useState<Material | null>(null)
   const [message, setMessage] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [progress, setProgress] = useState<JobProgress | null>(null)
+
+  useEffect(() => {
+    if (!matching) { setProgress(null); return }
+    let alive = true
+    const tick = async () => {
+      const jobs = await activeJobs('matching').catch(() => [])
+      if (alive) setProgress(jobs[0] ?? null)
+    }
+    tick()
+    const t = setInterval(tick, 1000)
+    return () => { alive = false; clearInterval(t) }
+  }, [matching])
 
   const loadStats = useCallback(async () => {
     try {
@@ -140,7 +157,7 @@ function Materials() {
     if (!file) return
 
     try {
-      setUploading(true)
+      begin('upload')
       setError(null)
       const result = await api.uploadMaterials(file)
       setMessage(
@@ -151,14 +168,14 @@ function Materials() {
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Upload failed')
     } finally {
-      setUploading(false)
+      end('upload')
       event.target.value = ''
     }
   }
 
   const handleRunMatching = async () => {
     try {
-      setMatching(true)
+      begin('matching')
       setError(null)
       const result = await api.runBatchMatching(false)
       setMessage(
@@ -167,13 +184,13 @@ function Materials() {
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Matching failed')
     } finally {
-      setMatching(false)
+      end('matching')
     }
   }
 
   const handleRunCnmcMatching = async () => {
     try {
-      setCnmcMatching(true)
+      begin('cnmcMatching')
       setError(null)
       const result = await api.runCnmcBatchMatching(5, 0.65)
       if (result.status === 'no_existing_cnmc') {
@@ -186,12 +203,12 @@ function Materials() {
     } catch (err) {
       setError(err instanceof Error ? err.message : 'CNMC matching failed')
     } finally {
-      setCnmcMatching(false)
+      end('cnmcMatching')
     }
   }
 
   const start = total === 0 ? 0 : skip + 1
-  const end = Math.min(skip + limit, total)
+  const endCount = Math.min(skip + limit, total)
   const isFirstPage = skip === 0
   const isLastPage = skip + limit >= total || materials.length === 0
   const currentPage = Math.floor(skip / limit) + 1
@@ -208,22 +225,57 @@ function Materials() {
         </div>
 
         <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap' }}>
-          <label className="materials-upload-button">
-            {uploading ? 'Uploading…' : 'Upload File'}
-            <input
-              type="file"
-              accept=".csv,.txt,.xml,.json,.xls,.xlsx"
-              hidden
-              onChange={handleUpload}
-              disabled={uploading}
-            />
-          </label>
-          <Button onClick={handleRunMatching} disabled={matching || cnmcMatching || total === 0}>
-            {matching ? 'Running…' : 'Run Matching'}
-          </Button>
-          <Button onClick={handleRunCnmcMatching} disabled={cnmcMatching || matching || total === 0}>
-            {cnmcMatching ? 'Matching CNMCs…' : 'Match to CNMCs'}
-          </Button>
+          {isDataSteward && (
+            <>
+              <label
+                className="materials-upload-button"
+                title="Reads a CSV, Excel, XML, JSON or text catalogue, stores every row and computes its embedding vector."
+              >
+                {uploading ? 'Uploading…' : 'Upload File'}
+                <input
+                  type="file"
+                  accept=".csv,.txt,.xml,.json,.xls,.xlsx"
+                  hidden
+                  onChange={handleUpload}
+                  disabled={uploading}
+                />
+              </label>
+              <Button
+                onClick={handleRunMatching}
+                disabled={matching || cnmcMatching || total === 0}
+                title="Scores every cross-CPSE material pair on five components and files the results in the review queue. Runs on the server and can take several minutes."
+              >
+                {matching ? 'Running…' : 'Run Matching'}
+              </Button>
+              <Button
+                onClick={handleRunCnmcMatching}
+                disabled={cnmcMatching || matching || total === 0}
+                title="Checks each material against national codes that already exist, so a new item can attach to an existing code instead of creating one."
+              >
+                {cnmcMatching ? 'Matching CNMCs…' : 'Match to CNMCs'}
+              </Button>
+            </>
+          )}
+
+          {progress && progress.total > 0 && (
+            <div style={{ width: '100%', marginTop: '0.75rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}>
+                <span>{progress.detail}</span>
+                <span>{Math.round((progress.processed / progress.total) * 100)}%</span>
+              </div>
+              <div style={{ height: 6, background: 'rgba(0,0,0,0.08)', borderRadius: 3, marginTop: 4 }}>
+                <div
+                  style={{
+                    height: '100%',
+                    width: `${(progress.processed / progress.total) * 100}%`,
+                    background: 'var(--accent, #2563eb)',
+                    borderRadius: 3,
+                    transition: 'width 0.4s ease',
+                  }}
+                />
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
@@ -289,6 +341,7 @@ function Materials() {
             className="mapping-secondary-button"
             type="button"
             onClick={() => loadMaterials()}
+            title="Reload the material list from the database."
           >
             Search
           </button>
@@ -297,6 +350,7 @@ function Materials() {
               className="mapping-secondary-button"
               type="button"
               onClick={handleResetFilters}
+              title="Clear the search box and the CPSE and category filters."
             >
               Reset
             </button>
@@ -353,7 +407,7 @@ function Materials() {
                           fontWeight: 600,
                         }}
                         onClick={() => setSelectedMaterialForCnmc(material)}
-                        title="Search established CNMC catalog for matches"
+                        title="Open the full record for this material, including its parsed specifications."
                       >
                         Find CNMC
                       </button>
@@ -367,7 +421,7 @@ function Materials() {
 
         <div className="mapping-footer">
           <span>
-            Showing {total === 0 ? 0 : `${formatNumber(start)}–${formatNumber(end)}`} of {formatNumber(total)} materials
+            Showing {total === 0 ? 0 : `${formatNumber(start)}–${formatNumber(endCount)}`} of {formatNumber(total)} materials
           </span>
           <div className="mapping-pagination">
             <button
@@ -375,6 +429,7 @@ function Materials() {
               type="button"
               disabled={isFirstPage || loading}
               onClick={() => setSkip((prev) => Math.max(0, prev - limit))}
+              title="Show the previous 50 materials."
             >
               Previous
             </button>
@@ -386,6 +441,7 @@ function Materials() {
               type="button"
               disabled={isLastPage || loading}
               onClick={() => setSkip((prev) => prev + limit)}
+              title="Show the next 50 materials."
             >
               Next
             </button>

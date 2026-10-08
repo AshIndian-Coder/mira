@@ -160,7 +160,12 @@ export default function AuditTrail() {
             <h2>Activity Log</h2>
             <p>Every material governance action is recorded with its source, actor and timestamp.</p>
           </div>
-          <button className="audit-export-button" type="button" onClick={handleExport}>
+          <button
+            className="audit-export-button"
+            type="button"
+            onClick={handleExport}
+            title="Download the complete append-only audit log as JSON. Includes who approved or rejected each pair and when."
+          >
             Export Audit Log
           </button>
         </div>

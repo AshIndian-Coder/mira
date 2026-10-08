@@ -2,11 +2,13 @@ import { useCallback, useEffect, useState } from 'react'
 
 import MatchComparison from '../../components/Matching/MatchComparison'
 import MatchList from '../../components/Matching/MatchList'
+import { useAuth } from '../../context/AuthContext'
 import { api, type Candidate } from '../../lib/api'
 
 const PAGE_SIZE = 50
 
 function MatchReview() {
+  const { isReviewer } = useAuth()
   const [candidates, setCandidates] = useState<Candidate[]>([])
   const [totalPending, setTotalPending] = useState(0)
   const [skip, setSkip] = useState(0)
@@ -109,8 +111,8 @@ function MatchReview() {
         />
         <MatchComparison
           candidate={selected}
-          onApprove={() => handleAction('APPROVE')}
-          onReject={() => handleAction('REJECT')}
+          onApprove={isReviewer ? () => handleAction('APPROVE') : undefined}
+          onReject={isReviewer ? () => handleAction('REJECT') : undefined}
           acting={acting}
         />
       </div>

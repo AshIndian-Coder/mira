@@ -12,6 +12,7 @@ import {
   ShieldCheck,
 } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
+import { ApiError, api } from '../../lib/api'
 
 interface PersonaAccount {
   title: string
@@ -62,6 +63,8 @@ const EVAL_PERSONAS: PersonaAccount[] = [
   },
 ]
 
+const MIN_PASSWORD_LENGTH = 10
+
 export default function Login() {
   const { login, isAuthenticated } = useAuth()
   const navigate = useNavigate()
@@ -72,6 +75,13 @@ export default function Login() {
   const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
+
+  // Set when the backend returns 428: the account is still on an
+  // administrator-issued temporary password and must be replaced first.
+  const [mustChange, setMustChange] = useState(false)
+  const [tempPassword, setTempPassword] = useState('')
+  const [newPassword, setNewPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
 
   const from = (location.state as { from?: { pathname: string } })?.from?.pathname || '/dashboard'
   if (isAuthenticated) {
@@ -91,7 +101,52 @@ export default function Login() {
       await login({ email: email.trim(), password })
       navigate(from, { replace: true })
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Invalid credentials. Please verify your email and password.')
+      if (err instanceof ApiError && err.status === 428) {
+        // Carry the temporary password into the change form so the user
+        // does not have to retype it.
+        setTempPassword(password)
+        setMustChange(true)
+        setError(null)
+      } else {
+        setError(
+          err instanceof Error
+            ? err.message
+            : 'Invalid credentials. Please verify your email and password.',
+        )
+      }
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  const handleChangePassword = async (e: FormEvent) => {
+    e.preventDefault()
+
+    if (newPassword.length < MIN_PASSWORD_LENGTH) {
+      setError(`Password must be at least ${MIN_PASSWORD_LENGTH} characters.`)
+      return
+    }
+    if (newPassword !== confirmPassword) {
+      setError('The two passwords do not match.')
+      return
+    }
+    if (newPassword === tempPassword) {
+      setError('Your new password must differ from the temporary one.')
+      return
+    }
+
+    try {
+      setSubmitting(true)
+      setError(null)
+      await api.changePassword({
+        email: email.trim(),
+        current_password: tempPassword,
+        new_password: newPassword,
+      })
+      await login({ email: email.trim(), password: newPassword })
+      navigate(from, { replace: true })
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not change the password.')
     } finally {
       setSubmitting(false)
     }
@@ -100,6 +155,15 @@ export default function Login() {
   const selectPersona = (p: PersonaAccount) => {
     setEmail(p.email)
     setPassword(p.password)
+    setError(null)
+    setMustChange(false)
+  }
+
+  const backToLogin = () => {
+    setMustChange(false)
+    setTempPassword('')
+    setNewPassword('')
+    setConfirmPassword('')
     setError(null)
   }
 
@@ -124,9 +188,13 @@ export default function Login() {
         <div className="login-surface-card">
           <div className="login-card-header">
             <div>
-              <h2 className="login-card-title">Sign In</h2>
+              <h2 className="login-card-title">
+                {mustChange ? 'Set Your Password' : 'Sign In'}
+              </h2>
               <p className="login-card-subtitle">
-                Access material standardization, matching and harmonization workspace
+                {mustChange
+                  ? 'This account was issued a temporary password by an administrator. Choose your own to continue.'
+                  : 'Access material standardization, matching and harmonization workspace'}
               </p>
             </div>
             <div className="login-security-pill" title="Protected with JWT & Encrypted Password Hashing">
@@ -142,116 +210,204 @@ export default function Login() {
             </div>
           )}
 
-          <form onSubmit={handleSubmit} className="login-form">
-            <div className="login-input-group">
-              <label htmlFor="login-email" className="login-label">
-                Official Email Address
-              </label>
-              <div className="login-input-box">
-                <Mail size={15} className="login-input-icon" />
-                <input
-                  id="login-email"
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="name@cpse.gov.in"
-                  required
-                  autoComplete="username"
-                  className="login-input"
-                />
-              </div>
-            </div>
-
-            <div className="login-input-group">
-              <div className="login-label-row">
-                <label htmlFor="login-password" className="login-label">
-                  Workstation Password
+          {mustChange ? (
+            <form onSubmit={handleChangePassword} className="login-form">
+              <div className="login-input-group">
+                <label htmlFor="change-email" className="login-label">
+                  Account
                 </label>
-                <span className="login-hint">Default: [Role]@123</span>
+                <div className="login-input-box">
+                  <Mail size={15} className="login-input-icon" />
+                  <input
+                    id="change-email"
+                    type="email"
+                    value={email}
+                    readOnly
+                    className="login-input"
+                  />
+                </div>
               </div>
-              <div className="login-input-box">
-                <Lock size={15} className="login-input-icon" />
-                <input
-                  id="login-password"
-                  type={showPassword ? 'text' : 'password'}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Enter password"
-                  required
-                  autoComplete="current-password"
-                  className="login-input"
-                />
-                <button
-                  type="button"
-                  className="login-password-toggle"
-                  onClick={() => setShowPassword(!showPassword)}
-                  tabIndex={-1}
-                  title={showPassword ? 'Hide password' : 'Show password'}
-                >
-                  {showPassword ? <EyeOff size={14} /> : <Eye size={14} />}
-                </button>
-              </div>
-            </div>
 
-            <button
-              type="submit"
-              className="login-submit-btn"
-              disabled={submitting}
-            >
-              {submitting ? (
-                <>
-                  <span className="login-btn-spinner" />
-                  <span>Authenticating...</span>
-                </>
-              ) : (
-                <>
-                  <span>Sign In to Workstation</span>
-                  <ArrowRight size={15} />
-                </>
-              )}
-            </button>
-          </form>
+              <div className="login-input-group">
+                <label htmlFor="new-password" className="login-label">
+                  New Password
+                </label>
+                <div className="login-input-box">
+                  <Lock size={15} className="login-input-icon" />
+                  <input
+                    id="new-password"
+                    type="password"
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    placeholder={`At least ${MIN_PASSWORD_LENGTH} characters`}
+                    required
+                    autoComplete="new-password"
+                    className="login-input"
+                  />
+                </div>
+              </div>
+
+              <div className="login-input-group">
+                <label htmlFor="confirm-password" className="login-label">
+                  Confirm New Password
+                </label>
+                <div className="login-input-box">
+                  <Lock size={15} className="login-input-icon" />
+                  <input
+                    id="confirm-password"
+                    type="password"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    placeholder="Re-enter the new password"
+                    required
+                    autoComplete="new-password"
+                    className="login-input"
+                  />
+                </div>
+              </div>
+
+              <button
+                type="submit"
+                className="login-submit-btn"
+                disabled={submitting}
+                title="Replace the administrator-issued temporary password with your own, then sign in."
+              >
+                {submitting ? (
+                  <>
+                    <span className="login-btn-spinner" />
+                    <span>Updating…</span>
+                  </>
+                ) : (
+                  <>
+                    <span>Set Password &amp; Continue</span>
+                    <ArrowRight size={15} />
+                  </>
+                )}
+              </button>
+
+              <button
+                type="button"
+                className="login-password-toggle"
+                onClick={backToLogin}
+                style={{ marginTop: '0.5rem' }}
+              >
+                Back to sign in
+              </button>
+            </form>
+          ) : (
+            <form onSubmit={handleSubmit} className="login-form">
+              <div className="login-input-group">
+                <label htmlFor="login-email" className="login-label">
+                  Official Email Address
+                </label>
+                <div className="login-input-box">
+                  <Mail size={15} className="login-input-icon" />
+                  <input
+                    id="login-email"
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="name@cpse.gov.in"
+                    required
+                    autoComplete="username"
+                    className="login-input"
+                  />
+                </div>
+              </div>
+
+              <div className="login-input-group">
+                <div className="login-label-row">
+                  <label htmlFor="login-password" className="login-label">
+                    Workstation Password
+                  </label>
+                  <span className="login-hint">Default: [Role]@123</span>
+                </div>
+                <div className="login-input-box">
+                  <Lock size={15} className="login-input-icon" />
+                  <input
+                    id="login-password"
+                    type={showPassword ? 'text' : 'password'}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="Enter password"
+                    required
+                    autoComplete="current-password"
+                    className="login-input"
+                  />
+                  <button
+                    type="button"
+                    className="login-password-toggle"
+                    onClick={() => setShowPassword(!showPassword)}
+                    tabIndex={-1}
+                    title={showPassword ? 'Hide password' : 'Show password'}
+                  >
+                    {showPassword ? <EyeOff size={14} /> : <Eye size={14} />}
+                  </button>
+                </div>
+              </div>
+
+              <button
+                type="submit"
+                className="login-submit-btn"
+                disabled={submitting}
+                title="Authenticate with your MIRA credentials."
+              >
+                {submitting ? (
+                  <>
+                    <span className="login-btn-spinner" />
+                    <span>Authenticating...</span>
+                  </>
+                ) : (
+                  <>
+                    <span>Sign In to Workstation</span>
+                    <ArrowRight size={15} />
+                  </>
+                )}
+              </button>
+            </form>
+          )}
 
           {/* Persona Switcher Section */}
-          <div className="login-personas-section">
-            <div className="login-personas-header">
-              <div className="login-personas-title">
-                <HelpCircle size={13} />
-                <span>Evaluation Roles</span>
+          {!mustChange && (
+            <div className="login-personas-section">
+              <div className="login-personas-header">
+                <div className="login-personas-title">
+                  <HelpCircle size={13} />
+                  <span>Evaluation Roles</span>
+                </div>
+                <span className="login-personas-tip">Select a role profile to populate credentials</span>
               </div>
-              <span className="login-personas-tip">Select a role profile to populate credentials</span>
-            </div>
 
-            <div className="login-personas-grid">
-              {EVAL_PERSONAS.map((p) => {
-                const isSelected = email === p.email
-                return (
-                  <button
-                    key={p.email}
-                    type="button"
-                    className={`login-persona-item ${isSelected ? 'active' : ''}`}
-                    onClick={() => selectPersona(p)}
-                    title={p.description}
-                  >
-                    <div className="login-persona-top">
-                      <span className={`login-role-badge role-${p.role}`}>
-                        {p.badgeText}
-                      </span>
-                      {isSelected && (
-                        <span className="login-selected-indicator">
-                          <Check size={11} />
+              <div className="login-personas-grid">
+                {EVAL_PERSONAS.map((p) => {
+                  const isSelected = email === p.email
+                  return (
+                    <button
+                      key={p.email}
+                      type="button"
+                      className={`login-persona-item ${isSelected ? 'active' : ''}`}
+                      onClick={() => selectPersona(p)}
+                      title={p.description}
+                    >
+                      <div className="login-persona-top">
+                        <span className={`login-role-badge role-${p.role}`}>
+                          {p.badgeText}
                         </span>
-                      )}
-                    </div>
-                    <div className="login-persona-name">{p.title}</div>
-                    <div className="login-persona-org">{p.org}</div>
-                  </button>
-                )
-              })}
+                        {isSelected && (
+                          <span className="login-selected-indicator">
+                            <Check size={11} />
+                          </span>
+                        )}
+                      </div>
+                      <div className="login-persona-name">{p.title}</div>
+                      <div className="login-persona-org">{p.org}</div>
+                    </button>
+                  )
+                })}
+              </div>
             </div>
-          </div>
+          )}
         </div>
-
 
         {/* Footer */}
         <footer className="login-portal-footer">
@@ -266,4 +422,3 @@ export default function Login() {
     </div>
   )
 }
-

@@ -4,6 +4,7 @@ from app.api.v1 import (
     analytics,
     audit,
     auth,
+    jobs,
     mappings,
     matching,
     materials,
@@ -21,3 +22,4 @@ api_router.include_router(review.router)
 api_router.include_router(audit.router)
 api_router.include_router(analytics.router)
 api_router.include_router(mappings.router)
+api_router.include_router(jobs.router)
