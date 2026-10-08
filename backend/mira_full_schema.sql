@@ -39,6 +39,7 @@ CREATE TABLE users (
     role          VARCHAR(50)  NOT NULL,
     cpse_id       INTEGER REFERENCES cpses(id),
     is_active     BOOLEAN NOT NULL DEFAULT TRUE,
+    must_change_password BOOLEAN NOT NULL DEFAULT FALSE,
     created_at    TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 

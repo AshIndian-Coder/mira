@@ -14,6 +14,9 @@ class User(Base):
     role = Column(String(50), nullable=False, default="reviewer")
     cpse_id = Column(Integer, ForeignKey("cpses.id"), nullable=True)
     is_active = Column(Boolean, default=True)
+    must_change_password = Column(
+        Boolean, nullable=False, default=False, server_default="false"
+    )
     created_at = Column(DateTime, default=func.now())
 
     cpse = relationship("Cpse", back_populates="users")

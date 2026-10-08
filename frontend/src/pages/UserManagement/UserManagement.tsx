@@ -78,7 +78,10 @@ export default function UserManagement() {
   // Create Form State
   const [createEmail, setCreateEmail] = useState('')
   const [createFullName, setCreateFullName] = useState('')
-  const [createPassword, setCreatePassword] = useState('')
+  const [issuedCredentials, setIssuedCredentials] = useState<{
+    email: string
+    password: string
+  } | null>(null)
   const [createRole, setCreateRole] = useState<UserRole>('reviewer')
   const [createCpseId, setCreateCpseId] = useState<string>('')
   const [createSubmitting, setCreateSubmitting] = useState(false)
@@ -161,8 +164,8 @@ export default function UserManagement() {
   // Handle Create Submit
   const handleCreateSubmit = async (e: FormEvent) => {
     e.preventDefault()
-    if (!createEmail.trim() || !createPassword.trim()) {
-      setCreateError('Please provide an email and initial password.')
+    if (!createEmail.trim()) {
+      setCreateError('Please provide an email address.')
       return
     }
 
@@ -170,22 +173,33 @@ export default function UserManagement() {
       setCreateSubmitting(true)
       setCreateError(null)
 
+      if (createRole === 'data_steward' && !createCpseId) {
+        setCreateError('A Data Steward must be assigned to a CPSE organisation.')
+        setCreateSubmitting(false)
+        return
+      }
+
       const parsedCpseId = createCpseId ? parseInt(createCpseId, 10) : null
 
       const created = await api.createUser({
         email: createEmail.trim(),
-        password: createPassword,
         full_name: createFullName.trim() || undefined,
         role: createRole,
         cpse_id: parsedCpseId,
       })
 
-      setSuccessMessage(`User ${created.email} created successfully with role ${formatRoleLabel(created.role)}.`)
+      // The password is generated server-side and returned exactly once.
+      // Surface it immediately — it can never be retrieved again.
+      setIssuedCredentials({
+        email: created.email,
+        password: created.temporary_password,
+      })
+      setSuccessMessage(
+        `User ${created.email} created with role ${formatRoleLabel(created.role)}. Copy the temporary password — it is shown only once.`,
+      )
       setIsCreateOpen(false)
-      // Reset form
       setCreateEmail('')
       setCreateFullName('')
-      setCreatePassword('')
       setCreateRole('reviewer')
       setCreateCpseId('')
       await loadData()
@@ -375,7 +389,7 @@ export default function UserManagement() {
               type="button"
               className="user-refresh-btn"
               onClick={loadData}
-              title="Refresh directory"
+              title="Reload the user directory."
             >
               <RefreshCw size={14} />
             </button>
@@ -387,6 +401,7 @@ export default function UserManagement() {
                 setCreateError(null)
                 setIsCreateOpen(true)
               }}
+              title="Create a user account. A temporary password is generated and shown once — the user must replace it before first login."
             >
               <Plus size={15} />
               <span>Provision User</span>
@@ -464,7 +479,7 @@ export default function UserManagement() {
                             type="button"
                             className="user-action-btn edit-btn"
                             onClick={() => openEditModal(u)}
-                            title="Edit user profile"
+                            title="Change this user's name, role or CPSE assignment."
                           >
                             <Edit2 size={13} />
                             <span>Edit</span>
@@ -482,7 +497,7 @@ export default function UserManagement() {
                               title={
                                 isSelf
                                   ? 'Cannot deactivate your own administrator account'
-                                  : 'Deactivate user access'
+                                  : 'Disable this account immediately. The user cannot log in, and existing sessions stop working.'
                               }
                             >
                               <UserX size={13} />
@@ -506,6 +521,91 @@ export default function UserManagement() {
           </span>
         </div>
       </section>
+
+      {/* ISSUED CREDENTIALS MODAL — shown once after provisioning */}
+      {issuedCredentials && (
+        <div className="common-detail-overlay" onClick={() => setIssuedCredentials(null)}>
+          <div
+            className="common-detail-modal"
+            style={{ maxWidth: '540px' }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="common-detail-header">
+              <div>
+                <div className="eyebrow">CREDENTIALS ISSUED</div>
+                <h2>Temporary Password</h2>
+                <p>Share these with the user through a secure channel.</p>
+              </div>
+              <button
+                type="button"
+                className="common-close-button"
+                onClick={() => setIssuedCredentials(null)}
+                title="Close modal"
+              >
+                ×
+              </button>
+            </div>
+
+            <div className="common-detail-body">
+              <div className="mapping-info-banner">
+                <div className="mapping-info-icon">!</div>
+                <div>
+                  <strong>Displayed once</strong>
+                  <p>
+                    This password is not stored in plaintext and cannot be retrieved again. If it is
+                    lost, reset it from the user row.
+                  </p>
+                </div>
+              </div>
+
+              <div className="user-modal-field">
+                <label htmlFor="issued-email">Email</label>
+                <div className="user-modal-input-box">
+                  <input
+                    id="issued-email"
+                    readOnly
+                    value={issuedCredentials.email}
+                    onFocus={(e) => e.target.select()}
+                  />
+                </div>
+              </div>
+
+              <div className="user-modal-field">
+                <label htmlFor="issued-password">Temporary Password</label>
+                <div className="user-modal-input-box">
+                  <input
+                    id="issued-password"
+                    readOnly
+                    value={issuedCredentials.password}
+                    onFocus={(e) => e.target.select()}
+                  />
+                </div>
+              </div>
+
+              <div className="user-modal-actions">
+                <button
+                  type="button"
+                  className="user-btn-secondary"
+                  onClick={() =>
+                    navigator.clipboard?.writeText(
+                      `${issuedCredentials.email} / ${issuedCredentials.password}`,
+                    )
+                  }
+                >
+                  Copy Both
+                </button>
+                <button
+                  type="button"
+                  className="user-btn-primary"
+                  onClick={() => setIssuedCredentials(null)}
+                >
+                  Done
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* CREATE USER MODAL */}
       {isCreateOpen && (
@@ -570,21 +670,10 @@ export default function UserManagement() {
                 </div>
 
                 <div className="user-modal-field">
-                  <div className="user-modal-label-row">
-                    <label htmlFor="create-password">Initial Password *</label>
-                    <span className="user-modal-hint">Min 6 characters</span>
-                  </div>
-                  <div className="user-modal-input-box">
-                    <Lock size={15} className="user-modal-icon" />
-                    <input
-                      id="create-password"
-                      type="password"
-                      required
-                      placeholder="Enter temporary password"
-                      value={createPassword}
-                      onChange={(e) => setCreatePassword(e.target.value)}
-                    />
-                  </div>
+                  <span className="user-modal-hint">
+                    A temporary password is generated automatically and shown once, immediately
+                    after creation.
+                  </span>
                 </div>
 
                 <div className="user-modal-field-grid">
@@ -593,7 +682,11 @@ export default function UserManagement() {
                     <select
                       id="create-role"
                       value={createRole}
-                      onChange={(e) => setCreateRole(e.target.value as UserRole)}
+                      onChange={(e) => {
+                        const next = e.target.value as UserRole
+                        setCreateRole(next)
+                        if (next !== 'data_steward') setCreateCpseId('')
+                      }}
                       className="user-modal-select"
                     >
                       <option value="reviewer">Reviewer (Specification Gate)</option>
@@ -603,22 +696,33 @@ export default function UserManagement() {
                     </select>
                   </div>
 
-                  <div className="user-modal-field">
-                    <label htmlFor="create-cpse">CPSE Organization</label>
-                    <select
-                      id="create-cpse"
-                      value={createCpseId}
-                      onChange={(e) => setCreateCpseId(e.target.value)}
-                      className="user-modal-select"
-                    >
-                      <option value="">National / All CPSEs (None)</option>
-                      {cpses.map((c) => (
-                        <option key={c.id} value={c.id}>
-                          {c.short_code} — {c.name}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
+                  {createRole === 'data_steward' ? (
+                    <div className="user-modal-field">
+                      <label htmlFor="create-cpse">CPSE Organization *</label>
+                      <select
+                        id="create-cpse"
+                        value={createCpseId}
+                        onChange={(e) => setCreateCpseId(e.target.value)}
+                        className="user-modal-select"
+                      >
+                        <option value="">Select an organisation…</option>
+                        {cpses.map((c) => (
+                          <option key={c.id} value={c.id}>
+                            {c.short_code} — {c.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  ) : (
+                    <div className="user-modal-field">
+                      <label>National Scope</label>
+                      <p className="login-hint">
+                        {createRole === 'reviewer'
+                          ? 'Reviewers are government officers and act across every CPSE. No organisation is assigned.'
+                          : 'This role operates nationally and is not tied to a single organisation.'}
+                      </p>
+                    </div>
+                  )}
                 </div>
 
                 <div className="user-modal-actions">
@@ -626,6 +730,7 @@ export default function UserManagement() {
                     type="button"
                     className="user-btn-secondary"
                     onClick={() => setIsCreateOpen(false)}
+                    title="Discard this form. No account is created."
                   >
                     Cancel
                   </button>
@@ -633,6 +738,7 @@ export default function UserManagement() {
                     type="submit"
                     className="user-btn-primary"
                     disabled={createSubmitting}
+                    title="Create the account and display its temporary password once."
                   >
                     {createSubmitting ? 'Creating Account…' : 'Create User Account'}
                   </button>
@@ -704,7 +810,11 @@ export default function UserManagement() {
                     <select
                       id="edit-role"
                       value={editRole}
-                      onChange={(e) => setEditRole(e.target.value as UserRole)}
+                      onChange={(e) => {
+                        const next = e.target.value as UserRole
+                        setEditRole(next)
+                        if (next !== 'data_steward') setEditCpseId('')
+                      }}
                       className="user-modal-select"
                     >
                       <option value="reviewer">Reviewer</option>
@@ -714,22 +824,33 @@ export default function UserManagement() {
                     </select>
                   </div>
 
-                  <div className="user-modal-field">
-                    <label htmlFor="edit-cpse">CPSE Organization</label>
-                    <select
-                      id="edit-cpse"
-                      value={editCpseId}
-                      onChange={(e) => setEditCpseId(e.target.value)}
-                      className="user-modal-select"
-                    >
-                      <option value="">National / All CPSEs</option>
-                      {cpses.map((c) => (
-                        <option key={c.id} value={c.id}>
-                          {c.short_code} — {c.name}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
+                  {editRole === 'data_steward' ? (
+                    <div className="user-modal-field">
+                      <label htmlFor="edit-cpse">CPSE Organization *</label>
+                      <select
+                        id="edit-cpse"
+                        value={editCpseId}
+                        onChange={(e) => setEditCpseId(e.target.value)}
+                        className="user-modal-select"
+                      >
+                        <option value="">Select an organisation…</option>
+                        {cpses.map((c) => (
+                          <option key={c.id} value={c.id}>
+                            {c.short_code} — {c.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  ) : (
+                    <div className="user-modal-field">
+                      <label>National Scope</label>
+                      <p className="login-hint">
+                        {editRole === 'reviewer'
+                          ? 'Reviewers are government officers and act across every CPSE. No organisation is assigned.'
+                          : 'This role operates nationally and is not tied to a single organisation.'}
+                      </p>
+                    </div>
+                  )}
                 </div>
 
                 <div className="user-modal-field">
@@ -767,6 +888,7 @@ export default function UserManagement() {
                     type="button"
                     className="user-btn-secondary"
                     onClick={() => setEditUser(null)}
+                    title="Discard these changes."
                   >
                     Cancel
                   </button>
@@ -774,6 +896,7 @@ export default function UserManagement() {
                     type="submit"
                     className="user-btn-primary"
                     disabled={editSubmitting}
+                    title="Apply the changes to this account."
                   >
                     {editSubmitting ? 'Saving Changes…' : 'Save Changes'}
                   </button>
@@ -834,6 +957,7 @@ export default function UserManagement() {
                   type="button"
                   className="user-btn-secondary"
                   onClick={() => setDeactivateUserTarget(null)}
+                  title="Keep this account active."
                 >
                   Cancel
                 </button>
@@ -842,6 +966,7 @@ export default function UserManagement() {
                   className="user-btn-danger"
                   onClick={handleDeactivateSubmit}
                   disabled={deactivateSubmitting}
+                  title="Disable this account. It can be reactivated later from the same row."
                 >
                   {deactivateSubmitting ? 'Deactivating…' : 'Deactivate User Account'}
                 </button>

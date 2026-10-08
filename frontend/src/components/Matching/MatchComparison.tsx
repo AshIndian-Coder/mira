@@ -8,8 +8,8 @@ import { formatPercent } from '../../lib/api'
 
 type MatchComparisonProps = {
   candidate: Candidate | null
-  onApprove: () => void
-  onReject: () => void
+  onApprove?: () => void
+  onReject?: () => void
   acting?: boolean
 }
 
@@ -282,14 +282,32 @@ function MatchComparison({
           <strong>{formatPercent(candidate.scores.final_score, 0)}</strong>
         </div>
 
-        <div className="decision-actions">
-          <Button onClick={onReject} disabled={acting}>
-            Reject
-          </Button>
-          <Button onClick={onApprove} variant="primary" disabled={acting}>
-            {acting ? 'Saving…' : 'Approve Mapping'}
-          </Button>
-        </div>
+        {onApprove && onReject ? (
+          <div className="decision-actions">
+            <Button
+              onClick={onReject}
+              disabled={acting}
+              title="Mark these two materials as different. The pair is closed and will not be proposed again."
+            >
+              Reject
+            </Button>
+            <Button
+              onClick={onApprove}
+              variant="primary"
+              disabled={acting}
+              title="Confirm these are the same item. The decision is final, is logged against your name, and feeds mapping generation."
+            >
+              {acting ? 'Saving…' : 'Approve Mapping'}
+            </Button>
+          </div>
+        ) : (
+          <div className="decision-actions">
+            <span className="login-hint">
+              Your role can view this queue but cannot approve or reject. Only Material Reviewers
+              and Administrators can action a candidate.
+            </span>
+          </div>
+        )}
       </div>
     </div>
   )

@@ -109,10 +109,11 @@ export default function AppRoutes() {
         }
       />
 
+      {/* view_audit is admin, data_steward and auditor only — reviewers are excluded. */}
       <Route
         path="/audit-trail"
         element={
-          <ProtectedRoute>
+          <ProtectedRoute requiredRole={['admin', 'data_steward', 'auditor']}>
             <AppShell>
               <AuditTrail />
             </AppShell>

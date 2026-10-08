@@ -17,6 +17,7 @@ from pydantic import BaseModel, Field
 from app import store
 from app.core.rbac import require_permission
 from app.core.security import get_current_active_user
+from app.jobs import create_job, finish_job, update_job
 from app.models.user import User
 from app.services.blocking.service import (
     MaterialForBlocking,
@@ -166,213 +167,244 @@ def run_batch_matching(
 
     Returns a summary: pairs evaluated, decisions breakdown, timing.
     """
+
+
     if not store.MATERIALS:
         raise HTTPException(
             status_code=400,
             detail="No materials ingested. Upload a CSV via POST /api/materials/upload first.",
         )
 
-    if request.overwrite:
-        store.CANDIDATES.clear()
+    job_id = create_job(
+        "matching",
+        total=len(store.MATERIALS),
+        detail="Loading model and computing embedding vectors",
+    )
+    update_job(job_id, phase="embedding")
 
-    started_at = datetime.now(timezone.utc)
+    try:
+        if request.overwrite:
+            store.CANDIDATES.clear()
 
-    # --- Build blocker objects & index maps ---
-    blocker_objects = [_store_material_to_blocker(m) for m in store.MATERIALS]
-    material_index: dict[int, dict[str, Any]] = {m["id"]: m for m in store.MATERIALS}
-    material_cpse: dict[int, str] = {
-        m["id"]: (m.get("cpse") or "CPSE_GENERIC").strip().upper()
-        for m in store.MATERIALS
-    }
+        started_at = datetime.now(timezone.utc)
 
-    # Filter source materials if requested
-    filtered_sources = blocker_objects
-    if request.source_cpse:
-        req_sc = request.source_cpse.strip().upper()
-        filtered_sources = [bo for bo in blocker_objects if material_cpse.get(bo.id) == req_sc]
+        # --- Build blocker objects & index maps ---
+        blocker_objects = [_store_material_to_blocker(m) for m in store.MATERIALS]
+        material_index: dict[int, dict[str, Any]] = {m["id"]: m for m in store.MATERIALS}
+        material_cpse: dict[int, str] = {
+            m["id"]: (m.get("cpse") or "CPSE_GENERIC").strip().upper()
+            for m in store.MATERIALS
+        }
 
-    # --- Build inverted block index and precompute keys ---
-    block_index: dict[str, list[int]] = {}
-    material_block_keys: dict[int, set[str]] = {}
-    blocker_by_id: dict[int, MaterialForBlocking] = {}
-    target_order: dict[int, int] = {}
+        # Filter source materials if requested
+        filtered_sources = blocker_objects
+        if request.source_cpse:
+            req_sc = request.source_cpse.strip().upper()
+            filtered_sources = [bo for bo in blocker_objects if material_cpse.get(bo.id) == req_sc]
 
-    for idx, bo in enumerate(blocker_objects):
-        blocker_by_id[bo.id] = bo
-        target_order[bo.id] = idx
-        keys = generate_block_keys(bo)
-        material_block_keys[bo.id] = keys
-        for key in keys:
-            block_index.setdefault(key, []).append(bo.id)
+        # --- Build inverted block index and precompute keys ---
+        block_index: dict[str, list[int]] = {}
+        material_block_keys: dict[int, set[str]] = {}
+        blocker_by_id: dict[int, MaterialForBlocking] = {}
+        target_order: dict[int, int] = {}
 
-    # --- Track already-evaluated pairs to avoid duplicates ---
-    seen_pairs: set[tuple[int, int]] = {
-        _pair_key(c["source_material_id"], c["target_material_id"])
-        for c in store.CANDIDATES
-    }
+        for idx, bo in enumerate(blocker_objects):
+            blocker_by_id[bo.id] = bo
+            target_order[bo.id] = idx
+            keys = generate_block_keys(bo)
+            material_block_keys[bo.id] = keys
+            for key in keys:
+                block_index.setdefault(key, []).append(bo.id)
 
-    # Pre-partition blockers by CPSE for fast cross-CPSE target mapping
-    cpse_blockers: dict[str, dict[int, MaterialForBlocking]] = {}
-    for bo in blocker_objects:
-        c = material_cpse.get(bo.id, "CPSE_GENERIC")
-        cpse_blockers.setdefault(c, {})[bo.id] = bo
+        # --- Track already-evaluated pairs to avoid duplicates ---
+        seen_pairs: set[tuple[int, int]] = {
+            _pair_key(c["source_material_id"], c["target_material_id"])
+            for c in store.CANDIDATES
+        }
 
-    target_map_by_source_cpse: dict[str, dict[int, MaterialForBlocking]] = {}
-    for s_cpse in cpse_blockers:
-        t_map: dict[int, MaterialForBlocking] = {}
-        for t_cpse, t_dict in cpse_blockers.items():
-            if t_cpse == s_cpse:
+        # Pre-partition blockers by CPSE for fast cross-CPSE target mapping
+        cpse_blockers: dict[str, dict[int, MaterialForBlocking]] = {}
+        for bo in blocker_objects:
+            c = material_cpse.get(bo.id, "CPSE_GENERIC")
+            cpse_blockers.setdefault(c, {})[bo.id] = bo
+
+        target_map_by_source_cpse: dict[str, dict[int, MaterialForBlocking]] = {}
+        for s_cpse in cpse_blockers:
+            t_map: dict[int, MaterialForBlocking] = {}
+            for t_cpse, t_dict in cpse_blockers.items():
+                if t_cpse == s_cpse:
+                    continue
+                if request.target_cpse and t_cpse != request.target_cpse.strip().upper():
+                    continue
+                t_map.update(t_dict)
+            target_map_by_source_cpse[s_cpse] = t_map
+
+        all_descriptions = [
+            m.get("normalized_description") or m.get("description") or ""
+            for m in store.MATERIALS
+        ]
+        embedding_cache = precompute_embeddings(all_descriptions, batch_size=64)
+        new_candidates: list[dict[str, Any]] = []
+        total_pairs_evaluated = 0
+
+        total_sources = len(filtered_sources)
+        update_job(job_id, phase="scoring", total=total_sources)
+
+        # Report at most ~100 times so the polling endpoint stays cheap.
+        report_every = max(1, total_sources // 100)
+
+        for idx, source_bo in enumerate(filtered_sources):
+            if idx % report_every == 0:
+                update_job(
+                    job_id,
+                    processed=idx,
+                                        detail=f"Scoring {material_index[source_bo.id]['material_code']} ({idx} of {total_sources})",
+                )
+
+            source_keys = material_block_keys[source_bo.id]
+            s_cpse = material_cpse.get(source_bo.id, "CPSE_GENERIC")
+            cross_target_map = target_map_by_source_cpse.get(s_cpse)
+            if not cross_target_map:
                 continue
-            if request.target_cpse and t_cpse != request.target_cpse.strip().upper():
-                continue
-            t_map.update(t_dict)
-        target_map_by_source_cpse[s_cpse] = t_map
 
-    all_descriptions = [
-        m.get("normalized_description") or m.get("description") or ""
-        for m in store.MATERIALS
-    ]
-    embedding_cache = precompute_embeddings(all_descriptions, batch_size=64)
-    new_candidates: list[dict[str, Any]] = []
-    total_pairs_evaluated = 0
-
-    for source_bo in filtered_sources:
-        source_keys = material_block_keys[source_bo.id]
-        s_cpse = material_cpse.get(source_bo.id, "CPSE_GENERIC")
-        cross_target_map = target_map_by_source_cpse.get(s_cpse)
-        if not cross_target_map:
-            continue
-
-        raw_candidates = blocking_generate_candidates(
-            source_bo,
-            block_index=block_index,
-            target_map=cross_target_map,
-            target_order=target_order,
-            source_keys=source_keys,
-        )
-
-        # Cap cross-CPSE candidates per source material
-        raw_candidates = raw_candidates[: request.max_candidates_per_material]
-
-        for target_bo in raw_candidates:
-            pk = _pair_key(source_bo.id, target_bo.id)
-            if pk in seen_pairs:
-                continue
-            seen_pairs.add(pk)
-            total_pairs_evaluated += 1
-
-            source_mat = material_index[source_bo.id]
-            target_mat = material_index[target_bo.id]
-
-            result = classify_match(source_mat, target_mat, embedding_cache=embedding_cache)
-
-            engine_dec = result["decision"]
-            # HIGH_CONFIDENCE is the engine's RECOMMENDATION only -- it still
-            # requires human approval. Only DIFFERENT is excluded from review.
-            review_st = "DIFFERENT" if engine_dec == "DIFFERENT" else "PENDING"
-
-            candidate: dict[str, Any] = {
-                "id": store.next_candidate_id(),
-                "source_material_id": source_bo.id,
-                "target_material_id": target_bo.id,
-                "source_cpse": source_mat["cpse"],
-                "target_cpse": target_mat["cpse"],
-                "source_code": source_mat["material_code"],
-                "target_code": target_mat["material_code"],
-                "source_description": source_mat["description"],
-                "target_description": target_mat["description"],
-                "scores": result["scores"],
-                "critical_checks": result["critical_checks"],
-                "engine_decision": engine_dec,
-                "review_status": review_st,
-                "reviewer_id": None,
-                "reviewer_comments": None,
-                "reviewed_at": None,
-                "created_at": started_at.isoformat(),
-            }
-            new_candidates.append(candidate)
-
-    # --- Additional candidates from vector search (Milvus) ---
-    # Runs AFTER the rule-based blocking above, and only ever ADDS
-    # candidates -- never removes or changes anything the rule-based loop
-    # already found. If Milvus is unavailable, this is skipped silently.
-    for source_bo in blocker_objects:
-        source_mat = material_index[source_bo.id]
-        try:
-            vector_ids = search_similar_materials(
-                description=source_mat.get("normalized_description", ""),
-                category=source_mat.get("category"),
-                top_k=50,
-                embedding_cache=embedding_cache,
+            raw_candidates = blocking_generate_candidates(
+                source_bo,
+                block_index=block_index,
+                target_map=cross_target_map,
+                target_order=target_order,
+                source_keys=source_keys,
             )
-        except Exception:
-            continue
 
-        for target_id in vector_ids:
-            if target_id == source_bo.id or target_id not in material_index:
+            # Cap cross-CPSE candidates per source material
+            raw_candidates = raw_candidates[: request.max_candidates_per_material]
+
+            for target_bo in raw_candidates:
+                pk = _pair_key(source_bo.id, target_bo.id)
+                if pk in seen_pairs:
+                    continue
+                seen_pairs.add(pk)
+                total_pairs_evaluated += 1
+
+                source_mat = material_index[source_bo.id]
+                target_mat = material_index[target_bo.id]
+
+                result = classify_match(source_mat, target_mat, embedding_cache=embedding_cache)
+
+                engine_dec = result["decision"]
+                # HIGH_CONFIDENCE is the engine's RECOMMENDATION only -- it still
+                # requires human approval. Only DIFFERENT is excluded from review.
+                review_st = "DIFFERENT" if engine_dec == "DIFFERENT" else "PENDING"
+
+                candidate: dict[str, Any] = {
+                    "id": store.next_candidate_id(),
+                    "source_material_id": source_bo.id,
+                    "target_material_id": target_bo.id,
+                    "source_cpse": source_mat["cpse"],
+                    "target_cpse": target_mat["cpse"],
+                    "source_code": source_mat["material_code"],
+                    "target_code": target_mat["material_code"],
+                    "source_description": source_mat["description"],
+                    "target_description": target_mat["description"],
+                    "scores": result["scores"],
+                    "critical_checks": result["critical_checks"],
+                    "engine_decision": engine_dec,
+                    "review_status": review_st,
+                    "reviewer_id": None,
+                    "reviewer_comments": None,
+                    "reviewed_at": None,
+                    "created_at": started_at.isoformat(),
+                }
+                new_candidates.append(candidate)
+
+        # --- Additional candidates from vector search (Milvus) ---
+        # Runs AFTER the rule-based blocking above, and only ever ADDS
+        # candidates -- never removes or changes anything the rule-based loop
+        # already found. If Milvus is unavailable, this is skipped silently.
+        for source_bo in blocker_objects:
+            source_mat = material_index[source_bo.id]
+            try:
+                vector_ids = search_similar_materials(
+                    description=source_mat.get("normalized_description", ""),
+                    category=source_mat.get("category"),
+                    top_k=50,
+                    embedding_cache=embedding_cache,
+                )
+            except Exception:
                 continue
 
-            target_mat = material_index[target_id]
+            for target_id in vector_ids:
+                if target_id == source_bo.id or target_id not in material_index:
+                    continue
 
-            if source_mat["cpse"].upper() == target_mat["cpse"].upper():
-                continue
+                target_mat = material_index[target_id]
 
-            pk = _pair_key(source_bo.id, target_id)
-            if pk in seen_pairs:
-                continue
-            seen_pairs.add(pk)
-            total_pairs_evaluated += 1
+                if source_mat["cpse"].upper() == target_mat["cpse"].upper():
+                    continue
 
-            result = classify_match(source_mat, target_mat, embedding_cache=embedding_cache)
-            engine_dec = result["decision"]
-            # HIGH_CONFIDENCE is the engine's RECOMMENDATION only -- it still
-            # requires human approval. Only DIFFERENT is excluded from review.
-            review_st = "DIFFERENT" if engine_dec == "DIFFERENT" else "PENDING"
+                pk = _pair_key(source_bo.id, target_id)
+                if pk in seen_pairs:
+                    continue
+                seen_pairs.add(pk)
+                total_pairs_evaluated += 1
 
-            candidate = {
-                "id": store.next_candidate_id(),
-                "source_material_id": source_bo.id,
-                "target_material_id": target_id,
-                "source_cpse": source_mat["cpse"],
-                "target_cpse": target_mat["cpse"],
-                "source_code": source_mat["material_code"],
-                "target_code": target_mat["material_code"],
-                "source_description": source_mat["description"],
-                "target_description": target_mat["description"],
-                "scores": result["scores"],
-                "critical_checks": result["critical_checks"],
-                "engine_decision": engine_dec,
-                "review_status": review_st,
-                "reviewer_id": None,
-                "reviewer_comments": None,
-                "reviewed_at": None,
-                "created_at": started_at.isoformat(),
-            }
-            new_candidates.append(candidate)
+                result = classify_match(source_mat, target_mat, embedding_cache=embedding_cache)
+                engine_dec = result["decision"]
+                # HIGH_CONFIDENCE is the engine's RECOMMENDATION only -- it still
+                # requires human approval. Only DIFFERENT is excluded from review.
+                review_st = "DIFFERENT" if engine_dec == "DIFFERENT" else "PENDING"
 
-    store.CANDIDATES.extend(new_candidates)
+                candidate = {
+                    "id": store.next_candidate_id(),
+                    "source_material_id": source_bo.id,
+                    "target_material_id": target_id,
+                    "source_cpse": source_mat["cpse"],
+                    "target_cpse": target_mat["cpse"],
+                    "source_code": source_mat["material_code"],
+                    "target_code": target_mat["material_code"],
+                    "source_description": source_mat["description"],
+                    "target_description": target_mat["description"],
+                    "scores": result["scores"],
+                    "critical_checks": result["critical_checks"],
+                    "engine_decision": engine_dec,
+                    "review_status": review_st,
+                    "reviewer_id": None,
+                    "reviewer_comments": None,
+                    "reviewed_at": None,
+                    "created_at": started_at.isoformat(),
+                }
+                new_candidates.append(candidate)
 
-    # No auto-approval: every HIGH_CONFIDENCE / REVIEW candidate stays PENDING
-    # until a human approves or rejects it via POST /api/review/queue/{id}/action.
-    # The audit trail is therefore written by review.py only, with a real actor.
+        update_job(job_id, phase="storing", processed=total_sources,
+                   detail=f"Writing {len(new_candidates)} candidates")
 
-    finished_at = datetime.now(timezone.utc)
-    elapsed_ms = int((finished_at - started_at).total_seconds() * 1000)
+        store.CANDIDATES.extend(new_candidates)
 
-    decision_counts: dict[str, int] = {}
-    for c in new_candidates:
-        d = c["engine_decision"]
-        decision_counts[d] = decision_counts.get(d, 0) + 1
+        # No auto-approval: every HIGH_CONFIDENCE / REVIEW candidate stays PENDING
+        # until a human approves or rejects it via POST /api/review/queue/{id}/action.
+        # The audit trail is therefore written by review.py only, with a real actor.
 
-    return {
-        "status": "complete",
-        "materials_processed": len(store.MATERIALS),
-        "candidate_pairs_evaluated": total_pairs_evaluated,
-        "new_candidates_stored": len(new_candidates),
-        "total_candidates": len(store.CANDIDATES),
-        "decision_breakdown": decision_counts,
-        "elapsed_ms": elapsed_ms,
-    }
+        finished_at = datetime.now(timezone.utc)
+        elapsed_ms = int((finished_at - started_at).total_seconds() * 1000)
+
+        decision_counts: dict[str, int] = {}
+        for c in new_candidates:
+            d = c["engine_decision"]
+            decision_counts[d] = decision_counts.get(d, 0) + 1
+
+        summary = {
+            "status": "complete",
+            "materials_processed": len(store.MATERIALS),
+            "candidate_pairs_evaluated": total_pairs_evaluated,
+            "new_candidates_stored": len(new_candidates),
+            "total_candidates": len(store.CANDIDATES),
+            "decision_breakdown": decision_counts,
+            "elapsed_ms": elapsed_ms,
+        }
+        finish_job(job_id, result=summary)
+        return summary
+    except Exception as exc:
+        finish_job(job_id, error=str(exc))
+        raise
 
 
 @router.get("/candidates")

@@ -13,6 +13,15 @@ export function setAuthToken(token: string | null): void {
     localStorage.removeItem(AUTH_TOKEN_KEY)
   }
 }
+export class ApiError extends Error {
+  readonly status: number
+
+  constructor(message: string, status: number) {
+    super(message)
+    this.name = 'ApiError'
+    this.status = status
+  }
+}
 
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
   const token = getAuthToken()
@@ -47,7 +56,7 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
       setAuthToken(null)
     }
 
-    throw new Error(detail || `Request failed (${response.status})`)
+    throw new ApiError(detail || `Request failed (${response.status})`, response.status)
   }
 
   if (response.status === 204) {
@@ -75,6 +84,25 @@ export type TokenResponse = {
   token_type: string
   expires_in: number
   user: User
+}
+
+export interface UserCreated extends User {
+  temporary_password: string
+}
+
+export interface PasswordResetResult {
+  user: User
+  temporary_password: string
+}
+
+export interface JobProgress {
+  id: string
+  kind: string
+  phase: string
+  processed: number
+  total: number
+  status: string
+  detail: string
 }
 
 export type CpseOption = {
@@ -271,6 +299,21 @@ export const api = {
       method: 'POST',
     }),
 
+  changePassword: (payload: {
+    email: string
+    current_password: string
+    new_password: string
+  }) =>
+    request<User>('/api/auth/change-password', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+
+  resetUserPassword: (userId: number) =>
+    request<PasswordResetResult>(`/api/users/${userId}/reset-password`, {
+      method: 'POST',
+    }),
+
   // User management (Admin)
   listUsers: (page = 1, pageSize = 50, role?: string) => {
     const params = new URLSearchParams({ page: String(page), page_size: String(pageSize) })
@@ -282,12 +325,11 @@ export const api = {
 
   createUser: (payload: {
     email: string
-    password: string
     full_name?: string
     role: string
     cpse_id?: number | null
   }) =>
-    request<User>('/api/users', {
+    request<UserCreated>('/api/users', {
       method: 'POST',
       body: JSON.stringify(payload),
     }),
@@ -552,4 +594,10 @@ export function formatTimestamp(iso: string): string {
     hour: '2-digit',
     minute: '2-digit',
   })
+}
+
+export async function activeJobs(kind?: string): Promise<JobProgress[]> {
+  const qs = kind ? `?kind=${kind}` : ''
+  const res = await request<{ count: number; jobs: JobProgress[] }>(`/api/jobs/active${qs}`)
+  return res.jobs
 }

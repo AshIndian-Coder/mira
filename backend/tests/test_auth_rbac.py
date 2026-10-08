@@ -143,6 +143,11 @@ def test_token_refresh():
 
 
 def test_rbac_permissions():
+    # The duplicate guard rejects a (cpse, material_code) pair that is already
+    # stored, so this test must begin from an empty material store to be
+    # re-runnable against a database that has been used before.
+    store.reset_stores()
+
     # 1. Login as Reviewer
     rev_login = client.post(
         "/api/auth/login",
@@ -255,10 +260,9 @@ def test_admin_user_management_lifecycle():
     assert any(c["short_code"] == "IOCL" for c in cpses)
     iocl_id = next(c["id"] for c in cpses if c["short_code"] == "IOCL")
 
-    # 3. Create a new user
+    # 3. Create a new user. No password is supplied — the system issues one.
     new_user_payload = {
         "email": "new_engineer@mira.gov.in",
-        "password": "Engineer@123",
         "full_name": "Lead Piping Engineer",
         "role": "reviewer",
         "cpse_id": iocl_id,
@@ -270,22 +274,61 @@ def test_admin_user_management_lifecycle():
     assert created_user["role"] == "reviewer"
     assert created_user["cpse_short_code"] == "IOCL"
     assert created_user["is_active"] is True
+    assert created_user["must_change_password"] is True
+
+    temp_password = created_user["temporary_password"]
+    assert len(temp_password) >= 14
     new_user_id = created_user["id"]
 
     # 4. Duplicate creation returns 409
     dup_resp = client.post("/api/users", headers=admin_headers, json=new_user_payload)
     assert dup_resp.status_code == 409
 
-    # 5. New user logs in successfully
+    # 5. Login is blocked while the temporary password is in force
+    blocked_login = client.post(
+        "/api/auth/login",
+        json={"email": "new_engineer@mira.gov.in", "password": temp_password},
+    )
+    assert blocked_login.status_code == 428
+    assert "change-password" in blocked_login.json()["detail"]
+
+    # 6. The new user replaces the temporary password with their own
+    change_resp = client.post(
+        "/api/auth/change-password",
+        json={
+            "email": "new_engineer@mira.gov.in",
+            "current_password": temp_password,
+            "new_password": "Engineer@2026",
+        },
+    )
+    assert change_resp.status_code == 200
+    assert change_resp.json()["must_change_password"] is False
+
+    # 7. Login now succeeds with the new password
     login_resp = client.post(
         "/api/auth/login",
-        json={"email": "new_engineer@mira.gov.in", "password": "Engineer@123"},
+        json={"email": "new_engineer@mira.gov.in", "password": "Engineer@2026"},
     )
     assert login_resp.status_code == 200
-    new_token = login_resp.json()["access_token"]
     assert login_resp.json()["user"]["role"] == "reviewer"
 
-    # 6. Admin updates the user's role and details
+    # 8. The temporary password no longer authenticates
+    stale_resp = client.post(
+        "/api/auth/login",
+        json={"email": "new_engineer@mira.gov.in", "password": temp_password},
+    )
+    assert stale_resp.status_code == 401
+
+    # 9. A steward or reviewer cannot exist without a CPSE
+    unbound_resp = client.post(
+        "/api/users",
+        headers=admin_headers,
+        json={"email": "unbound@mira.gov.in", "role": "reviewer"},
+    )
+    assert unbound_resp.status_code == 400
+    assert "must be assigned to a CPSE" in unbound_resp.json()["detail"]
+
+    # 10. Admin updates the user's role and details
     update_resp = client.put(
         f"/api/users/{new_user_id}",
         headers=admin_headers,
@@ -295,23 +338,30 @@ def test_admin_user_management_lifecycle():
     assert update_resp.json()["full_name"] == "Chief Materials Officer"
     assert update_resp.json()["role"] == "data_steward"
 
-    # 7. Self-deactivation prevention
+    # 11. Self-deactivation prevention
     self_deact_resp = client.delete(f"/api/users/{admin_id}", headers=admin_headers)
     assert self_deact_resp.status_code == 400
     assert "Cannot deactivate your own administrator account" in self_deact_resp.json()["detail"]
 
-    # 8. Deactivate the new user
+    # 12. Deactivate the new user
     deact_resp = client.delete(f"/api/users/{new_user_id}", headers=admin_headers)
     assert deact_resp.status_code == 200
     assert deact_resp.json()["is_active"] is False
 
-    # 9. Deactivated user cannot authenticate (returns 403 Forbidden)
-    blocked_login = client.post(
+    # 13. Deactivated user cannot authenticate, even with the correct password
+    deactivated_login = client.post(
         "/api/auth/login",
-        json={"email": "new_engineer@mira.gov.in", "password": "Engineer@123"},
+        json={"email": "new_engineer@mira.gov.in", "password": "Engineer@2026"},
     )
-    assert blocked_login.status_code == 403
-    assert "User account is deactivated" in blocked_login.json()["detail"]
+    assert deactivated_login.status_code == 403
+    assert "User account is deactivated" in deactivated_login.json()["detail"]
+
+    # 14. Admin password reset re-arms the forced change
+    reset_resp = client.post(f"/api/users/{new_user_id}/reset-password", headers=admin_headers)
+    assert reset_resp.status_code == 200
+    reset_body = reset_resp.json()
+    assert reset_body["user"]["must_change_password"] is True
+    assert len(reset_body["temporary_password"]) >= 14
 
 
 def test_public_routes():

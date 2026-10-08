@@ -18,6 +18,11 @@ ROLE_AUDITOR = "auditor"
 ROLES: list[str] = [ROLE_ADMIN, ROLE_DATA_STEWARD, ROLE_REVIEWER, ROLE_AUDITOR]
 ALL_ROLES: Set[str] = set(ROLES)
 
+# Roles that operate nationally rather than for a single organisation.
+# admin and auditor oversee the whole system; reviewer is a government
+# officer who arbitrates across every CPSE and is not tied to one.
+NATIONAL_ROLES: Set[str] = {ROLE_ADMIN, ROLE_AUDITOR, ROLE_REVIEWER}
+
 # Permission matrix: action -> set of roles allowed to perform it
 PERMISSIONS: dict[str, Set[str]] = {
     # Materials / Ingestion
@@ -31,7 +36,7 @@ PERMISSIONS: dict[str, Set[str]] = {
     "review_match": {ROLE_ADMIN, ROLE_REVIEWER},
     "view_review_queue": ALL_ROLES,
     # Mappings & Harmonization
-    "create_mapping": {ROLE_ADMIN, ROLE_DATA_STEWARD},
+    "create_mapping": {ROLE_ADMIN, ROLE_DATA_STEWARD, ROLE_REVIEWER},
     "view_mappings": ALL_ROLES,
     # Analytics & Dashboard
     "view_analytics": ALL_ROLES,

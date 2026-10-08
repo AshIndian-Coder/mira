@@ -37,7 +37,7 @@ function StatusBadge({ status }: { status: string }) {
 }
 
 export default function Mappings() {
-  const { isDataSteward } = useAuth()
+  const { isDataSteward, isReviewer } = useAuth()
   const [mappings, setMappings] = useState<Mapping[]>([])
   const [search, setSearch] = useState('')
   const [loading, setLoading] = useState(true)
@@ -206,15 +206,23 @@ export default function Mappings() {
           <p>Track mappings between CPSE material codes and common national material records.</p>
         </div>
         <div style={{ display: 'flex', gap: '0.75rem' }}>
+          {(isDataSteward || isReviewer) && (
+            <button
+              className="mapping-export-all-button"
+              type="button"
+              onClick={handleGenerate}
+              disabled={generating}
+              title="Groups every approved pair using union-find and issues one common national code per group. Existing CPSE codes are preserved, not replaced."
+            >
+              {generating ? 'Generating…' : 'Generate Mappings'}
+            </button>
+          )}
           <button
-            className="mapping-export-all-button"
+            className="mapping-secondary-button"
             type="button"
-            onClick={handleGenerate}
-            disabled={generating}
+            onClick={handleExport}
+            title="Download the full mapping table, one row per CPSE material code with its national code alongside."
           >
-            {generating ? 'Generating…' : 'Generate Mappings'}
-          </button>
-          <button className="mapping-secondary-button" type="button" onClick={handleExport}>
             Export CSV
           </button>
         </div>
@@ -329,6 +337,7 @@ export default function Mappings() {
                             }}
                             disabled={approvingId === row.mappingId}
                             onClick={() => handleApprove(row.mappingId)}
+                            title="Show every CPSE code grouped under this national code, and the canonical record built from them."
                           >
                             {approvingId === row.mappingId ? 'Approving…' : 'Approve'}
                           </button>
