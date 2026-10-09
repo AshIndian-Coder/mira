@@ -172,11 +172,19 @@ source .venv/bin/activate
 
 ### 4.2 Install the packages
 
-Install the CPU build of PyTorch **first** — the `+cpu` wheel lives on PyTorch's own server, not PyPI:
+Choose a PyTorch build before installing the rest of the requirements.
+
+For CPU-only operation or a reliable fallback:
 
 ```powershell
 pip install torch --index-url https://download.pytorch.org/whl/cpu
 ```
+
+For an NVIDIA CUDA GPU, use the Windows / Pip / CUDA selector on the
+[official PyTorch installation page](https://pytorch.org/get-started/locally/) and run its
+generated command instead of the CPU command above. MIRA will use CUDA when the installed
+PyTorch build can access it, and otherwise use CPU. `requirements.txt` intentionally does
+not pin PyTorch so it will preserve the build you selected.
 
 Then everything else (5–15 minutes, one time only):
 
@@ -190,9 +198,6 @@ Finally, the two packages the INT8 embedding model needs to load:
 pip install bitsandbytes accelerate
 ```
 
-> If `pip install -r requirements.txt` stops with `No matching distribution found for torch==2.14.0+cpu`,
-> it means torch was not installed in the previous step — install it, then re-run this command.
-
 ### 4.3 Verify the environment
 
 ```powershell
@@ -200,6 +205,12 @@ python -c "import fastapi, sqlalchemy, torch, sentence_transformers, pymilvus, b
 ```
 
 Must print `dependencies OK`.
+
+To see whether this Python environment can use CUDA:
+
+```powershell
+python -c "import torch; print('CUDA available:', torch.cuda.is_available())"
+```
 
 ---
 

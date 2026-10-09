@@ -25,6 +25,7 @@ from datetime import datetime
 from typing import Any, Iterator
 
 from sqlalchemy import MetaData, Table, select, insert, update, delete, func
+from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.types import DateTime
 
 from app.core.database import engine
@@ -42,6 +43,7 @@ match_suggestions_table = Table("match_suggestions", metadata, autoload_with=eng
 mappings_table = Table("mappings", metadata, autoload_with=engine)
 audit_logs_table = Table("audit_logs", metadata, autoload_with=engine)
 cnmc_table = Table("cnmc", metadata, autoload_with=engine)
+material_embedding_cache_table = Table("material_embedding_cache", metadata, autoload_with=engine)
 
 
 def _coerce_for_column(table: Table, key: str, value: Any) -> Any:
@@ -101,6 +103,20 @@ class PersistentList:
         with engine.begin() as conn:
             conn.execute(insert(self.table), coerced)
 
+    def extend_with_embeddings(
+        self,
+        items: list[dict[str, Any]],
+        embedding_rows: list[dict[str, Any]],
+    ) -> None:
+        """Insert material rows and their embeddings atomically."""
+        if not items:
+            return
+        coerced = [_coerce_item(self.table, item) for item in items]
+        with engine.begin() as conn:
+            conn.execute(insert(self.table), coerced)
+            if embedding_rows:
+                conn.execute(insert(material_embedding_cache_table), embedding_rows)
+
     def clear(self) -> None:
         with engine.begin() as conn:
             conn.execute(delete(self.table))
@@ -147,6 +163,32 @@ def next_id(table: Table) -> int:
             select(func.coalesce(func.max(table.c.id), 0))
         ).scalar()
     return (current_max or 0) + 1
+
+
+def load_material_embeddings() -> list[dict[str, Any]]:
+    """Load the durable embedding cache without exposing it in material rows."""
+    with engine.begin() as conn:
+        return [dict(row) for row in conn.execute(
+            select(material_embedding_cache_table)
+        ).mappings().all()]
+
+
+def upsert_material_embeddings(rows: list[dict[str, Any]]) -> None:
+    """Persist generated vectors, replacing stale cache entries by material id."""
+    if not rows:
+        return
+    stmt = pg_insert(material_embedding_cache_table).values(rows)
+    stmt = stmt.on_conflict_do_update(
+        index_elements=[material_embedding_cache_table.c.material_id],
+        set_={
+            "model_name": stmt.excluded.model_name,
+            "text_hash": stmt.excluded.text_hash,
+            "embedding": stmt.excluded.embedding,
+            "updated_at": func.now(),
+        },
+    )
+    with engine.begin() as conn:
+        conn.execute(stmt)
 
 
 def next_global_id() -> int:

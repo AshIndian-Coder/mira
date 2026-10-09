@@ -31,6 +31,8 @@ def create_job(kind: str, *, total: int = 0, detail: str = "") -> str:
             "phase": "starting",
             "processed": 0,
             "total": total,
+            "progress_percent": 0.0,
+            "indeterminate": False,
             "status": "running",
             "detail": detail,
             "started_at": _now(),
@@ -52,6 +54,8 @@ def update_job(
     processed: int | None = None,
     total: int | None = None,
     detail: str | None = None,
+    progress_percent: float | None = None,
+    indeterminate: bool | None = None,
 ) -> None:
     with _LOCK:
         job = _JOBS.get(job_id)
@@ -65,6 +69,10 @@ def update_job(
             job["total"] = total
         if detail is not None:
             job["detail"] = detail
+        if progress_percent is not None:
+            job["progress_percent"] = max(0.0, min(100.0, progress_percent))
+        if indeterminate is not None:
+            job["indeterminate"] = indeterminate
 
 
 def finish_job(job_id: str, *, result: Any = None, error: str | None = None) -> None:
@@ -73,6 +81,9 @@ def finish_job(job_id: str, *, result: Any = None, error: str | None = None) -> 
         if job is None:
             return
         job["status"] = "failed" if error else "completed"
+        if error is None:
+            job["progress_percent"] = 100.0
+        job["indeterminate"] = False
         job["finished_at"] = _now()
         job["result"] = result
         job["error"] = error

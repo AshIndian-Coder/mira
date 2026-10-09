@@ -1,6 +1,6 @@
 import os
 import shutil
-from collections.abc import Iterable
+from collections.abc import Callable, Iterable
 from functools import lru_cache
 from pathlib import Path
 from typing import Any
@@ -19,6 +19,53 @@ DEFAULT_MODEL_NAME = "Mira.ai"
 # Must match the Milvus collection dimension; a downloaded model that does not
 # match would be unusable as a drop-in replacement.
 _EXPECTED_EMBEDDING_DIM = 1024
+
+
+def _preferred_embedding_device() -> str:
+    """Use CUDA when this PyTorch installation can access a GPU; otherwise CPU."""
+    try:
+        import torch
+
+        if torch.cuda.is_available():
+            return "cuda"
+    except Exception as exc:
+        logger.info("Could not detect a CUDA device; using CPU embeddings: %s", exc)
+    return "cpu"
+
+
+def get_embedding_device() -> str:
+    """Human-readable preferred device for the embedding model."""
+    device = _preferred_embedding_device()
+    if device == "cpu":
+        return "CPU"
+    try:
+        import torch
+
+        return f"GPU ({torch.cuda.get_device_name(0)})"
+    except Exception:
+        return "GPU (CUDA)"
+
+
+def _load_sentence_transformer(target: str, device: str | None = None) -> SentenceTransformer:
+    selected_device = device or _preferred_embedding_device()
+    try:
+        model = SentenceTransformer(target, device=selected_device)
+        logger.info("Loaded embedding model on %s", selected_device)
+        return model
+    except Exception:
+        if selected_device == "cpu":
+            raise
+
+        logger.exception("Could not load embedding model on CUDA; retrying on CPU.")
+        try:
+            import torch
+
+            torch.cuda.empty_cache()
+        except Exception:
+            pass
+        model = SentenceTransformer(target, device="cpu")
+        logger.info("Loaded embedding model on CPU after CUDA load failed")
+        return model
 
 
 def _get_project_root() -> Path:
@@ -207,7 +254,7 @@ def _download_qwen_model(dest: Path) -> Path | None:
 
     # Verify through the SAME call production uses.
     try:
-        verified = SentenceTransformer(str(staging), device="cpu")
+        verified = _load_sentence_transformer(str(staging))
         dim = _loaded_dimension(verified)
     except Exception as exc:
         _download_failed_reason = (
@@ -336,14 +383,24 @@ def get_embedding_model_name() -> str:
     return resolve_model_name()
 
 
-@lru_cache(maxsize=4)
-def _load_model(target: str) -> SentenceTransformer:
-    return SentenceTransformer(target, device="cpu")
+@lru_cache(maxsize=8)
+def _load_model(target: str, device: str) -> SentenceTransformer:
+    return _load_sentence_transformer(target, device=device)
 
 
-def get_embedding_model(model_name: str | None = None) -> SentenceTransformer:
+def get_embedding_model(
+    model_name: str | None = None,
+    device: str | None = None,
+) -> SentenceTransformer:
     resolved = resolve_model_name(model_name)
-    return _load_model(resolved)
+    preferred_device = device or _preferred_embedding_device()
+    try:
+        return _load_model(resolved, preferred_device)
+    except Exception:
+        if preferred_device == "cpu":
+            raise
+        logger.exception("CUDA model load failed; retrying embedding model on CPU")
+        return _load_model(resolved, "cpu")
 
 
 class EmbeddingCache:
@@ -382,19 +439,58 @@ class EmbeddingCache:
         texts: Iterable[str],
         batch_size: int = 64,
         model_name: str | None = None,
+        progress_callback: Callable[[int, int], None] | None = None,
     ) -> None:
         m = self._resolve_model(model_name)
         missing = [t for t in set(texts) if t and (m, t) not in self._cache]
-        if missing:
-            model = get_embedding_model(m)
-            embeddings = model.encode(
-                missing,
-                batch_size=batch_size,
-                normalize_embeddings=True,
-                show_progress_bar=False,
-            )
-            for text, emb in zip(missing, embeddings):
-                self._cache[(m, text)] = emb
+        if not missing:
+            return
+
+        model = get_embedding_model(m)
+        effective_batch = max(1, min(int(batch_size), 64))
+
+        # Encode in chunks (several batches each) instead of one giant call,
+        # so progress can be reported between chunks. Results are identical.
+        # Report more frequently on CPU, where each batch takes longer; retain
+        # the larger batch on CUDA for throughput.
+        model_device = str(getattr(model, "device", "cpu")).lower()
+        chunk_size = effective_batch if "cuda" in model_device else min(effective_batch, 16)
+        total = len(missing)
+        done = 0
+        if progress_callback is not None:
+            progress_callback(0, total)
+
+        for start in range(0, total, chunk_size):
+            chunk = missing[start:start + chunk_size]
+            try:
+                embeddings = model.encode(
+                    chunk,
+                    batch_size=effective_batch,
+                    normalize_embeddings=True,
+                    show_progress_bar=False,
+                )
+            except RuntimeError as exc:
+                if "out of memory" not in str(exc).lower() or _preferred_embedding_device() != "cuda":
+                    raise
+                logger.warning("CUDA ran out of memory while embedding; retrying this chunk on CPU")
+                try:
+                    import torch
+
+                    torch.cuda.empty_cache()
+                except Exception:
+                    pass
+                model = get_embedding_model(m, device="cpu")
+                embeddings = model.encode(
+                    chunk,
+                    batch_size=effective_batch,
+                    normalize_embeddings=True,
+                    show_progress_bar=False,
+                )
+            for text, embedding in zip(chunk, embeddings):
+                self._cache[(m, text)] = embedding
+            done += len(chunk)
+            if progress_callback is not None:
+                progress_callback(done, total)
 
     def get_or_encode(self, text: str, model_name: str | None = None) -> np.ndarray | None:
         if not text:
@@ -436,10 +532,16 @@ def precompute_embeddings(
     texts: Iterable[str],
     batch_size: int = 64,
     model_name: str | None = None,
+    progress_callback: Callable[[int, int], None] | None = None,
 ) -> EmbeddingCache:
     """Convenience factory to precompute embeddings for a collection of texts into a new scoped cache."""
     cache = EmbeddingCache(model_name=model_name)
-    cache.precompute(texts, batch_size=batch_size, model_name=model_name)
+    cache.precompute(
+        texts,
+        batch_size=batch_size,
+        model_name=model_name,
+        progress_callback=progress_callback,
+    )
     return cache
 
 

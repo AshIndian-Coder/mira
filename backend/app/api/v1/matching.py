@@ -9,7 +9,10 @@ GET  /api/matching/stats     — blocking / recall / score summary stats
 """
 
 from datetime import datetime, timezone
+import hashlib
 from typing import Any
+
+import numpy as np
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
@@ -17,6 +20,7 @@ from pydantic import BaseModel, Field
 from app import store
 from app.core.rbac import require_permission
 from app.core.security import get_current_active_user
+from app.db_adapter import load_material_embeddings, upsert_material_embeddings
 from app.jobs import create_job, finish_job, update_job
 from app.models.user import User
 from app.services.blocking.service import (
@@ -30,7 +34,13 @@ from app.services.matching.cnmc_matcher import (
     find_cnmc_candidates_for_material,
     match_new_materials_against_cnmcs,
 )
-from app.services.matching.embeddings import EmbeddingCache, precompute_embeddings
+from app.services.matching.embeddings import (
+    EmbeddingCache,
+    get_embedding_device,
+    get_embedding_model_name,
+    precompute_embeddings,
+)
+from app.services.matching.milvus_client import insert_material_embeddings
 from app.services.matching.vector_search import search_similar_materials
 from app.services.normalization.service import normalize_material_description
 from app.services.parsing.service import parse_specifications
@@ -178,9 +188,9 @@ def run_batch_matching(
     job_id = create_job(
         "matching",
         total=len(store.MATERIALS),
-        detail="Loading model and computing embedding vectors",
+        detail="Preparing matching run",
     )
-    update_job(job_id, phase="embedding")
+    update_job(job_id, phase="preparing", indeterminate=True)
 
     try:
         if request.overwrite:
@@ -243,28 +253,122 @@ def run_batch_matching(
             m.get("normalized_description") or m.get("description") or ""
             for m in store.MATERIALS
         ]
-        embedding_cache = precompute_embeddings(all_descriptions, batch_size=64)
+        unique_descriptions = {description for description in all_descriptions if description}
+        embedding_total = len(unique_descriptions)
+        model_name = get_embedding_model_name()
+        expected_hash_by_text = {
+            text: hashlib.sha256(text.encode("utf-8")).hexdigest()
+            for text in unique_descriptions
+        }
+        material_text_by_id = {
+            int(m["id"]): (m.get("normalized_description") or m.get("description") or "").strip()
+            for m in store.MATERIALS
+        }
+        saved_rows = load_material_embeddings()
+        saved_by_id = {int(row["material_id"]): row for row in saved_rows}
+        cached_embeddings: dict[str, np.ndarray] = {}
+        valid_material_ids: set[int] = set()
+        for material_id, text in material_text_by_id.items():
+            saved = saved_by_id.get(material_id)
+            if not saved or not text:
+                continue
+            vector = saved.get("embedding")
+            if (
+                saved.get("model_name") == model_name
+                and saved.get("text_hash") == expected_hash_by_text.get(text)
+                and isinstance(vector, list)
+                and len(vector) == 1024
+            ):
+                cached_embeddings.setdefault(text, np.asarray(vector, dtype=np.float32))
+                valid_material_ids.add(material_id)
+
+        missing_descriptions = unique_descriptions.difference(cached_embeddings)
+        cached_count = len(unique_descriptions) - len(missing_descriptions)
+        update_job(
+            job_id,
+            phase="embedding",
+            processed=0,
+            total=max(embedding_total, 1),
+            progress_percent=0,
+            indeterminate=True,
+            detail=(
+                f"Using {cached_count} saved embeddings; loading model on {get_embedding_device()}…"
+                if missing_descriptions
+                else f"Loaded {cached_count} saved embeddings"
+            ),
+        )
+
+        def _embed_progress(done: int, total: int) -> None:
+            overall_done = cached_count + done
+            update_job(
+                job_id,
+                processed=overall_done,
+                total=max(embedding_total, 1),
+                detail=f"Embeddings ready ({overall_done} of {embedding_total})",
+                progress_percent=45 * (overall_done / embedding_total) if embedding_total else 45,
+                indeterminate=False,
+            )
+
+        embedding_cache = EmbeddingCache(
+            initial_embeddings=cached_embeddings,
+            model_name=model_name,
+        )
+        embedding_cache.precompute(
+            all_descriptions,
+            batch_size=64,
+            progress_callback=_embed_progress,
+        )
+        # Save newly-created or stale vectors before scoring, then send the same
+        # vector payload to Milvus so retrieval and score calculations agree.
+        embedding_rows_to_save = []
+        vectors_by_id: dict[int, list[float]] = {}
+        for material_id, text in material_text_by_id.items():
+            vector = embedding_cache.get(text)
+            if vector is None:
+                continue
+            vector_list = vector.tolist() if hasattr(vector, "tolist") else list(vector)
+            vectors_by_id[material_id] = vector_list
+            if material_id not in valid_material_ids:
+                embedding_rows_to_save.append({
+                    "material_id": material_id,
+                    "model_name": model_name,
+                    "text_hash": expected_hash_by_text[text],
+                    "embedding": vector_list,
+                })
+        upsert_material_embeddings(embedding_rows_to_save)
+
+        update_job(
+            job_id,
+            phase="scoring",
+            processed=0,
+            total=max(len(filtered_sources), 1),
+            progress_percent=45,
+            indeterminate=False,
+            detail="Scoring candidate pairs",
+        )
         new_candidates: list[dict[str, Any]] = []
         total_pairs_evaluated = 0
 
         total_sources = len(filtered_sources)
-        update_job(job_id, phase="scoring", total=total_sources)
 
         # Report at most ~100 times so the polling endpoint stays cheap.
-        report_every = max(1, total_sources // 100)
+        report_every = max(1, (total_sources + 99) // 100)
 
-        for idx, source_bo in enumerate(filtered_sources):
-            if idx % report_every == 0:
+        def _report_scoring(done: int) -> None:
+            if done % report_every == 0 or done == total_sources:
                 update_job(
                     job_id,
-                    processed=idx,
-                                        detail=f"Scoring {material_index[source_bo.id]['material_code']} ({idx} of {total_sources})",
+                    processed=done,
+                    detail=f"Scoring materials ({done} of {total_sources})",
+                    progress_percent=45 + 35 * (done / total_sources) if total_sources else 80,
                 )
 
+        for idx, source_bo in enumerate(filtered_sources):
             source_keys = material_block_keys[source_bo.id]
             s_cpse = material_cpse.get(source_bo.id, "CPSE_GENERIC")
             cross_target_map = target_map_by_source_cpse.get(s_cpse)
             if not cross_target_map:
+                _report_scoring(idx + 1)
                 continue
 
             raw_candidates = blocking_generate_candidates(
@@ -316,11 +420,33 @@ def run_batch_matching(
                 }
                 new_candidates.append(candidate)
 
+            _report_scoring(idx + 1)
+
         # --- Additional candidates from vector search (Milvus) ---
         # Runs AFTER the rule-based blocking above, and only ever ADDS
         # candidates -- never removes or changes anything the rule-based loop
         # already found. If Milvus is unavailable, this is skipped silently.
-        for source_bo in blocker_objects:
+        total_vec = len(blocker_objects)
+        vec_report_every = max(1, (total_vec + 99) // 100)
+        update_job(
+            job_id,
+            phase="vector_search",
+            processed=0,
+            total=max(total_vec, 1),
+            progress_percent=80,
+            indeterminate=False,
+            detail="Syncing saved vectors to Milvus, then searching for extra candidates",
+        )
+        insert_material_embeddings([
+            {
+                "id": material_id,
+                "description": material_text_by_id[material_id],
+                "cpse": material_index[material_id].get("cpse") or "",
+                "category": material_index[material_id].get("category") or "",
+            }
+            for material_id in vectors_by_id
+        ], vectors_by_id=vectors_by_id)
+        for v_idx, source_bo in enumerate(blocker_objects):
             source_mat = material_index[source_bo.id]
             try:
                 vector_ids = search_similar_materials(
@@ -330,7 +456,7 @@ def run_batch_matching(
                     embedding_cache=embedding_cache,
                 )
             except Exception:
-                continue
+                vector_ids = []
 
             for target_id in vector_ids:
                 if target_id == source_bo.id or target_id not in material_index:
@@ -374,8 +500,24 @@ def run_batch_matching(
                 }
                 new_candidates.append(candidate)
 
-        update_job(job_id, phase="storing", processed=total_sources,
-                   detail=f"Writing {len(new_candidates)} candidates")
+            done = v_idx + 1
+            if done % vec_report_every == 0 or done == total_vec:
+                update_job(
+                    job_id,
+                    processed=done,
+                    detail=f"Vector search ({done} of {total_vec})",
+                    progress_percent=80 + 17 * (done / total_vec) if total_vec else 97,
+                )
+
+        update_job(
+            job_id,
+            phase="storing",
+            processed=0,
+            total=max(len(new_candidates), 1),
+            progress_percent=97,
+            indeterminate=True,
+            detail=f"Saving {len(new_candidates)} candidate records…",
+        )
 
         store.CANDIDATES.extend(new_candidates)
 

@@ -847,6 +847,20 @@ a {
   color: #ef4444;
 }
 
+@keyframes matchingProgressSweep {
+  from { transform: translateX(-120%); }
+  to { transform: translateX(460%); }
+}
+
+.matching-progress-track {
+  position: relative;
+  overflow: hidden;
+}
+
+.matching-progress-indeterminate {
+  animation: matchingProgressSweep 1.2s ease-in-out infinite alternate;
+}
+
 .common-info-icon {
   background: #d1fae5;
   color: #10b981;

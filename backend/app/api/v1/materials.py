@@ -1,4 +1,5 @@
 import csv
+import hashlib
 import io
 import logging
 from typing import Any
@@ -17,6 +18,8 @@ from app.services.normalization.service import normalize_material_description
 from app.services.parsing.service import parse_specifications
 from app import store
 from app.services.matching.milvus_client import insert_material_embeddings
+from app.services.matching.batch_embeddings import generate_embeddings
+from app.services.matching.embeddings import get_embedding_model_name
 
 logger = logging.getLogger(__name__)
 
@@ -155,8 +158,25 @@ async def upload_materials_csv(
             ),
         )
 
+    embedding_texts = {
+        r["id"]: (r.get("normalized_description") or r["description"]).strip()
+        for r in new_records
+    }
     try:
-        store.MATERIALS.extend(new_records)
+        # Create each unique normalized description vector once during ingestion.
+        # These exact values are persisted and optionally copied to Milvus.
+        model_name = get_embedding_model_name()
+        vectors_by_text = generate_embeddings(embedding_texts.values()) if embedding_texts else {}
+        embedding_rows = [
+            {
+                "material_id": material_id,
+                "model_name": model_name,
+                "text_hash": hashlib.sha256(text.encode("utf-8")).hexdigest(),
+                "embedding": vectors_by_text[text],
+            }
+            for material_id, text in embedding_texts.items()
+        ]
+        store.MATERIALS.extend_with_embeddings(new_records, embedding_rows)
     except IntegrityError as exc:
         # Backstop for a concurrent upload that landed between the check above
         # and this insert.
@@ -171,19 +191,24 @@ async def upload_materials_csv(
             ),
         )
 
-    insert_material_embeddings([
+    milvus_vectors_stored = insert_material_embeddings([
         {
             "id": r["id"],
-            "description": r["description"],
+            "description": embedding_texts[r["id"]],
             "cpse": r["cpse"],
             "category": r.get("category"),
         }
         for r in new_records
-    ])
+    ], vectors_by_id={
+        material_id: vectors_by_text[text]
+        for material_id, text in embedding_texts.items()
+    })
 
     return {
         "status": "success",
         "records_ingested": len(new_records),
+        "embeddings_stored": len(embedding_rows),
+        "milvus_vectors_stored": milvus_vectors_stored,
         "total_materials": len(store.MATERIALS),
         "sample": new_records[:10],
     }
