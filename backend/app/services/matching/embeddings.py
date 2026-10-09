@@ -1,24 +1,14 @@
+from __future__ import annotations
+
+import math
 import os
 import shutil
 from collections.abc import Callable, Iterable
 from functools import lru_cache
-from pathlib import Path
 from typing import Any
 
-import logging
-
+import httpx
 import numpy as np
-from sentence_transformers import SentenceTransformer
-
-from app.core.config import settings
-
-logger = logging.getLogger(__name__)
-
-DEFAULT_MODEL_NAME = "Mira.ai"
-
-# Must match the Milvus collection dimension; a downloaded model that does not
-# match would be unusable as a drop-in replacement.
-_EXPECTED_EMBEDDING_DIM = 1024
 
 
 def _preferred_embedding_device() -> str:
@@ -79,178 +69,71 @@ def _get_project_root() -> Path:
     return Path(__file__).resolve().parents[3]
 
 
-PROJECT_ROOT = _get_project_root()
-LEGACY_MINILM_PATH = PROJECT_ROOT / "models" / "trained" / "minilm_cpse_v1"
-
-
-def get_qwen_candidate_paths() -> list[Path]:
-    """Return prioritized candidate search paths for the local Qwen model across OSes."""
-    env_paths = [
-        Path(os.getenv("MIRA_QWEN_MODEL_PATH", "").strip()),
-        Path(os.getenv("MIRA_MODEL_PATH", "").strip()),
-    ]
-    models_dir = os.getenv("MIRA_MODELS_DIR", "").strip()
-    if models_dir:
-        env_paths.append(Path(models_dir) / "Mira.ai")
-
-    home = Path.home()
-    standard_paths = [
-        home / "mira-model-test" / "Mira.ai",
-        home / "Desktop" / "mira-model-test" / "Mira.ai",
-        home / ".mira" / "models" / "Mira.ai",
-        home / "models" / "Mira.ai",
-        PROJECT_ROOT / "models" / "Mira.ai",
-        PROJECT_ROOT / "models" / "trained" / "Mira.ai",
-        PROJECT_ROOT / "models" / "trained" / "qwen",
-        PROJECT_ROOT / "models" / "qwen",
-    ]
-
-    candidates: list[Path] = []
-    for p in env_paths + standard_paths:
-        if p and str(p) != "." and p not in candidates:
-            candidates.append(p)
-    return candidates
-
-
-# A directory only counts as a model if it also holds weights. An interrupted
-# download can leave config.json behind with no weights; treating that as
-# "found" would poison every later run.
-_WEIGHT_MARKERS = (
-    "model.safetensors",
-    "pytorch_model.bin",
-    "model.safetensors.index.json",
-    "pytorch_model.bin.index.json",
-    "model.onnx",
-)
-
-
-def _is_complete_model_dir(path: Path) -> bool:
-    """True only for a directory holding both config.json and weights."""
+def _env_int(name: str, default: int, minimum: int, maximum: int) -> int:
+    raw = os.getenv(name)
     try:
-        return (
-            path.is_dir()
-            and (path / "config.json").exists()
-            and any((path / marker).exists() for marker in _WEIGHT_MARKERS)
-        )
-    except (OSError, PermissionError):
-        return False
+        value = int(raw) if raw is not None else default
+    except (TypeError, ValueError):
+        value = default
+    return max(minimum, min(maximum, value))
 
 
-def find_qwen_model_path() -> Path | None:
-    """Locate the Qwen embedding directory on the current filesystem."""
-    for p in get_qwen_candidate_paths():
-        if _is_complete_model_dir(p):
-            return p
-    return None
-
-
-# ---------------------------------------------------------------------------
-# Hugging Face auto-download (bootstrap for a fresh clone)
-#
-# settings.model_hub_id points at the fine-tuned Epoch-2 INT8 checkpoint.
-# Requires bitsandbytes + accelerate to load (see requirements.txt).
-# ---------------------------------------------------------------------------
-
-_download_attempted = False
-_download_failed_reason: str | None = None
-
-
-def _download_target_dir() -> Path:
-    """Destination for an auto-downloaded model.
-
-    Must be one of get_qwen_candidate_paths() so the NEXT run finds it on disk
-    and does not download again.
-    """
-    override = os.getenv("MIRA_MODELS_DIR", "").strip()
-    if override:
-        return Path(override) / "Mira.ai"
-
-    configured = (settings.model_auto_download_dir or "").strip()
-    if configured:
-        return Path(configured).expanduser() / "Mira.ai"
-
-    return PROJECT_ROOT / "models" / "Mira.ai"
-
-
-def reset_model_download_state() -> None:
-    """Clears the one-shot download cache. Used by tests."""
-    global _download_attempted, _download_failed_reason
-    _download_attempted = False
-    _download_failed_reason = None
-
-
-def _loaded_dimension(model: SentenceTransformer) -> int:
-    """Read the embedding dimension across sentence-transformers versions."""
-    for attr in ("get_embedding_dimension", "get_sentence_embedding_dimension"):
-        getter = getattr(model, attr, None)
-        if callable(getter):
-            dim = getter()
-            if dim is not None:
-                return int(dim)
-    raise RuntimeError("could not determine the embedding dimension")
-
-
-def _download_qwen_model(dest: Path) -> Path | None:
-    """Fetch the embedding model from Hugging Face and install it at dest.
-
-    Returns dest on success, or None on failure. Never raises -- the caller
-    falls through to the original FileNotFoundError so the message stays
-    actionable.
-
-    The Hub files are copied as-is instead of re-saving a loaded model: this
-    checkpoint loads through bitsandbytes INT8, and re-serialising a quantised
-    model raises NotImplementedError inside transformers (it cannot reverse the
-    quantisation weight conversion).
-
-    The download lands in a staging directory, is verified by loading it back
-    through the same call production uses, and only then replaces dest -- so an
-    interrupted download can never leave a half-installed model behind.
-    """
-    global _download_attempted, _download_failed_reason
-
-    # One attempt per process: resolve_model_name() is called very often, and
-    # retrying a network fetch on every call would be pathological.
-    if _download_attempted:
-        return None
-    _download_attempted = True
-
-    hub_id = (settings.model_hub_id or "").strip()
-    if not hub_id:
-        _download_failed_reason = "settings.model_hub_id is empty"
-        return None
-
+def _env_float(name: str, default: float, minimum: float, maximum: float) -> float:
+    raw = os.getenv(name)
     try:
-        from huggingface_hub import snapshot_download
-    except ImportError as exc:  # pragma: no cover - dependency of sentence-transformers
-        _download_failed_reason = (
-            f"huggingface_hub is not installed ({exc}); "
-            "run: pip install huggingface_hub"
+        value = float(raw) if raw is not None else default
+    except (TypeError, ValueError):
+        value = default
+    return max(minimum, min(maximum, value))
+
+
+EMBED_BATCH_SIZE = _env_int("MIRA_EMBED_BATCH_SIZE", DEFAULT_BATCH_SIZE, 1, MAX_BATCH_SIZE)
+EMBED_MAX_CONCURRENCY = _env_int("MIRA_EMBED_MAX_CONCURRENCY", DEFAULT_MAX_CONCURRENCY, 1, 8)
+EMBED_RETRIES = _env_int("MIRA_EMBED_RETRIES", DEFAULT_RETRIES, 0, 5)
+EMBED_TIMEOUT = _env_float("MIRA_EMBED_TIMEOUT", DEFAULT_TIMEOUT, 15.0, 600.0)
+
+
+class MiraRemoteEmbeddingError(RuntimeError):
+    pass
+
+
+class RemoteMiraEmbeddingModel:
+    def __init__(self, base_url: str | None = None, *, timeout: float = EMBED_TIMEOUT) -> None:
+        configured_url = (
+            base_url if base_url is not None else os.getenv(REMOTE_SERVER_ENV, "")
+        ).strip()
+        self.base_url = configured_url.rstrip("/")
+        if not self.base_url:
+            raise RuntimeError(f"{REMOTE_SERVER_ENV} is not configured.")
+        if not self.base_url.startswith(("http://", "https://")):
+            raise RuntimeError(f"{REMOTE_SERVER_ENV} must start with http:// or https://.")
+
+        self.timeout = timeout
+        headers: dict[str, str] = {}
+        api_key = os.getenv(API_KEY_ENV, "").strip()
+        if api_key:
+            headers["X-API-Key"] = api_key
+
+        self._client = httpx.Client(
+            base_url=self.base_url,
+            timeout=httpx.Timeout(
+                connect=min(timeout, 20.0),
+                read=timeout,
+                write=min(timeout, 60.0),
+                pool=min(timeout, 30.0),
+            ),
+            headers=headers,
+            follow_redirects=True,
         )
-        return None
 
-    logger.warning(
-        "MIRA embedding model not found locally -- downloading '%s' from "
-        "Hugging Face to '%s' (~750 MB, one time).",
-        hub_id,
-        dest,
-    )
+    def close(self) -> None:
+        self._client.close()
 
-    staging = dest.parent / (dest.name + ".download")
-    try:
-        dest.parent.mkdir(parents=True, exist_ok=True)
-        if staging.exists():
-            shutil.rmtree(staging)
-        snapshot_download(repo_id=hub_id, local_dir=str(staging))
-    except Exception as exc:
-        _download_failed_reason = f"snapshot_download failed: {exc!r}"
-        logger.warning("Hugging Face download of '%s' failed: %r", hub_id, exc)
-        return None
+    def get_embedding_dimension(self) -> int:
+        return EXPECTED_EMBEDDING_DIM
 
-    if not _is_complete_model_dir(staging):
-        _download_failed_reason = (
-            f"'{staging}' is missing config.json or model weights after download"
-        )
-        return None
+    def get_sentence_embedding_dimension(self) -> int:
+        return EXPECTED_EMBEDDING_DIM
 
     # Verify through the SAME call production uses.
     try:
@@ -307,76 +190,221 @@ def get_embedding_dimension(model_name: str | None = None) -> int:
     model = get_embedding_model(model_name)
     if hasattr(model, "get_embedding_dimension"):
         try:
-            dim = model.get_embedding_dimension()
-            if dim is not None:
-                return int(dim)
-        except Exception:
-            pass
-    if hasattr(model, "get_sentence_embedding_dimension"):
-        try:
-            dim = model.get_sentence_embedding_dimension()
-            if dim is not None:
-                return int(dim)
-        except Exception:
-            pass
-    return 1024
+            response = self._client.get(
+                "/health",
+                timeout=httpx.Timeout(connect=10.0, read=min(self.timeout, 30.0), write=10.0, pool=10.0),
+            )
+            response.raise_for_status()
+            payload = response.json()
+            if not isinstance(payload, dict) or payload.get("status") != "ok":
+                raise MiraRemoteEmbeddingError(
+                    f"Invalid MIRA model server health response: {payload}"
+                )
+            return payload
+        except MiraRemoteEmbeddingError:
+            raise
+        except (httpx.HTTPError, ValueError) as exc:
+            raise MiraRemoteEmbeddingError(
+                f"Unable to reach MIRA model server at {self.base_url}: {exc}"
+            ) from exc
+
+    @staticmethod
+    def _clean_texts(texts: Iterable[str]) -> list[str]:
+        cleaned: list[str] = []
+        for text in texts:
+            if not isinstance(text, str):
+                raise TypeError(f"Expected string text, got {type(text).__name__}.")
+            value = " ".join(text.split()).strip()
+            if not value:
+                raise ValueError("Embedding text cannot be empty.")
+            cleaned.append(value)
+        return cleaned
+
+    @staticmethod
+    def _validate_payload(payload: Any, expected_count: int) -> list[list[float]]:
+        if not isinstance(payload, dict):
+            raise MiraRemoteEmbeddingError("MIRA model server returned a non-object JSON response.")
+
+        embeddings = payload.get("embeddings")
+        if embeddings is None:
+            single = payload.get("embedding")
+            if single is None:
+                raise MiraRemoteEmbeddingError(
+                    "MIRA model server returned neither embeddings nor embedding."
+                )
+            embeddings = [single]
+
+        if not isinstance(embeddings, list) or len(embeddings) != expected_count:
+            received = len(embeddings) if isinstance(embeddings, list) else "invalid"
+            raise MiraRemoteEmbeddingError(
+                f"Embedding count mismatch: sent {expected_count}, received {received}."
+            )
+
+        validated: list[list[float]] = []
+        for embedding in embeddings:
+            if not isinstance(embedding, list) or len(embedding) != EXPECTED_EMBEDDING_DIM:
+                raise MiraRemoteEmbeddingError(
+                    f"Invalid embedding dimension: expected {EXPECTED_EMBEDDING_DIM}."
+                )
+            vector: list[float] = []
+            for value in embedding:
+                try:
+                    number = float(value)
+                except (TypeError, ValueError) as exc:
+                    raise MiraRemoteEmbeddingError(
+                        "MIRA model server returned a non-numeric embedding value."
+                    ) from exc
+                if not math.isfinite(number):
+                    raise MiraRemoteEmbeddingError(
+                        "MIRA model server returned a non-finite embedding value."
+                    )
+                vector.append(number)
+            validated.append(vector)
+        return validated
+
+    def _post_embeddings(self, texts: list[str]) -> list[list[float]]:
+        response = self._client.post("/embed", json={"text": texts})
+        response.raise_for_status()
+        return self._validate_payload(response.json(), len(texts))
+
+    def _request_embeddings(self, texts: list[str], *, allow_split: bool = True) -> list[list[float]]:
+        if not texts:
+            return []
+
+        cleaned = self._clean_texts(texts)
+        delay = 1.0
+        last_error: Exception | None = None
+
+        for attempt in range(EMBED_RETRIES + 1):
+            try:
+                return self._post_embeddings(cleaned)
+            except httpx.HTTPStatusError as exc:
+                status = exc.response.status_code if exc.response is not None else None
+                if status == 413 and allow_split and len(cleaned) > MIN_ADAPTIVE_BATCH_SIZE:
+                    middle = len(cleaned) // 2
+                    return self._request_embeddings(cleaned[:middle]) + self._request_embeddings(cleaned[middle:])
+                retryable = status in {408, 409, 425, 429, 500, 502, 503, 504}
+                if not retryable or attempt >= EMBED_RETRIES:
+                    raise MiraRemoteEmbeddingError(
+                        f"MIRA embedding request failed with HTTP {status}: {exc}"
+                    ) from exc
+                last_error = exc
+            except httpx.ReadTimeout as exc:
+                if allow_split and len(cleaned) > MIN_ADAPTIVE_BATCH_SIZE:
+                    middle = len(cleaned) // 2
+                    return self._request_embeddings(cleaned[:middle]) + self._request_embeddings(cleaned[middle:])
+                if attempt >= EMBED_RETRIES:
+                    raise MiraRemoteEmbeddingError(
+                        f"MIRA embedding request timed out after {EMBED_RETRIES + 1} attempts."
+                    ) from exc
+                last_error = exc
+            except (httpx.ConnectError, httpx.ConnectTimeout, httpx.WriteTimeout, httpx.PoolTimeout) as exc:
+                if attempt >= EMBED_RETRIES:
+                    raise MiraRemoteEmbeddingError(
+                        f"MIRA embedding request failed after {EMBED_RETRIES + 1} attempts: {exc}"
+                    ) from exc
+                last_error = exc
+            except httpx.HTTPError as exc:
+                if attempt >= EMBED_RETRIES:
+                    raise MiraRemoteEmbeddingError(f"MIRA embedding request failed: {exc}") from exc
+                last_error = exc
+            except ValueError as exc:
+                raise MiraRemoteEmbeddingError(
+                    f"MIRA embedding response could not be decoded: {exc}"
+                ) from exc
+
+            if attempt < EMBED_RETRIES:
+                time.sleep(delay)
+                delay = min(delay * 2.0, 8.0)
+
+        raise MiraRemoteEmbeddingError(f"MIRA embedding request failed: {last_error}")
+
+    def encode(
+        self,
+        sentences: str | list[str] | tuple[str, ...],
+        *,
+        normalize_embeddings: bool = True,
+        batch_size: int | None = None,
+        **_: Any,
+    ) -> np.ndarray:
+        del normalize_embeddings
+
+        if isinstance(sentences, str):
+            result = self._request_embeddings([sentences])
+            return np.asarray(result[0], dtype=np.float32)
+
+        if not isinstance(sentences, (list, tuple)):
+            raise TypeError("sentences must be str, list[str], or tuple[str, ...].")
+
+        if not sentences:
+            return np.empty((0, EXPECTED_EMBEDDING_DIM), dtype=np.float32)
+
+        requested = EMBED_BATCH_SIZE if batch_size is None else int(batch_size)
+        effective_batch_size = max(1, min(requested, EMBED_BATCH_SIZE, MAX_BATCH_SIZE))
+        batches = [
+            list(sentences[start:start + effective_batch_size])
+            for start in range(0, len(sentences), effective_batch_size)
+        ]
+
+        if len(batches) == 1:
+            batch_results = [self._request_embeddings(batches[0])]
+        elif EMBED_MAX_CONCURRENCY == 1:
+            batch_results = [self._request_embeddings(batch) for batch in batches]
+        else:
+            worker_count = min(EMBED_MAX_CONCURRENCY, len(batches))
+            with ThreadPoolExecutor(max_workers=worker_count) as executor:
+                batch_results = list(executor.map(self._request_embeddings, batches))
+
+        flattened = [embedding for batch in batch_results for embedding in batch]
+        if len(flattened) != len(sentences):
+            raise MiraRemoteEmbeddingError(
+                f"Embedding count mismatch after batching: sent {len(sentences)}, received {len(flattened)}."
+            )
+
+        matrix = np.asarray(flattened, dtype=np.float32)
+        expected_shape = (len(sentences), EXPECTED_EMBEDDING_DIM)
+        if matrix.shape != expected_shape:
+            raise MiraRemoteEmbeddingError(
+                f"Invalid embedding matrix shape: {matrix.shape}; expected {expected_shape}."
+            )
+        return matrix
+
+
+@lru_cache(maxsize=1)
+def _load_model(target: str) -> RemoteMiraEmbeddingModel:
+    if target != REMOTE_MODEL_TOKEN:
+        raise RuntimeError(f"Unsupported production model target: {target}")
+    return RemoteMiraEmbeddingModel()
 
 
 def resolve_model_name(name_or_alias: str | None = None) -> str:
-    """
-    Resolve model alias or environment variable into a valid model path or identifier.
+    target = (
+        name_or_alias
+        if name_or_alias is not None
+        else os.getenv("MIRA_EMBEDDING_MODEL", "")
+    )
+    target = str(target).strip()
 
-    Production defaults exclusively to the local Qwen INT8 1024D model (`Mira.ai`).
-    Silent fallbacks to 384D MiniLM have been removed.
+    if not target or target == REMOTE_MODEL_TOKEN:
+        return REMOTE_MODEL_TOKEN
 
-    Resolution rules:
-      1. Default / production (unset, '', 'default', 'production', 'qwen', 'mira', 'mira.ai'):
-         - Locates Qwen INT8 model across candidate paths.
-         - If not found, raises FileNotFoundError with actionable guidance.
-      2. Explicit custom model path / HuggingFace ID / legacy evaluation alias:
-         - 'minilm': legacy fine-tuned MiniLM checkpoint for historical evaluation scripts.
-         - 'base-minilm' / 'base_minilm': 'all-MiniLM-L6-v2' for baseline comparison.
-         - Any other string or Path is passed through directly.
-    """
-    target = name_or_alias if name_or_alias is not None else os.getenv("MIRA_EMBEDDING_MODEL", "")
-    target = target.strip()
+    production_aliases = {
+        "default",
+        "production",
+        "qwen",
+        "mira",
+        "mira.ai",
+        "ashindian/mira.ai",
+    }
+    if target.lower() in production_aliases:
+        return REMOTE_MODEL_TOKEN
 
-    if not target or target.lower() in ("default", "production", "qwen", "mira", "mira.ai"):
-        qwen_path = find_qwen_model_path()
-        if qwen_path is not None:
-            return str(qwen_path)
-
-        # Not on disk -- optionally fetch from Hugging Face.
-        if settings.model_auto_download:
-            downloaded = _download_qwen_model(_download_target_dir())
-            if downloaded is not None:
-                return str(downloaded)
-
-        candidates = get_qwen_candidate_paths()
-        candidate_str = "\n  - ".join(str(p) for p in candidates)
-        download_note = (
-            f"\nAuto-download attempt: {_download_failed_reason}"
-            if _download_failed_reason
-            else "\nAuto-download: disabled (MIRA_MODEL_AUTO_DOWNLOAD=false)."
-        )
-        raise FileNotFoundError(
-            "MIRA production Qwen embedding model (1024D INT8) could not be located.\n"
-            f"Searched candidate locations:\n  - {candidate_str}\n"
-            f"{download_note}\n"
-            "Please ensure the model directory exists at ~/mira-model-test/Mira.ai, "
-            "or configure MIRA_QWEN_MODEL_PATH / MIRA_MODEL_PATH / MIRA_MODELS_DIR / MIRA_EMBEDDING_MODEL, "
-            "or set MIRA_MODEL_AUTO_DOWNLOAD=true to fetch it from Hugging Face."
+    if target.lower() in {"minilm", "base-minilm", "base_minilm"}:
+        raise RuntimeError(
+            "Legacy MiniLM models are not enabled in the Render production deployment."
         )
 
-    target_lower = target.lower()
-    if target_lower == "minilm":
-        if LEGACY_MINILM_PATH.exists() and (LEGACY_MINILM_PATH / "model.safetensors").exists():
-            return str(LEGACY_MINILM_PATH)
-        return "all-MiniLM-L6-v2"
-    elif target_lower in ("base-minilm", "base_minilm"):
-        return "all-MiniLM-L6-v2"
-
-    return target
+    raise RuntimeError(f"Unsupported embedding model '{target}'.")
 
 
 def get_embedding_model_name() -> str:
@@ -404,40 +432,30 @@ def get_embedding_model(
 
 
 class EmbeddingCache:
-    """
-    Scoped in-memory embedding cache for a matching batch or request.
-
-    Precomputes or lazily caches normalized embeddings for unique texts
-    so that repeated material descriptions are encoded at most once.
-    Distinguishes models in the cache key to prevent cross-model cache contamination.
-    """
-
     def __init__(
         self,
         initial_embeddings: dict[str, np.ndarray] | None = None,
         model_name: str | None = None,
-    ):
+    ) -> None:
         self.model_name = resolve_model_name(model_name)
         self._cache: dict[tuple[str, str], np.ndarray] = {}
         if initial_embeddings:
-            for text, emb in initial_embeddings.items():
-                self._cache[(self.model_name, text)] = emb
+            for text, embedding in initial_embeddings.items():
+                self._cache[(self.model_name, text)] = embedding
 
     def _resolve_model(self, model_name: str | None = None) -> str:
         return resolve_model_name(model_name) if model_name is not None else self.model_name
 
     def get(self, text: str, model_name: str | None = None) -> np.ndarray | None:
-        m = self._resolve_model(model_name)
-        return self._cache.get((m, text))
+        return self._cache.get((self._resolve_model(model_name), text))
 
     def set(self, text: str, embedding: np.ndarray, model_name: str | None = None) -> None:
-        m = self._resolve_model(model_name)
-        self._cache[(m, text)] = embedding
+        self._cache[(self._resolve_model(model_name), text)] = embedding
 
     def precompute(
         self,
         texts: Iterable[str],
-        batch_size: int = 64,
+        batch_size: int = EMBED_BATCH_SIZE,
         model_name: str | None = None,
         progress_callback: Callable[[int, int], None] | None = None,
     ) -> None:
@@ -495,28 +513,42 @@ class EmbeddingCache:
     def get_or_encode(self, text: str, model_name: str | None = None) -> np.ndarray | None:
         if not text:
             return None
-        m = self._resolve_model(model_name)
-        key = (m, text)
-        if key not in self._cache:
-            model = get_embedding_model(m)
-            self._cache[key] = model.encode(
-                text,
-                normalize_embeddings=True,
-            )
-        return self._cache[key]
 
-    def similarity(self, left: str, right: str, model_name: str | None = None) -> float:
+        model = self._resolve_model(model_name)
+        key = (model, text)
+        cached = self._cache.get(key)
+        if cached is not None:
+            return cached
+
+        embedding = get_embedding_model(model).encode(
+            text,
+            normalize_embeddings=True,
+        )
+        if embedding.shape != (EXPECTED_EMBEDDING_DIM,):
+            raise MiraRemoteEmbeddingError(
+                f"Invalid single embedding shape: {embedding.shape}"
+            )
+        self._cache[key] = embedding
+        return embedding
+
+    def similarity(
+        self,
+        left: str,
+        right: str,
+        model_name: str | None = None,
+    ) -> float:
         if not left or not right:
             return 0.0
 
         vec_a = self.get_or_encode(left, model_name=model_name)
         vec_b = self.get_or_encode(right, model_name=model_name)
-
         if vec_a is None or vec_b is None:
             return 0.0
 
-        sim = float(vec_a @ vec_b)
-        return max(0.0, min(1.0, sim))
+        similarity = float(np.dot(vec_a, vec_b))
+        if not math.isfinite(similarity):
+            return 0.0
+        return max(0.0, min(1.0, similarity))
 
     def clear(self) -> None:
         self._cache.clear()
@@ -530,11 +562,10 @@ class EmbeddingCache:
 
 def precompute_embeddings(
     texts: Iterable[str],
-    batch_size: int = 64,
+    batch_size: int = EMBED_BATCH_SIZE,
     model_name: str | None = None,
     progress_callback: Callable[[int, int], None] | None = None,
 ) -> EmbeddingCache:
-    """Convenience factory to precompute embeddings for a collection of texts into a new scoped cache."""
     cache = EmbeddingCache(model_name=model_name)
     cache.precompute(
         texts,
@@ -548,15 +579,11 @@ def precompute_embeddings(
 def generate_embedding(text: str, model_name: str | None = None) -> list[float]:
     if not text:
         return []
-
-    model = get_embedding_model(model_name)
-
-    embedding = model.encode(
+    embedding = get_embedding_model(model_name).encode(
         text,
         normalize_embeddings=True,
     )
-
-    return embedding.tolist()
+    return embedding.astype(np.float32, copy=False).tolist()
 
 
 def semantic_similarity(
@@ -571,13 +598,15 @@ def semantic_similarity(
     if embedding_cache is not None:
         return embedding_cache.similarity(left, right, model_name=model_name)
 
-    model = get_embedding_model(model_name)
-
-    embeddings = model.encode(
+    embeddings = get_embedding_model(model_name).encode(
         [left, right],
         normalize_embeddings=True,
+        batch_size=2,
     )
+    similarity = float(np.dot(embeddings[0], embeddings[1]))
+    if not math.isfinite(similarity):
+        return 0.0
+    return max(0.0, min(1.0, similarity))
 
-    similarity = float(embeddings[0] @ embeddings[1])
 
     return max(0.0, min(1.0, similarity))

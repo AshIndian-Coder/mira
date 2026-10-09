@@ -23,6 +23,8 @@ from app.services.matching.embeddings import get_embedding_model_name
 
 logger = logging.getLogger(__name__)
 
+logger = logging.getLogger(__name__)
+
 router = APIRouter(prefix="/materials", tags=["Materials"])
 
 
