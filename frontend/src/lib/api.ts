@@ -101,8 +101,6 @@ export interface JobProgress {
   phase: string
   processed: number
   total: number
-  progress_percent?: number
-  indeterminate?: boolean
   status: string
   detail: string
 }

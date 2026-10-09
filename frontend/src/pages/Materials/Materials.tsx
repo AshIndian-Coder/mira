@@ -28,16 +28,6 @@ function Materials() {
   const [message, setMessage] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [progress, setProgress] = useState<JobProgress | null>(null)
-  const progressPercent = progress
-    ? Math.max(
-        0,
-        Math.min(
-          100,
-          progress.progress_percent ??
-            (progress.total > 0 ? (progress.processed / progress.total) * 100 : 0),
-        ),
-      )
-    : 0
 
   useEffect(() => {
     if (!matching) { setProgress(null); return }
@@ -271,22 +261,13 @@ function Materials() {
             <div style={{ width: '100%', marginTop: '0.75rem' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}>
                 <span>{progress.detail}</span>
-                <span>{progress.indeterminate ? 'Working…' : `${progressPercent.toFixed(1)}%`}</span>
+                <span>{Math.round((progress.processed / progress.total) * 100)}%</span>
               </div>
-              <div
-                className="matching-progress-track"
-                role="progressbar"
-                aria-label="Matching progress"
-                aria-valuemin={0}
-                aria-valuemax={100}
-                aria-valuenow={progress.indeterminate ? undefined : progressPercent}
-                style={{ height: 6, background: 'rgba(0,0,0,0.08)', borderRadius: 3, marginTop: 4 }}
-              >
+              <div style={{ height: 6, background: 'rgba(0,0,0,0.08)', borderRadius: 3, marginTop: 4 }}>
                 <div
-                  className={progress.indeterminate ? 'matching-progress-fill matching-progress-indeterminate' : 'matching-progress-fill'}
                   style={{
                     height: '100%',
-                    width: progress.indeterminate ? '28%' : `${progressPercent}%`,
+                    width: `${(progress.processed / progress.total) * 100}%`,
                     background: 'var(--accent, #2563eb)',
                     borderRadius: 3,
                     transition: 'width 0.4s ease',

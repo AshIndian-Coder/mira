@@ -34,18 +34,12 @@ python create_milvus_collection.py
 # 4. backend
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1
-# CPU fallback; for NVIDIA CUDA, use the matching command from
-# https://pytorch.org/get-started/locally/ instead.
 pip install torch --index-url https://download.pytorch.org/whl/cpu
 pip install -r requirements.txt
 pip install bitsandbytes accelerate
 # optional: create backend/.env with DATABASE_URL if your postgres password is not "postgres"
 python -m uvicorn app.main:app --reload --reload-dir app --port 8000
 ```
-
-The backend uses CUDA when the installed PyTorch build can access an NVIDIA GPU; otherwise
-it uses CPU. `requirements.txt` leaves PyTorch unpinned so the CPU or CUDA build you chose
-is retained.
 
 ```powershell
 # 5. frontend (second window)
@@ -134,9 +128,8 @@ health and the landing page. Full detail at `/docs`.
 All runtime data is **Postgres-backed** - uploads, candidates, review decisions, mappings,
 CNMC records and audit events survive server restarts.
 
-- Schema: `backend/mira_full_schema.sql` (10 tables, including the durable embedding cache, mirroring the exact dict shapes the
+- Schema: `backend/mira_full_schema.sql` (9 tables, mirroring the exact dict shapes the
   routes produce). The app does not create tables: apply the schema before the first start.
-  For an existing database, apply `backend/002_create_material_embedding_cache.sql` once.
 - Engine: `backend/app/db_adapter.py` - `PersistentList` (drop-in list replacement) plus
   `DBRow` (a dict with write-through on in-place mutation, so
   `candidate["review_status"] = "APPROVED"` persists).
@@ -164,7 +157,7 @@ CNMC records and audit events survive server restarts.
 ```text
 mira/
 ├── backend/
-│   ├── mira_full_schema.sql          # Postgres schema (10 tables)
+│   ├── mira_full_schema.sql          # Postgres schema (9 tables)
 │   ├── docker-compose.milvus.yml     # etcd + MinIO + Milvus
 │   ├── create_milvus_collection.py   # one-time collection setup
 │   ├── benchmark_matching.py · benchmark_pipeline.py
