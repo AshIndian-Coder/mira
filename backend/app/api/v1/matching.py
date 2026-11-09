@@ -8,6 +8,8 @@ GET  /api/matching/candidates/{id} — single candidate detail
 GET  /api/matching/stats     — blocking / recall / score summary stats
 """
 
+import logging
+import threading
 from datetime import datetime, timezone
 from typing import Any
 
@@ -30,12 +32,18 @@ from app.services.matching.cnmc_matcher import (
     find_cnmc_candidates_for_material,
     match_new_materials_against_cnmcs,
 )
-from app.services.matching.embeddings import EmbeddingCache, precompute_embeddings
-from app.services.matching.vector_search import search_similar_materials
+from app.services.matching.embeddings import (
+    EMBED_BATCH_SIZE,
+    MiraRemoteEmbeddingError,
+    precompute_embeddings,
+)
+from app.services.matching.vector_search import search_similar_materials_batch
 from app.services.normalization.service import normalize_material_description
 from app.services.parsing.service import parse_specifications
 
 router = APIRouter(prefix="/matching", tags=["Matching"])
+logger = logging.getLogger(__name__)
+_MATCHING_RUN_LOCK = threading.Lock()
 
 
 # ---------------------------------------------------------------------------
@@ -169,32 +177,42 @@ def run_batch_matching(
     """
 
 
-    if not store.MATERIALS:
+    materials = list(store.MATERIALS)
+    if not materials:
         raise HTTPException(
             status_code=400,
             detail="No materials ingested. Upload a CSV via POST /api/materials/upload first.",
         )
+    if not _MATCHING_RUN_LOCK.acquire(blocking=False):
+        raise HTTPException(
+            status_code=409,
+            detail="A matching run is already in progress. Wait for it to finish before starting another.",
+        )
 
-    job_id = create_job(
-        "matching",
-        total=len(store.MATERIALS),
-        detail="Loading model and computing embedding vectors",
-    )
-    update_job(job_id, phase="embedding")
-
+    job_id: str | None = None
     try:
+        job_id = create_job(
+            "matching",
+            total=len(materials),
+            detail="Loading model and computing embedding vectors",
+        )
+        update_job(job_id, phase="embedding")
+
         if request.overwrite:
-            store.CANDIDATES.clear()
+            existing_candidates: list[dict[str, Any]] = []
+        else:
+            existing_candidates = list(store.CANDIDATES)
 
         started_at = datetime.now(timezone.utc)
 
         # --- Build blocker objects & index maps ---
-        blocker_objects = [_store_material_to_blocker(m) for m in store.MATERIALS]
-        material_index: dict[int, dict[str, Any]] = {m["id"]: m for m in store.MATERIALS}
+        blocker_objects = [_store_material_to_blocker(material) for material in materials]
+        material_index: dict[int, dict[str, Any]] = {material["id"]: material for material in materials}
         material_cpse: dict[int, str] = {
-            m["id"]: (m.get("cpse") or "CPSE_GENERIC").strip().upper()
-            for m in store.MATERIALS
+            material["id"]: (material.get("cpse") or "CPSE_GENERIC").strip().upper()
+            for material in materials
         }
+        available_cpses = set(material_cpse.values())
 
         # Filter source materials if requested
         filtered_sources = blocker_objects
@@ -218,32 +236,20 @@ def run_batch_matching(
 
         # --- Track already-evaluated pairs to avoid duplicates ---
         seen_pairs: set[tuple[int, int]] = {
-            _pair_key(c["source_material_id"], c["target_material_id"])
-            for c in store.CANDIDATES
+            _pair_key(candidate["source_material_id"], candidate["target_material_id"])
+            for candidate in existing_candidates
         }
+        new_candidates_by_source: dict[int, int] = {}
 
-        # Pre-partition blockers by CPSE for fast cross-CPSE target mapping
-        cpse_blockers: dict[str, dict[int, MaterialForBlocking]] = {}
-        for bo in blocker_objects:
-            c = material_cpse.get(bo.id, "CPSE_GENERIC")
-            cpse_blockers.setdefault(c, {})[bo.id] = bo
-
-        target_map_by_source_cpse: dict[str, dict[int, MaterialForBlocking]] = {}
-        for s_cpse in cpse_blockers:
-            t_map: dict[int, MaterialForBlocking] = {}
-            for t_cpse, t_dict in cpse_blockers.items():
-                if t_cpse == s_cpse:
-                    continue
-                if request.target_cpse and t_cpse != request.target_cpse.strip().upper():
-                    continue
-                t_map.update(t_dict)
-            target_map_by_source_cpse[s_cpse] = t_map
+        target_cpse_filter = (
+            request.target_cpse.strip().upper() if request.target_cpse else None
+        )
 
         all_descriptions = [
-            m.get("normalized_description") or m.get("description") or ""
-            for m in store.MATERIALS
+            material.get("normalized_description") or material.get("description") or ""
+            for material in materials
         ]
-        embedding_cache = precompute_embeddings(all_descriptions, batch_size=64)
+        embedding_cache = precompute_embeddings(all_descriptions, batch_size=EMBED_BATCH_SIZE)
         new_candidates: list[dict[str, Any]] = []
         total_pairs_evaluated = 0
 
@@ -263,16 +269,25 @@ def run_batch_matching(
 
             source_keys = material_block_keys[source_bo.id]
             s_cpse = material_cpse.get(source_bo.id, "CPSE_GENERIC")
-            cross_target_map = target_map_by_source_cpse.get(s_cpse)
-            if not cross_target_map:
+            if target_cpse_filter is not None:
+                if s_cpse == target_cpse_filter or target_cpse_filter not in available_cpses:
+                    continue
+            elif len(available_cpses) < 2:
                 continue
+
+            def eligible_target(target_id: int, source_cpse: str = s_cpse) -> bool:
+                candidate_cpse = material_cpse.get(target_id, "CPSE_GENERIC")
+                return candidate_cpse != source_cpse and (
+                    target_cpse_filter is None or candidate_cpse == target_cpse_filter
+                )
 
             raw_candidates = blocking_generate_candidates(
                 source_bo,
                 block_index=block_index,
-                target_map=cross_target_map,
+                target_map=blocker_by_id,
                 target_order=target_order,
                 source_keys=source_keys,
+                target_filter=eligible_target,
             )
 
             # Cap cross-CPSE candidates per source material
@@ -296,7 +311,7 @@ def run_batch_matching(
                 review_st = "DIFFERENT" if engine_dec == "DIFFERENT" else "PENDING"
 
                 candidate: dict[str, Any] = {
-                    "id": store.next_candidate_id(),
+                    "id": None,
                     "source_material_id": source_bo.id,
                     "target_material_id": target_bo.id,
                     "source_cpse": source_mat["cpse"],
@@ -315,31 +330,52 @@ def run_batch_matching(
                     "created_at": started_at.isoformat(),
                 }
                 new_candidates.append(candidate)
+                new_candidates_by_source[source_bo.id] = new_candidates_by_source.get(source_bo.id, 0) + 1
 
         # --- Additional candidates from vector search (Milvus) ---
         # Runs AFTER the rule-based blocking above, and only ever ADDS
         # candidates -- never removes or changes anything the rule-based loop
         # already found. If Milvus is unavailable, this is skipped silently.
-        for source_bo in blocker_objects:
-            source_mat = material_index[source_bo.id]
-            try:
-                vector_ids = search_similar_materials(
-                    description=source_mat.get("normalized_description", ""),
-                    category=source_mat.get("category"),
-                    top_k=50,
-                    embedding_cache=embedding_cache,
-                )
-            except Exception:
-                continue
+        try:
+            vector_results = search_similar_materials_batch(
+                [
+                    (
+                        source_bo.id,
+                        material_index[source_bo.id].get("normalized_description")
+                        or material_index[source_bo.id].get("description", ""),
+                        material_index[source_bo.id].get("category"),
+                    )
+                    for source_bo in filtered_sources
+                ],
+                top_k=50,
+                embedding_cache=embedding_cache,
+                batch_size=EMBED_BATCH_SIZE,
+            )
+        except Exception:
+            logger.warning(
+                "Vector candidate retrieval failed; continuing with rule-based candidates",
+                exc_info=True,
+            )
+            vector_results = {}
 
-            for target_id in vector_ids:
+        for source_bo in filtered_sources:
+            if new_candidates_by_source.get(source_bo.id, 0) >= request.max_candidates_per_material:
+                continue
+            source_mat = material_index[source_bo.id]
+            for target_id in vector_results.get(source_bo.id, []):
                 if target_id == source_bo.id or target_id not in material_index:
                     continue
 
                 target_mat = material_index[target_id]
+                target_cpse = (target_mat.get("cpse") or "CPSE_GENERIC").strip().upper()
+                source_cpse = (source_mat.get("cpse") or "CPSE_GENERIC").strip().upper()
 
-                if source_mat["cpse"].upper() == target_mat["cpse"].upper():
+                if source_cpse == target_cpse:
                     continue
+                if target_cpse_filter is not None and target_cpse != target_cpse_filter:
+                    continue
+                if new_candidates_by_source.get(source_bo.id, 0) >= request.max_candidates_per_material:
+                    break
 
                 pk = _pair_key(source_bo.id, target_id)
                 if pk in seen_pairs:
@@ -354,7 +390,7 @@ def run_batch_matching(
                 review_st = "DIFFERENT" if engine_dec == "DIFFERENT" else "PENDING"
 
                 candidate = {
-                    "id": store.next_candidate_id(),
+                    "id": None,
                     "source_material_id": source_bo.id,
                     "target_material_id": target_id,
                     "source_cpse": source_mat["cpse"],
@@ -373,10 +409,16 @@ def run_batch_matching(
                     "created_at": started_at.isoformat(),
                 }
                 new_candidates.append(candidate)
+                new_candidates_by_source[source_bo.id] = new_candidates_by_source.get(source_bo.id, 0) + 1
 
         update_job(job_id, phase="storing", processed=total_sources,
                    detail=f"Writing {len(new_candidates)} candidates")
 
+        candidate_ids = store.reserve_candidate_ids(len(new_candidates)) if new_candidates else []
+        for candidate, candidate_id in zip(new_candidates, candidate_ids):
+            candidate["id"] = candidate_id
+        if request.overwrite:
+            store.CANDIDATES.clear()
         store.CANDIDATES.extend(new_candidates)
 
         # No auto-approval: every HIGH_CONFIDENCE / REVIEW candidate stays PENDING
@@ -393,7 +435,7 @@ def run_batch_matching(
 
         summary = {
             "status": "complete",
-            "materials_processed": len(store.MATERIALS),
+            "materials_processed": len(materials),
             "candidate_pairs_evaluated": total_pairs_evaluated,
             "new_candidates_stored": len(new_candidates),
             "total_candidates": len(store.CANDIDATES),
@@ -402,9 +444,24 @@ def run_batch_matching(
         }
         finish_job(job_id, result=summary)
         return summary
+    except MiraRemoteEmbeddingError as exc:
+        if job_id is not None:
+            finish_job(job_id, error=str(exc))
+        logger.warning("Matching stopped because the embedding service is unavailable: %s", exc, exc_info=True)
+        raise HTTPException(
+            status_code=503,
+            detail=(
+                "The MIRA embedding service did not respond in time. "
+                "The matching job was not committed; wait briefly and retry."
+            ),
+            headers={"Retry-After": "30"},
+        ) from exc
     except Exception as exc:
-        finish_job(job_id, error=str(exc))
+        if job_id is not None:
+            finish_job(job_id, error=str(exc))
         raise
+    finally:
+        _MATCHING_RUN_LOCK.release()
 
 
 @router.get("/candidates")
