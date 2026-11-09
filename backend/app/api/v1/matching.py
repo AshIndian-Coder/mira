@@ -185,6 +185,7 @@ def _search_vector_candidates(
                     "top_k": 50,
                     "embedding_cache": embedding_cache,
                     "batch_size": _VECTOR_SEARCH_BATCH_SIZE,
+                    "exclude_cpse_by_material": source_cpse_by_id,
                 },
             )
             results = batch_search(items, **kwargs)
