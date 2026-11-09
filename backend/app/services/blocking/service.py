@@ -1,3 +1,4 @@
+from collections.abc import Callable
 from dataclasses import dataclass
 import re
 
@@ -159,6 +160,7 @@ def generate_candidates(
     target_map: dict[int, MaterialForBlocking] | None = None,
     target_order: dict[int, int] | None = None,
     source_keys: set[str] | None = None,
+    target_filter: Callable[[int], bool] | None = None,
 ) -> list[MaterialForBlocking]:
     """
     Generate candidate target materials that share at least one block key with source.
@@ -183,7 +185,11 @@ def generate_candidates(
         key_counts: dict[int, int] = {}
         for key in source_keys:
             for tid in block_index.get(key, ()):
-                if tid != source.id and tid in target_map:
+                if (
+                    tid != source.id
+                    and tid in target_map
+                    and (target_filter is None or target_filter(tid))
+                ):
                     key_counts[tid] = key_counts.get(tid, 0) + 1
 
         if not key_counts:
@@ -215,6 +221,8 @@ def generate_candidates(
 
     for idx, target in enumerate(targets):
         if source.id == target.id:
+            continue
+        if target_filter is not None and not target_filter(target.id):
             continue
 
         target_keys = generate_block_keys(target)
